@@ -22,11 +22,16 @@ export default defineConfig({
 
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 
+  /*
+   * Serves the built output, not the dev server. Testing the dev server would leave
+   * anything that only breaks under minification, CSS-Modules hashing or tree-shaking free
+   * to ship green — the end-to-end suite has to exercise what actually gets deployed.
+   */
   webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
+    command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 180_000,
     stdout: 'ignore',
     stderr: 'pipe',
   },

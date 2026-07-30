@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per ecosystem rather than a dozen: CI runs the full gate on each, so a
+      # grouped bump is still verified end to end.
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+      tooling:
+        patterns:
+          ['eslint*', '@eslint/*', 'typescript-eslint', 'prettier', 'vite', 'vitest', '@vitest/*']
+      testing:
+        patterns: ['@playwright/*', '@testing-library/*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
