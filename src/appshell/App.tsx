@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { Palette, SchemaCanvas, TaxonomyCanvas, useSpawnAtFreeSpot } from '../canvas';
+import { Palette, SchemaCanvas, TaxonomyCanvas, usePaletteCreate } from '../canvas';
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
 import { LanguageTagSuggestions } from '../annotationpanel';
-import { RelationMarkers } from '../relationeditor';
+import { ConnectionPicker, RelationMarkers } from '../relationeditor';
 import { useCanvasView, useOntology, useProjectStore } from '../projectstore';
 import { Button, Divider, Spacer, Tabs, Toolbar } from '../designsystem';
 import { Inspector } from './Inspector';
@@ -33,7 +33,8 @@ export function App() {
   const undo = useProjectStore((state) => state.undo);
   const redo = useProjectStore((state) => state.redo);
   const deleteSelection = useProjectStore((state) => state.deleteSelection);
-  const spawn = useSpawnAtFreeSpot();
+  const createObjectProperty = useProjectStore((state) => state.createObjectProperty);
+  const { create, canCreateAttribute } = usePaletteCreate();
   const { theme, toggleTheme } = useThemePreference();
 
   useGlobalShortcuts({ undo, redo, deleteSelection });
@@ -45,6 +46,7 @@ export function App() {
     <div className={styles.shell}>
       <RelationMarkers />
       <LanguageTagSuggestions />
+      <ConnectionPicker />
 
       <header className={styles.header}>
         <div className={styles.brand}>
@@ -72,9 +74,13 @@ export function App() {
         <aside className={styles.left} aria-label="Palette and hierarchy">
           <h2 className={styles.sectionTitle}>Palette</h2>
           <div className={styles.sectionBody}>
-            <Palette onCreate={spawn} />
+            <Palette
+              onCreate={create}
+              onCreateObjectProperty={() => createObjectProperty()}
+              canCreateAttribute={canCreateAttribute}
+            />
           </div>
-          <h2 className={styles.sectionTitle}>Hierarchy</h2>
+          <h2 className={styles.sectionTitle}>Entities</h2>
           <div className={styles.scroll}>
             <div className={styles.sectionBody}>
               <HierarchyTree />
@@ -136,6 +142,26 @@ export function App() {
  * into a field — otherwise Ctrl+Z in a text box would roll back the model instead of the
  * text, and Delete would remove the selected class mid-word.
  */
+/** True when the key event lands in something the user is typing into. */
+export function isTextEntry(target: HTMLElement | null): boolean {
+  if (!target) return false;
+  return (
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.tagName === 'SELECT' ||
+    target.isContentEditable
+  );
+}
+
+/**
+ * Dialogs are portalled to the body, so one query answers "is anything modal on screen".
+ * Without this, Delete or Backspace typed into an open dialog reaches the canvas behind it
+ * and removes the selected class.
+ */
+export function isDialogOpen(): boolean {
+  return typeof document !== 'undefined' && document.querySelector('[role="dialog"]') !== null;
+}
+
 function useGlobalShortcuts(actions: {
   undo: () => void;
   redo: () => void;
@@ -146,11 +172,9 @@ function useGlobalShortcuts(actions: {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      const typing =
-        target?.tagName === 'INPUT' ||
-        target?.tagName === 'TEXTAREA' ||
-        target?.tagName === 'SELECT' ||
-        target?.isContentEditable;
+      // A dialog is modal: nothing behind it may be edited or deleted from the keyboard.
+      if (isDialogOpen()) return;
+      const typing = isTextEntry(target);
 
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
         if (typing) return;
