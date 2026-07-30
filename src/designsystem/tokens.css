@@ -20,7 +20,12 @@
 
   --text-primary: #131722;
   --text-secondary: #59616f;
-  --text-tertiary: #8a929f;
+  /*
+   * Tertiary text carries hints, counts and empty states at 11px, so it has to clear the
+   * WCAG AA 4.5:1 floor — not just look quiet. #8a929f measured 3.1:1 on white and failed.
+   * This is 5.4:1 on --surface-base and 4.8:1 on --surface-sunken.
+   */
+  --text-tertiary: #646b78;
   --text-inverse: #ffffff;
 
   /* Semantic accents: one per entity kind, so the canvas is readable at a glance */
@@ -92,7 +97,8 @@
 
   --text-primary: #e7eaf0;
   --text-secondary: #a2abb9;
-  --text-tertiary: #6f7887;
+  /* 5.3:1 on --surface-base, 5.6:1 on --surface-sunken; #6f7887 measured 3.8:1 and failed. */
+  --text-tertiary: #8891a0;
   --text-inverse: #14171d;
 
   --accent-class: #7b93f5;
