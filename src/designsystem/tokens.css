@@ -1,0 +1,171 @@
+/*
+ * Design tokens. One place defines colour, type, spacing and elevation; every module
+ * consumes them through custom properties, so the product reads as one designed thing.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Neutral ramp — slate, slightly cool */
+  --surface-canvas: #f6f7f9;
+  --surface-base: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f1f3f6;
+  --surface-hover: #eef1f5;
+  --surface-active: #e6eaf0;
+
+  --border-subtle: #e3e7ed;
+  --border-default: #d3d9e2;
+  --border-strong: #b6bfcc;
+
+  --text-primary: #131722;
+  --text-secondary: #59616f;
+  --text-tertiary: #8a929f;
+  --text-inverse: #ffffff;
+
+  /* Semantic accents: one per entity kind, so the canvas is readable at a glance */
+  --accent-class: #3b5bdb;
+  --accent-class-soft: #eaefff;
+  --accent-class-border: #b9c6f5;
+
+  --accent-relation: #6741d9;
+  --accent-relation-soft: #f0ebff;
+  --accent-relation-border: #c9baf5;
+
+  --accent-attribute: #0f9160;
+  --accent-attribute-soft: #e6f6ef;
+  --accent-attribute-border: #a9dfc7;
+
+  --accent-taxonomy: #7a8494;
+
+  --danger: #c92a2a;
+  --danger-soft: #fff0f0;
+  --warning: #b25e02;
+
+  --focus-ring: #3b5bdb;
+
+  /* Type */
+  --font-sans:
+    'Inter var', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+
+  /* Spacing — a 4px rhythm */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 6%);
+  --shadow-md: 0 2px 6px rgb(16 24 40 / 8%), 0 1px 2px rgb(16 24 40 / 4%);
+  --shadow-lg: 0 12px 32px rgb(16 24 40 / 14%), 0 2px 6px rgb(16 24 40 / 6%);
+
+  --panel-width: 280px;
+  --inspector-width: 340px;
+  --header-height: 48px;
+}
+
+:root[data-theme='dark'] {
+  --surface-canvas: #14171d;
+  --surface-base: #1a1e26;
+  --surface-raised: #212630;
+  --surface-sunken: #14171d;
+  --surface-hover: #262c38;
+  --surface-active: #2e3542;
+
+  --border-subtle: #2a303b;
+  --border-default: #363d4a;
+  --border-strong: #4a5261;
+
+  --text-primary: #e7eaf0;
+  --text-secondary: #a2abb9;
+  --text-tertiary: #6f7887;
+  --text-inverse: #14171d;
+
+  --accent-class: #7b93f5;
+  --accent-class-soft: #1e2740;
+  --accent-class-border: #33406a;
+
+  --accent-relation: #a48bf7;
+  --accent-relation-soft: #241f3d;
+  --accent-relation-border: #3d3363;
+
+  --accent-attribute: #3fc494;
+  --accent-attribute-soft: #122c23;
+  --accent-attribute-border: #1e4a3a;
+
+  --accent-taxonomy: #8b95a5;
+
+  --danger: #ff8787;
+  --danger-soft: #331d1d;
+  --warning: #f0a04b;
+
+  --focus-ring: #7b93f5;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-md: 0 2px 6px rgb(0 0 0 / 45%), 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%), 0 2px 6px rgb(0 0 0 / 35%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--text-primary);
+  background: var(--surface-canvas);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizelegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+  background-clip: content-box;
+}

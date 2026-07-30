@@ -1,0 +1,202 @@
+/* Anchor points for subclass edges; never shown, never draggable. */
+.hierarchyHandle {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.classNode {
+  width: 224px;
+  border: 1px solid var(--accent-class-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+}
+
+.classNode:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.selected {
+  border-color: var(--accent-class);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent-class) 32%, transparent),
+    var(--shadow-md);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0 0;
+  background: var(--accent-class-soft);
+}
+
+.marker {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--accent-class);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.nameInput {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--accent-class);
+  border-radius: var(--radius-sm);
+  background: var(--surface-base);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.superclass {
+  padding: 2px var(--space-3) var(--space-1);
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--accent-taxonomy);
+  background: var(--accent-class-soft);
+}
+
+.attributes {
+  display: flex;
+  flex-direction: column;
+}
+
+.attribute {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 3px var(--space-3);
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  /* Buttons centre their text by default; attribute rows must read as a left-aligned list. */
+  text-align: left;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.attribute:last-child {
+  border-bottom: none;
+}
+
+.attribute:hover {
+  background: var(--surface-hover);
+}
+
+.attributeSelected {
+  background: var(--accent-attribute-soft);
+}
+
+.attributeMarker {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--accent-attribute);
+}
+
+.attributeName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.attributeRange {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--accent-attribute);
+}
+
+.emptyAttributes {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px);
+  background: var(--surface-sunken);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.annotationCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* --------------------------------------------- floating attribute node */
+
+.floatingAttribute {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 150px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent-attribute-border);
+  border-left: 3px solid var(--accent-attribute);
+  border-radius: var(--radius-md);
+  background: var(--accent-attribute-soft);
+  box-shadow: var(--shadow-sm);
+}
+
+.floatingAttribute.selected {
+  border-color: var(--accent-attribute);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent-attribute) 32%, transparent),
+    var(--shadow-md);
+}
+
+.floatingName {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.floatingRange {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--accent-attribute);
+}
+
+.floatingHint {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--text-tertiary);
+}

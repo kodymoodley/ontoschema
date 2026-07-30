@@ -1,0 +1,244 @@
+# OntoSchema
+
+OntoSchema is a lightweight, browser-based tool for building **schema-level ontologies** — classes,
+object properties and datatype properties arranged into taxonomies — on a drag-and-drop canvas, and
+exporting them to standard RDF. You drag classes onto a canvas, drop typed attributes onto them, draw
+relations between them to set `rdfs:domain` and `rdfs:range`, build subclass hierarchies in a
+Protégé-style tree, annotate everything with RDFS, OWL, Dublin Core, SKOS and PROV-O terms (with
+language tags), and download the result as Turtle, RDF/XML (`.rdf` or `.owl`) or JSON-LD. It runs
+entirely in the browser with no backend, and keeps your projects in local storage. Scope is
+deliberately TBox only: no individuals, no restrictions, no reasoning.
+
+---
+
+## Quick start
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+```
+
+### The five-minute tour
+
+1. Drag **Class** from the palette onto the canvas twice; double-click each header to name them
+   `Car` and `Dealership`.
+2. Select `Car`, and in the inspector's **Details** tab add attributes: `make` (string), `model`
+   (string), `year` (integer), `engine` (string), `price` (decimal). They appear as typed rows inside
+   the class box.
+3. Drag from the dot on `Car`'s right edge to the dot on `Dealership`'s left edge. Click the new
+   edge's label and rename it `offeredBy` — the direction you dragged is the `rdfs:domain` →
+   `rdfs:range` direction.
+4. Open the **Annotations** tab and add `skos:prefLabel` twice, with language tags `en` and `nl`.
+5. In the **Ontology** tab, set the base IRI and prefix, and add `dcterms:title`.
+6. In the **Export** tab, download `.ttl`, `.rdf`, `.owl` or `.jsonld`.
+
+### Scripts
+
+| Command                             | What it does                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| `npm run dev`                       | Vite dev server with hot reload                                         |
+| `npm run build`                     | Typecheck, then production build to `dist/`                             |
+| `npm run preview`                   | Serve the production build                                              |
+| `npm run typecheck`                 | `tsc --noEmit`                                                          |
+| `npm run lint`                      | ESLint, **including the architectural boundary rules**                  |
+| `npm run format` / `format:check`   | Prettier write / check                                                  |
+| `npm test`                          | Unit tests (domain model + serializers)                                 |
+| `npm run test:integration`          | Integration tests (store → model → all four serializations)             |
+| `npm run test:unit-and-integration` | Both vitest projects                                                    |
+| `npm run test:e2e`                  | Playwright end-to-end tests (starts its own dev server)                 |
+| `npm run verify`                    | Everything CI runs: typecheck, lint, format check, all three test tiers |
+
+First-time Playwright setup: `npm run test:e2e:install`.
+
+---
+
+## Libraries and what each one is for
+
+Runtime dependencies are kept to five. Everything else is a dev tool.
+
+### Runtime
+
+| Library                      | The specific job it does here                                                                                                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `react` + `react-dom`        | Renders the whole UI.                                                                                                                                                                                                           |
+| `@xyflow/react` (React Flow) | The canvas engine behind `canvas/`: pan, zoom, marquee select, node dragging, handle-to-handle connection gestures, and custom node/edge renderers. It replaces roughly two thousand lines of hand-rolled SVG interaction code. |
+| `zustand`                    | The app-state container in `projectstore/`. Holds the project list, the active ontology, the current selection, and the undo/redo stack, and notifies React on change.                                                          |
+| `n3`                         | Writes Turtle in `serialization/turtle.ts` — prefix folding, literal forms and escaping. Also used as the Turtle **parser** in the test suites.                                                                                 |
+| `@dagrejs/dagre`             | Lays out each taxonomy module in `canvas/layout.ts`. Used rather than a simple tree walk because a class may have two superclasses inside one module, making it a DAG that dagre ranks and centres correctly.                   |
+
+**No CSS framework.** Styling is plain CSS Modules (built into Vite, zero dependencies) over a
+design-token layer in `designsystem/tokens.css`, with a system font stack so nothing is fetched from
+the network. Light and dark themes are both defined.
+
+**RDF/XML and JSON-LD are written by hand** (`serialization/rdfxml.ts`, `serialization/jsonld.ts`),
+each about 150 lines over the shared triple list. There is no maintained standalone RDF/XML
+serializer in the RDF-JS ecosystem, and `rdf-serialize` or `jsonld` would pull in a large tree to do
+expansion, compaction and remote context resolution that this app never needs. Both writers are
+validated in the tests by parsing their output with real, independent parsers.
+
+### Development and testing
+
+| Library                                                                         | The specific job it does here                                                                                  |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `vite` + `@vitejs/plugin-react`                                                 | Dev server and production bundler                                                                              |
+| `typescript`                                                                    | Types across the whole codebase; `strict` plus `noUncheckedIndexedAccess`                                      |
+| `vitest`                                                                        | Unit and integration test runner (two projects: `unit` in Node, `integration` in jsdom)                        |
+| `@vitest/coverage-v8`                                                           | Coverage for the domain, serialization and store layers                                                        |
+| `jsdom`                                                                         | DOM for the integration tier, which exercises `localStorage` persistence                                       |
+| `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event` | Available for component-level tests                                                                            |
+| `@playwright/test`                                                              | End-to-end tests driving a real Chromium: drag-and-drop, edge drawing, file downloads                          |
+| `rdfxml-streaming-parser`                                                       | Parses generated RDF/XML back in tests — an independent check on our writer                                    |
+| `jsonld-streaming-parser`                                                       | Parses generated JSON-LD back in tests — likewise                                                              |
+| `rdf-isomorphic`                                                                | Available for graph comparison; the suites use a canonical N-Triples form since our graphs are blank-node free |
+| `eslint`, `@eslint/js`, `typescript-eslint`, `globals`                          | Linting, and the `no-restricted-imports` rules that enforce the module boundaries                              |
+| `eslint-plugin-react-hooks`                                                     | Catches hook misuse, including setState-in-effect                                                              |
+| `prettier`                                                                      | Formatting                                                                                                     |
+| `husky` + `lint-staged`                                                         | Pre-commit hook: format, lint, and the unit tests affected by staged files                                     |
+| `@types/*`                                                                      | Type definitions for node, react, react-dom and n3                                                             |
+
+---
+
+## Architecture
+
+The organising principle is a **pure domain model as the single source of truth**, with everything
+else depending inward on it. Directories are named for the domain function they perform.
+
+```
+src/
+  annotationvocabulary/   Pure data. The RDFS/OWL/DCTERMS/SKOS/PROV term registry, the
+                          xsd datatype list, namespace table and language-tag helpers.
+
+  ontologymodel/          Pure, framework-agnostic domain model — the single source of truth.
+                            types.ts       Ontology, classes, properties, annotations
+                            identifier.ts  IRI construction, local-name validation/sanitising
+                            mutations.ts   Immutable (ontology, args) => ontology operations
+                            taxonomy.ts    Hierarchy forests, cycle prevention, module grouping
+                            triples.ts     The model → abstract Triple[] projection
+                            ontology.ts    Construction and lookup
+
+  serialization/          Pure. Renders Triple[] as Turtle, RDF/XML and JSON-LD, plus the
+                          download descriptors. Depends only on the domain model.
+
+  projectstore/           App state. Zustand store owning *when* the ontology changes,
+                          undo/redo, selection, project CRUD, and localStorage persistence.
+
+  designsystem/           Leaf UI primitives and design tokens. Imports nothing from src/.
+
+  canvas/                 React Flow surfaces. Derives the graph from the ontology, handles
+                          palette drops and connection gestures, and lays out the taxonomy.
+  classeditor/            The class node shape with its attribute rows, plus the class and
+                          attribute inspector sections.
+  relationeditor/         Relation edges, subclass edges, generic-property nodes, and the
+                          object-property inspector section.
+  taxonomytree/           The Protégé-style hierarchy panel where taxonomies are built.
+  annotationpanel/        Vocabulary-driven annotation editing with language tags.
+  ontologymetadata/       Base IRI and prefix.
+  exportpanel/            Format picker, live preview, and download plumbing.
+  projectswitcher/        New / switch / rename / delete / save / open project.
+
+  appshell/               The single composition point: layout, keyboard shortcuts, the
+                          inspector, and the binding of canvas node types to their renderers.
+```
+
+### Dependency rules
+
+These are **enforced by ESLint**, not just documented. `npm run lint` fails on a violation.
+
+| Layer                   | May import                                                                                    | May **not** import                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `annotationvocabulary/` | nothing from `src/`                                                                           | everything else                                      |
+| `ontologymodel/`        | `annotationvocabulary/`                                                                       | React, React Flow, zustand, the store, any UI module |
+| `serialization/`        | `ontologymodel/`, `annotationvocabulary/`                                                     | React, the store, any UI module                      |
+| `designsystem/`         | nothing from `src/`                                                                           | every other `src/` module                            |
+| `projectstore/`         | `ontologymodel/`, `annotationvocabulary/`                                                     | any UI module                                        |
+| UI modules              | `ontologymodel/`, `projectstore/`, `designsystem/`, `annotationvocabulary/`, `serialization/` | **each other**, and `appshell/`                      |
+| `appshell/`             | anything                                                                                      | —                                                    |
+
+To confirm the rules still bite, add `import { useProjectStore } from '../projectstore'` to any file
+in `src/serialization/` and run `npm run lint`.
+
+Two consequences worth calling out:
+
+- **The serialization layer never sees UI code.** All three writers consume the same `Triple[]`
+  produced by `ontologymodel/triples.ts`, which is why Turtle, RDF/XML and JSON-LD are semantically
+  identical by construction rather than by careful maintenance.
+- **UI modules do not import one another.** `canvas/` refers to node types by string name; the
+  components that render them are injected by `appshell/graphRenderers.ts`. That is what keeps the
+  canvas independent of the class and relation editors, and vice versa.
+
+### The two canvas views
+
+- **Schema** — free-form. Class boxes carry their datatype properties as typed rows. Scoped object
+  properties are coloured, arrow-headed edges with a clickable label; the direction you draw sets
+  domain and range. Generic object properties are standalone pills with no domain or range.
+- **Taxonomy** — derived and auto-laid-out. Each root class becomes its own labelled bounding box
+  containing a top-down dagre tree, so unrelated branches never cross and large ontologies stay
+  legible. Subclass links are grey orthogonal lines ending in a hollow UML generalization triangle —
+  deliberately distinct from relations, and the same shape a Mermaid or PlantUML class diagram uses.
+
+A note on state: the ontology is the source of truth for _what exists_; React Flow owns the transient
+interaction state (what is selected, where a node is mid-drag). The two are reconciled in
+`SchemaCanvas`, not merged. Folding selection into the derived graph rebuilds every node object on
+each click, which tears down node DOM in the middle of multi-click gestures.
+
+---
+
+## Testing
+
+Three tiers, all runnable locally and all run in CI.
+
+**Unit** (`src/**/*.test.ts`, Node) — local-name sanitising and rejection of IRI-breaking characters;
+taxonomy roots, descendants and **cycle prevention**; cascade delete; the triple projection; and each
+of the three serializers.
+
+**Integration** (`tests/integration/`, jsdom) — drives the real store through a realistic editing
+session, projects to triples, serializes all four outputs, **parses each back with a real parser**,
+and asserts the four graphs are identical. Also covers undo/redo, multi-project isolation, project
+file round-trips, and recovery from a corrupt stored workspace.
+
+**End-to-end** (`tests/e2e/`, Playwright + Chromium) — the full Car/Dealership workflow performed
+through the real UI: HTML5 drag-and-drop from the palette, double-click rename, handle-to-handle edge
+drawing, annotation in two languages, a real file download, and assertions on the downloaded bytes
+parsed with `n3`. Plus taxonomy layout, cascading delete, rename propagation, invalid IRI characters,
+empty-ontology export, multi-project switching, and survival across a page reload.
+
+**Mocking policy:** the domain model, the serializers and the browser all run for real. Nothing that
+can execute is stubbed.
+
+### About the rdflib acceptance check
+
+The brief asks that exports "parse cleanly in rdflib". CI enforces something stronger, in JavaScript:
+every export is parsed with an independent real parser (`n3`, `rdfxml-streaming-parser`,
+`jsonld-streaming-parser`) and the four resulting graphs are compared for equality — a parse check
+plus a cross-format agreement check.
+
+For an independent second opinion from a different implementation stack, `scripts/verify_exports.py`
+does the same thing with Python rdflib:
+
+```bash
+pip install rdflib
+python scripts/verify_exports.py ontology.ttl ontology.rdf ontology.owl ontology.jsonld
+```
+
+It is not part of CI, because it needs a Python toolchain the rest of the project does not.
+
+---
+
+## Continuous integration and hooks
+
+- **CI** — `.github/workflows/ci.yml` runs typecheck, lint, format check, build, unit, integration
+  and Playwright on every push to `main` and every pull request, with the Playwright browser cached
+  and the HTML report uploaded on failure.
+- **Pre-commit** — `.husky/pre-commit` runs `lint-staged` (Prettier then `eslint --fix` on staged
+  files) followed by `vitest related` for the unit tests affected by those files. Integration and
+  e2e are left to CI so committing stays quick.
+
+---
+
+## Deliberately out of scope
+
+Individuals and ABox data; OWL restrictions, unions, intersections, cardinalities and property
+chains; reasoning; importing existing ontologies; server-side persistence; authentication;
+collaboration. The architecture leaves room for these — the domain model and serialization layer are
+pure and UI-free, and `projectstore/persistence.ts` is the only file that knows storage exists — but
+none of them are implemented.

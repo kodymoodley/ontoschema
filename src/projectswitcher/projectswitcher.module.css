@@ -1,0 +1,53 @@
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.select {
+  max-width: 200px;
+  height: 26px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.confirmText {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.nameField {
+  width: 220px;
+  height: 26px;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.nameField:hover {
+  border-color: var(--border-subtle);
+  background: var(--surface-base);
+}
+
+.nameField:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+  background: var(--surface-base);
+}

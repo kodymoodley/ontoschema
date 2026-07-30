@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+# Format and lint the staged files, then run the unit tests those files affect.
+# Integration and end-to-end suites are left to CI, so committing stays fast.
+npx lint-staged || exit 1
+npx vitest related --run --project unit $(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx)$' | tr '\n' ' ') || exit 1

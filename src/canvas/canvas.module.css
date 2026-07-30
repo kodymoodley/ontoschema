@@ -1,0 +1,273 @@
+.canvas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface-canvas);
+}
+
+.canvas :global(.react-flow__attribution) {
+  display: none;
+}
+
+.canvas :global(.react-flow__controls) {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.canvas :global(.react-flow__controls-button) {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  fill: var(--text-secondary);
+}
+
+.canvas :global(.react-flow__controls-button:hover) {
+  background: var(--surface-hover);
+}
+
+.canvas :global(.react-flow__minimap) {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+  box-shadow: var(--shadow-md);
+}
+
+.canvas :global(.react-flow__handle) {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--surface-base);
+  background: var(--accent-relation);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.canvas :global(.react-flow__node:hover .react-flow__handle:not([data-handleid^='sub'])),
+.canvas :global(.react-flow__node.selected .react-flow__handle:not([data-handleid^='sub'])) {
+  opacity: 1;
+}
+
+.canvas :global(.react-flow__connectionline path) {
+  stroke: var(--accent-relation);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+
+/*
+ * Edge labels are the affordance for selecting and renaming a relation, and they sit at
+ * the midpoint of the edge — directly on top of its wide invisible hit area. React Flow
+ * elevates edge and node layers into the 1000s, so the label layer has to clear that or
+ * every click aimed at a relation name is swallowed by the edge beneath it.
+ */
+.canvas :global(.react-flow__edgelabel-renderer) {
+  z-index: 1100;
+}
+
+/* ---------------------------------------------------------------- palette */
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.paletteItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+  text-align: left;
+  cursor: grab;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+
+.paletteItem:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.paletteItem:active {
+  cursor: grabbing;
+  transform: scale(0.99);
+}
+
+.swatch {
+  flex: none;
+  width: 26px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1.5px solid;
+  border-radius: 3px;
+}
+
+.swatchClass {
+  border-color: var(--accent-class-border);
+  background: var(--accent-class-soft);
+}
+
+.swatchAttribute {
+  border-color: var(--accent-attribute-border);
+  background: var(--accent-attribute-soft);
+}
+
+.swatchGeneric {
+  border-color: var(--accent-relation-border);
+  background: var(--accent-relation-soft);
+  border-radius: 9px;
+}
+
+.paletteText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.paletteName {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.paletteHint {
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
+
+.paletteNote {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* --------------------------------------------------------- taxonomy view */
+
+.moduleNode {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-base) 55%, transparent);
+}
+
+.moduleLabel {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.moduleName {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.moduleCount {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.taxonomyNode {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  width: 168px;
+  height: 46px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent-class-border);
+  border-left: 3px solid var(--accent-class);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition:
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+}
+
+.taxonomyNode:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.taxonomyNodeSelected {
+  border-color: var(--accent-class);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent-class) 35%, transparent),
+    var(--shadow-md);
+}
+
+.taxonomyNodeRoot {
+  background: var(--accent-class-soft);
+}
+
+.taxonomyName {
+  overflow: hidden;
+  font-size: var(--text-md);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.taxonomyMeta {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.taxonomyHandle {
+  visibility: hidden;
+}
+
+/* ------------------------------------------------------------- empty state */
+
+.emptyCanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  pointer-events: none;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.emptyBody {
+  margin: 0;
+  max-width: 340px;
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--text-tertiary);
+}
+
+.dropTarget {
+  outline: 2px dashed var(--accent-attribute);
+  outline-offset: 3px;
+}

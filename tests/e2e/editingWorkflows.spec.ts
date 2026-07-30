@@ -1,0 +1,282 @@
+import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { Parser } from 'n3';
+import {
+  addAnnotation,
+  addAttribute,
+  connectClasses,
+  dragFromPalette,
+  downloadExport,
+  openApp,
+  openInspectorTab,
+  renameClassOnCanvas,
+  selectClass,
+} from './ontoschema';
+
+/** Two named classes on the canvas — the starting point for most of these workflows. */
+async function twoClasses(page: Page, first: string, second: string) {
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.getByLabel('Class name').fill(first);
+  await page.getByLabel('Class name').press('Enter');
+
+  await dragFromPalette(page, 'class', { x: 380, y: 120 });
+  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.getByLabel('Class name').fill(second);
+  await page.getByLabel('Class name').press('Enter');
+}
+
+test('a taxonomy is built in the hierarchy panel and laid out in the taxonomy view', async ({
+  page,
+}) => {
+  await openApp(page);
+  await twoClasses(page, 'Vehicle', 'Car');
+  await dragFromPalette(page, 'class', { x: 60, y: 340 });
+  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Truck');
+  await page.getByLabel('Class name').press('Enter');
+
+  // Put Car and Truck under Vehicle using the inspector's superclass picker.
+  await selectClass(page, 'Car');
+  await page.getByLabel('Superclass').selectOption({ label: 'Vehicle' });
+  await selectClass(page, 'Truck');
+  await page.getByLabel('Superclass').selectOption({ label: 'Vehicle' });
+
+  // The hierarchy tree nests them under their parent.
+  const tree = page.getByRole('tree', { name: 'Class hierarchy' });
+  await expect(tree.locator('[data-tree-item="Vehicle"]')).toBeVisible();
+  await expect(tree.locator('[data-tree-item="Car"]')).toBeVisible();
+  await expect(tree.locator('[data-tree-item="Truck"]')).toBeVisible();
+
+  // The taxonomy view groups the whole hierarchy into one module box.
+  await page.getByRole('tab', { name: 'Taxonomy' }).click();
+  await expect(page.getByTestId('taxonomy-canvas')).toBeVisible();
+  await expect(page.locator('[data-taxonomy-class="Vehicle"]')).toBeVisible();
+  await expect(page.locator('[data-taxonomy-class="Car"]')).toBeVisible();
+  await expect(page.locator('[data-taxonomy-class="Truck"]')).toBeVisible();
+  // One module, rooted at Vehicle, holding all three classes.
+  await expect(page.locator('[data-taxonomy-module]')).toHaveCount(1);
+  await expect(page.locator('[data-taxonomy-module="Vehicle"]')).toHaveAttribute(
+    'data-member-count',
+    '3',
+  );
+
+  // Subclasses are drawn below their superclass, which is what makes the view readable.
+  const vehicle = await page.locator('[data-taxonomy-class="Vehicle"]').boundingBox();
+  const car = await page.locator('[data-taxonomy-class="Car"]').boundingBox();
+  expect(vehicle && car && car.y).toBeGreaterThan(vehicle?.y ?? 0);
+
+  const turtle = await downloadExport(page, 'ttl');
+  expect(turtle).toMatch(/:Car a owl:Class;\s*rdfs:subClassOf \w*:Vehicle/);
+  expect(turtle).toMatch(/:Truck a owl:Class;\s*rdfs:subClassOf \w*:Vehicle/);
+});
+
+test('a second root class becomes its own taxonomy module', async ({ page }) => {
+  await openApp(page);
+  await twoClasses(page, 'Vehicle', 'Car');
+  await dragFromPalette(page, 'class', { x: 60, y: 340 });
+  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Organization');
+  await page.getByLabel('Class name').press('Enter');
+
+  await selectClass(page, 'Car');
+  await page.getByLabel('Superclass').selectOption({ label: 'Vehicle' });
+
+  await page.getByRole('tab', { name: 'Taxonomy' }).click();
+  // Two independent roots, so two labelled bounding boxes rather than one tangled graph.
+  await expect(page.locator('[data-taxonomy-module]')).toHaveCount(2);
+  await expect(page.locator('[data-taxonomy-module="Vehicle"]')).toHaveAttribute(
+    'data-member-count',
+    '2',
+  );
+  await expect(page.locator('[data-taxonomy-module="Organization"]')).toHaveAttribute(
+    'data-member-count',
+    '1',
+  );
+
+  // The modules are laid out side by side, so unrelated branches never cross.
+  const vehicleBox = await page.locator('[data-taxonomy-module="Vehicle"]').boundingBox();
+  const orgBox = await page.locator('[data-taxonomy-module="Organization"]').boundingBox();
+  expect(vehicleBox && orgBox && orgBox.x).toBeGreaterThan(vehicleBox?.x ?? 0);
+});
+
+test('deleting a class removes its attributes and relations from the export', async ({ page }) => {
+  await openApp(page);
+  await twoClasses(page, 'Car', 'Dealership');
+
+  await selectClass(page, 'Car');
+  await addAttribute(page, 'make', 'string');
+  await addAttribute(page, 'price', 'decimal');
+  await connectClasses(page, 'Car', 'Dealership');
+  await expect(page.locator('[data-relation-name]')).toHaveCount(1);
+
+  const before = await downloadExport(page, 'ttl');
+  expect(before).toContain(':Car');
+  expect(before).toContain(':make');
+
+  await selectClass(page, 'Car');
+  await page.getByRole('button', { name: 'Delete class' }).click();
+
+  await expect(page.locator('[data-class-name="Car"]')).toHaveCount(0);
+  await expect(page.locator('[data-class-name="Dealership"]')).toBeVisible();
+  await expect(page.locator('[data-relation-name]')).toHaveCount(0);
+
+  const after = await downloadExport(page, 'ttl');
+  expect(after).not.toContain(':Car');
+  expect(after).not.toContain(':make');
+  expect(after).not.toContain(':price');
+  expect(after).toContain(':Dealership');
+  // Still a well-formed document after the cascade.
+  expect(() => new Parser({ format: 'text/turtle' }).parse(after)).not.toThrow();
+});
+
+test('renaming a class carries every reference with it', async ({ page }) => {
+  await openApp(page);
+  await twoClasses(page, 'Car', 'Dealership');
+  await selectClass(page, 'Car');
+  await addAttribute(page, 'make', 'string');
+  await connectClasses(page, 'Car', 'Dealership');
+
+  await renameClassOnCanvas(page, 'Car', 'Automobile');
+
+  const turtle = await downloadExport(page, 'ttl');
+  expect(turtle).toContain(':Automobile a owl:Class');
+  expect(turtle).not.toMatch(/:Car\b/);
+  expect(turtle).toMatch(/rdfs:domain \w*:Automobile/);
+});
+
+test('a name with characters illegal in an IRI is corrected rather than exported broken', async ({
+  page,
+}) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Used Car/Model #1');
+  await page.getByLabel('Class name').press('Enter');
+
+  // Spaces and IRI-breaking characters are removed; the result is a legal local name.
+  await expect(page.locator('[data-class-name="UsedCarModel1"]')).toBeVisible();
+
+  const turtle = await downloadExport(page, 'ttl');
+  expect(turtle).toContain(':UsedCarModel1');
+  expect(() => new Parser({ format: 'text/turtle' }).parse(turtle)).not.toThrow();
+});
+
+test('an empty ontology exports a valid document containing only its header', async ({ page }) => {
+  await openApp(page);
+  await openInspectorTab(page, 'Export');
+  await expect(page.getByText(/no classes or properties yet/i)).toBeVisible();
+
+  const turtle = await downloadExport(page, 'ttl');
+  const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
+  expect(quads).toHaveLength(1);
+  expect(quads[0]?.object.value).toBe('http://www.w3.org/2002/07/owl#Ontology');
+});
+
+test('annotations in two languages survive a round trip through the export', async ({ page }) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Car');
+  await page.getByLabel('Class name').press('Enter');
+
+  await selectClass(page, 'Car');
+  await addAnnotation(page, 'skos:prefLabel', 'Car', 'en');
+  await addAnnotation(page, 'skos:prefLabel', 'Auto', 'nl');
+  await addAnnotation(page, 'skos:definition', 'A road vehicle with four wheels.', 'en');
+  await addAnnotation(page, 'dcterms:created', '2026-07-30');
+
+  const turtle = await downloadExport(page, 'ttl');
+  const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
+
+  const labels = quads.filter(
+    (quad) => quad.predicate.value === 'http://www.w3.org/2004/02/skos/core#prefLabel',
+  );
+  expect(labels).toHaveLength(2);
+  expect(
+    labels.map((quad) => (quad.object.termType === 'Literal' ? quad.object.language : '')).sort(),
+  ).toEqual(['en', 'nl']);
+
+  // A date annotation is typed, not left as a plain string.
+  const created = quads.find((quad) => quad.predicate.value === 'http://purl.org/dc/terms/created');
+  expect(created?.object.termType).toBe('Literal');
+  expect(turtle).toContain('xsd:date');
+});
+
+test('ontology-level metadata is exported on the ontology header', async ({ page }) => {
+  await openApp(page);
+  await openInspectorTab(page, 'Ontology');
+  await page.getByLabel('Base IRI').fill('https://example.org/auto/');
+  await page.getByLabel('Prefix').fill('auto');
+
+  await page.getByLabel('Annotation term to add').selectOption('dcterms:title');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page
+    .locator('[data-annotation-term="dcterms:title"]')
+    .getByLabel('dcterms:title value')
+    .fill('Automotive Schema');
+
+  const turtle = await downloadExport(page, 'ttl');
+  expect(turtle).toContain('<https://example.org/auto> a owl:Ontology');
+  expect(turtle).toContain('"Automotive Schema"');
+});
+
+test('undo and redo step through the edit history', async ({ page }) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await dragFromPalette(page, 'class', { x: 380, y: 120 });
+  await expect(page.locator('[data-class-node-id]')).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('[data-class-node-id]')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Redo' }).click();
+  await expect(page.locator('[data-class-node-id]')).toHaveCount(2);
+});
+
+test('projects are independent and can be switched between', async ({ page }) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Car');
+  await page.getByLabel('Class name').press('Enter');
+  await page.getByLabel('Project name').fill('Automotive');
+
+  await page.getByTestId('new-project').click();
+  await page.getByLabel('New project name').fill('Library');
+  await page.getByTestId('confirm-new-project').click();
+
+  // The new project starts empty rather than inheriting the previous ontology.
+  await expect(page.locator('[data-class-node-id]')).toHaveCount(0);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Book');
+  await page.getByLabel('Class name').press('Enter');
+
+  await expect(page.locator('[data-class-name="Book"]')).toBeVisible();
+  await expect(page.locator('[data-class-name="Car"]')).toHaveCount(0);
+
+  // Switching back restores the first ontology intact.
+  await page.getByLabel('Active ontology project').selectOption({ label: 'Automotive' });
+  await expect(page.locator('[data-class-name="Car"]')).toBeVisible();
+  await expect(page.locator('[data-class-name="Book"]')).toHaveCount(0);
+
+  const turtle = await downloadExport(page, 'ttl');
+  expect(turtle).toContain(':Car');
+  expect(turtle).not.toContain(':Book');
+});
+
+test('work survives a page reload', async ({ page }) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Car');
+  await page.getByLabel('Class name').press('Enter');
+  await selectClass(page, 'Car');
+  await addAttribute(page, 'make', 'string');
+
+  await page.reload();
+
+  await expect(page.locator('[data-class-name="Car"]')).toBeVisible();
+  await expect(page.locator('[data-class-name="Car"] [data-attribute-name]')).toHaveCount(1);
+});
