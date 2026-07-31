@@ -3,11 +3,54 @@
 OntoSchema is a lightweight, browser-based tool for building **schema-level ontologies** — classes,
 object properties and datatype properties arranged into taxonomies — on a drag-and-drop canvas, and
 exporting them to standard RDF. You drag classes onto a canvas, drop typed attributes onto them, draw
-relations between them to set `rdfs:domain` and `rdfs:range`, build subclass hierarchies in a
-Protégé-style tree, annotate everything with RDFS, OWL, Dublin Core, SKOS and PROV-O terms (with
-language tags), and download the result as Turtle, RDF/XML (`.rdf` or `.owl`) or JSON-LD. It runs
-entirely in the browser with no backend, and keeps your projects in local storage. Scope is
-deliberately TBox only: no individuals, no restrictions, no reasoning.
+relations between them, build subclass hierarchies in a Protégé-style tree, annotate everything with
+RDFS, OWL, Dublin Core, SKOS and PROV-O terms (with language tags), and download the result as Turtle,
+RDF/XML (`.rdf` or `.owl`) or JSON-LD — as OWL/RDFS axioms, as SHACL shapes, or both. It runs entirely
+in the browser with no backend, and keeps your projects in local storage. Scope is deliberately TBox
+only: no individuals, no restrictions, no reasoning.
+
+## The idea that shapes the whole design: a usage
+
+When you draw `Car —offeredBy→ Dealership`, you mean something **local to Car**. RDFS cannot say that.
+If `offeredBy` is later drawn from `Van` to `Garage`, the three RDFS options are all wrong or lossy:
+repeating `rdfs:domain` means _intersection_ (every Car is also a Van); a union domain and range is
+true but **loses the pairing**, licensing `Car offeredBy Garage`; omitting it says nothing.
+`rdfs:domain`/`rdfs:range` are global inference rules, not per-class constraints.
+
+So properties here are a **reusable pool with no endpoints**, and a **usage** attaches one to a class:
+
+```ts
+DatatypeProperty { id, localName, range, … }   // xsd range is global: price is a decimal everywhere
+ObjectProperty   { id, localName, … }          // no domain, no range
+PropertyUsage    { id, propertyId, subjectClassId, objectClassId? }
+```
+
+A usage maps **1:1 onto a SHACL property shape**, which is per-class and keeps every pairing intact.
+Everything else falls out of that one concept:
+
+| Behaviour                                         | Why it works that way                                        |
+| ------------------------------------------------- | ------------------------------------------------------------ |
+| A datatype property can never float on the canvas | It exists only as a usage on some class                      |
+| An object property is invisible until used        | Zero usages means there is no edge to draw                   |
+| The same property is reused across classes        | Two usages of one property, pairing preserved                |
+| There is no "generic vs scoped" flag              | It is just a usage count: 0, 1, or many                      |
+| Exports never contradict themselves               | `rdfs:domain`/`range` only while a property is used **once** |
+
+## Two export layers
+
+Both ride inside the same `.ttl`/`.rdf`/`.owl`/`.jsonld` files — SHACL is a vocabulary, not a
+serialization — and each can be switched off in the Export panel.
+
+- **OWL / RDFS axioms**: class and property declarations, subclass and subproperty hierarchies, and
+  `rdfs:domain`/`rdfs:range` only where a property is used exactly once. A datatype property's
+  `rdfs:range` is always emitted, because it is the same wherever the property is used.
+- **SHACL shapes**: one `sh:NodeShape` per class with usages, and one named `sh:PropertyShape` per
+  (class, property). Several target classes on one path become a single `sh:or` rather than several
+  shapes, because two property shapes on the same path are _conjunctive_ — `Car hasPart Wheel` plus
+  `Car hasPart Door` as separate shapes would demand every part be both at once.
+
+Shapes are **named, not blank**. That keeps all three writers free of blank-node and RDF-collection
+handling, and makes every shape addressable for annotation and for future `sh:minCount`/`sh:maxCount`.
 
 ---
 
@@ -24,13 +67,17 @@ npm run dev          # http://localhost:5173
    `Car` and `Dealership`.
 2. Select `Car`, and in the inspector's **Details** tab add attributes: `make` (string), `model`
    (string), `year` (integer), `engine` (string), `price` (decimal). They appear as typed rows inside
-   the class box.
-3. Drag from the dot on `Car`'s right edge to the dot on `Dealership`'s left edge. Click the new
-   edge's label and rename it `offeredBy` — the direction you dragged is the `rdfs:domain` →
-   `rdfs:range` direction.
+   the class box. (Dragging **Datatype property** from the palette onto a class does the same; onto
+   empty canvas it is refused, because an attribute has to belong to a class.)
+3. Drag from the dot on `Car`'s right edge to the dot on `Dealership`'s left edge, then pick which
+   object property this is — an existing one, or a new one called `offeredBy`.
 4. Open the **Annotations** tab and add `skos:prefLabel` twice, with language tags `en` and `nl`.
 5. In the **Ontology** tab, set the base IRI and prefix, and add `dcterms:title`.
-6. In the **Export** tab, download `.ttl`, `.rdf`, `.owl` or `.jsonld`.
+6. In the **Export** tab, choose whether to include axioms and/or SHACL shapes, then download `.ttl`,
+   `.rdf`, `.owl` or `.jsonld`.
+
+To see reuse: open the **Data props** tab in the left panel and drag `price` onto another class. The
+list shows it used `2×`, and the export drops its `rdfs:domain` while gaining a second SHACL shape.
 
 ### Scripts
 
@@ -78,23 +125,21 @@ validated in the tests by parsing their output with real, independent parsers.
 
 ### Development and testing
 
-| Library                                                                         | The specific job it does here                                                                                  |
-| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `vite` + `@vitejs/plugin-react`                                                 | Dev server and production bundler                                                                              |
-| `typescript`                                                                    | Types across the whole codebase; `strict` plus `noUncheckedIndexedAccess`                                      |
-| `vitest`                                                                        | Unit and integration test runner (two projects: `unit` in Node, `integration` in jsdom)                        |
-| `@vitest/coverage-v8`                                                           | Coverage for the domain, serialization and store layers                                                        |
-| `jsdom`                                                                         | DOM for the integration tier, which exercises `localStorage` persistence                                       |
-| `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event` | Available for component-level tests                                                                            |
-| `@playwright/test`                                                              | End-to-end tests driving a real Chromium: drag-and-drop, edge drawing, file downloads                          |
-| `rdfxml-streaming-parser`                                                       | Parses generated RDF/XML back in tests — an independent check on our writer                                    |
-| `jsonld-streaming-parser`                                                       | Parses generated JSON-LD back in tests — likewise                                                              |
-| `rdf-isomorphic`                                                                | Available for graph comparison; the suites use a canonical N-Triples form since our graphs are blank-node free |
-| `eslint`, `@eslint/js`, `typescript-eslint`, `globals`                          | Linting, and the `no-restricted-imports` rules that enforce the module boundaries                              |
-| `eslint-plugin-react-hooks`                                                     | Catches hook misuse, including setState-in-effect                                                              |
-| `prettier`                                                                      | Formatting                                                                                                     |
-| `husky` + `lint-staged`                                                         | Pre-commit hook: format, lint, and the unit tests affected by staged files                                     |
-| `@types/*`                                                                      | Type definitions for node, react, react-dom and n3                                                             |
+| Library                                                | The specific job it does here                                                           |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `vite` + `@vitejs/plugin-react`                        | Dev server and production bundler                                                       |
+| `typescript`                                           | Types across the whole codebase; `strict` plus `noUncheckedIndexedAccess`               |
+| `vitest`                                               | Unit and integration test runner (two projects: `unit` in Node, `integration` in jsdom) |
+| `@vitest/coverage-v8`                                  | Coverage for the domain, serialization and store layers                                 |
+| `jsdom`                                                | DOM for the integration tier, which exercises `localStorage` persistence                |
+| `@playwright/test`                                     | End-to-end tests driving a real Chromium: drag-and-drop, edge drawing, file downloads   |
+| `rdfxml-streaming-parser`                              | Parses generated RDF/XML back in tests — an independent check on our writer             |
+| `jsonld-streaming-parser`                              | Parses generated JSON-LD back in tests — likewise                                       |
+| `eslint`, `@eslint/js`, `typescript-eslint`, `globals` | Linting, and the `no-restricted-imports` rules that enforce the module boundaries       |
+| `eslint-plugin-react-hooks`                            | Catches hook misuse, including setState-in-effect                                       |
+| `prettier`                                             | Formatting                                                                              |
+| `husky` + `lint-staged`                                | Pre-commit hook: format, lint, and the unit tests affected by staged files              |
+| `@types/*`                                             | Type definitions for node, react, react-dom and n3                                      |
 
 ---
 
@@ -109,28 +154,34 @@ src/
                           xsd datatype list, namespace table and language-tag helpers.
 
   ontologymodel/          Pure, framework-agnostic domain model — the single source of truth.
-                            types.ts       Ontology, classes, properties, annotations
+                            types.ts       Ontology, classes, properties, usages, annotations
                             identifier.ts  IRI construction, local-name validation/sanitising
                             mutations.ts   Immutable (ontology, args) => ontology operations
-                            taxonomy.ts    Hierarchy forests, cycle prevention, module grouping
-                            triples.ts     The model → abstract Triple[] projection
-                            ontology.ts    Construction and lookup
+                            taxonomy.ts    Hierarchy forests, cycle prevention, module grouping,
+                                           and the flat datatype-property pool
+                            triples.ts     The model → abstract Triple[] projection: axioms
+                                           and SHACL shapes
+                            ontology.ts    Construction, lookup, and the derivation indexes
 
   serialization/          Pure. Renders Triple[] as Turtle, RDF/XML and JSON-LD, plus the
                           download descriptors. Depends only on the domain model.
 
   projectstore/           App state. Zustand store owning *when* the ontology changes,
-                          undo/redo, selection, project CRUD, and localStorage persistence.
+                          undo/redo, selection, pending connections, project CRUD, and
+                          localStorage persistence. Also owns dragpayload.ts, the drag
+                          contract shared by the palette, the property pool and the canvas.
 
   designsystem/           Leaf UI primitives and design tokens. Imports nothing from src/.
 
   canvas/                 React Flow surfaces. Derives the graph from the ontology, handles
                           palette drops and connection gestures, and lays out the taxonomy.
+                          Only classes are nodes; properties appear as rows and edges.
   classeditor/            The class node shape with its attribute rows, plus the class and
                           attribute inspector sections.
-  relationeditor/         Relation edges, subclass edges, generic-property nodes, and the
+  relationeditor/         Relation edges, subclass edges, the connection picker, and the
                           object-property inspector section.
-  taxonomytree/           The Protégé-style hierarchy panel where taxonomies are built.
+  taxonomytree/           Class and object-property hierarchies, plus the flat datatype
+                          property pool you drag onto a class to reuse it.
   annotationpanel/        Vocabulary-driven annotation editing with language tags.
   ontologymetadata/       Base IRI and prefix.
   exportpanel/            Format picker, live preview, and download plumbing.
@@ -163,8 +214,10 @@ Two consequences worth calling out:
   produced by `ontologymodel/triples.ts`, which is why Turtle, RDF/XML and JSON-LD are semantically
   identical by construction rather than by careful maintenance.
 - **UI modules do not import one another.** `canvas/` refers to node types by string name; the
-  components that render them are injected by `appshell/graphRenderers.ts`. That is what keeps the
-  canvas independent of the class and relation editors, and vice versa.
+  components that render them are injected by `appshell/graphRenderers.ts`. Drawing an edge does not
+  reach into `relationeditor/` either — the canvas records a _pending connection_ in the store, and
+  the picker that resolves it is mounted by `appshell/`. Anything two UI modules must agree on (the
+  drag payload, the pending connection) lives in `projectstore/`, the explicit shared layer.
 
 ### The two canvas views
 
