@@ -22,10 +22,25 @@ export async function openApp(page: Page) {
  */
 export async function dragFromPalette(
   page: Page,
-  kind: 'class' | 'attribute' | 'genericProperty',
+  kind: 'class' | 'attribute',
   target: { x: number; y: number } | { onClass: string },
 ) {
-  const source = page.locator(`[data-palette-kind="${kind}"]`);
+  await dragOntoCanvas(page, page.locator(`[data-palette-kind="${kind}"]`), target);
+}
+
+/** Drags an existing datatype property out of the pool and onto a class, to reuse it. */
+export async function dragPropertyOntoClass(page: Page, propertyName: string, className: string) {
+  await page.getByRole('tab', { name: 'Data props' }).click();
+  await dragOntoCanvas(page, page.locator(`[data-datatype-property="${propertyName}"]`), {
+    onClass: className,
+  });
+}
+
+async function dragOntoCanvas(
+  page: Page,
+  source: ReturnType<Page['locator']>,
+  target: { x: number; y: number } | { onClass: string },
+) {
   await expect(source).toBeVisible();
 
   let point: { x: number; y: number };
@@ -93,6 +108,48 @@ export async function connectClasses(page: Page, sourceName: string, targetName:
   // Intermediate steps let React Flow track the connection line and pick up the target.
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.up();
+
+  // Drawing an edge asks which object property it is.
+  await expect(page.getByRole('dialog', { name: 'Which object property?' })).toBeVisible();
+}
+
+/**
+ * Completes the connection picker. Passing a name creates a new property; passing an
+ * existing property's label reuses it.
+ */
+export async function chooseNewProperty(page: Page, localName: string) {
+  await page.getByLabel('New object property name').fill(localName);
+  await page.getByTestId('confirm-connection').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+}
+
+export async function chooseExistingProperty(page: Page, propertyName: string) {
+  const picker = page.getByLabel('Object property to use');
+  // Options read "hasPart (unused)" / "offeredBy (used 2×)", so match on the name and
+  // select by value rather than trying to reproduce the whole label.
+  const value = await picker.evaluate(
+    (element, name) =>
+      [...(element as HTMLSelectElement).options].find((option) =>
+        option.textContent?.trim().startsWith(name),
+      )?.value ?? '',
+    propertyName,
+  );
+  if (!value) throw new Error(`no object property named ${propertyName} in the picker`);
+
+  await picker.selectOption(value);
+  await page.getByTestId('confirm-connection').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+}
+
+/** Draws a relation and names it in one step — the common path in these specs. */
+export async function relate(
+  page: Page,
+  sourceName: string,
+  targetName: string,
+  propertyName: string,
+) {
+  await connectClasses(page, sourceName, targetName);
+  await chooseNewProperty(page, propertyName);
 }
 
 /** Adds an attribute to the selected class through the inspector. */
@@ -100,6 +157,13 @@ export async function addAttribute(page: Page, name: string, range: string) {
   await page.getByLabel('New attribute name').fill(name);
   await page.getByLabel('New attribute range').selectOption(`xsd:${range}`);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('New attribute name')).toHaveValue('');
+}
+
+/** Creates an object property in the pool, without using it anywhere. */
+export async function createObjectProperty(page: Page, localName: string) {
+  await page.locator('[data-palette-kind="objectProperty"]').click();
+  await page.getByLabel('Object property local name').fill(localName);
 }
 
 /** Adds an annotation to whatever is selected, with an optional language tag. */

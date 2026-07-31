@@ -3,11 +3,15 @@ import { Parser } from 'n3';
 import {
   addAnnotation,
   addAttribute,
+  chooseExistingProperty,
   connectClasses,
+  createObjectProperty,
   dragFromPalette,
+  dragPropertyOntoClass,
   downloadExport,
   openApp,
   openInspectorTab,
+  relate,
   selectClass,
 } from './ontoschema';
 
@@ -53,14 +57,9 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
   await expect(carNode.getByText('xsd:integer')).toBeVisible();
   await expect(carNode.getByText('xsd:decimal')).toBeVisible();
 
-  // 5. Connect Car -> Dealership; the direction sets domain and range.
-  await connectClasses(page, 'Car', 'Dealership');
-  const relationLabel = page.locator('[data-relation-name]');
-  await expect(relationLabel).toHaveCount(1);
-  await relationLabel.click();
-  await page.getByLabel('Object property local name').fill('offeredBy');
+  // 5. Connect Car -> Dealership and name the property.
+  await relate(page, 'Car', 'Dealership', 'offeredBy');
   await expect(page.locator('[data-relation-name="offeredBy"]')).toBeVisible();
-  await expect(page.getByLabel('Relation domain')).toHaveValue(/.+/);
 
   // 6. Annotate Car with skos:prefLabel in two languages.
   await selectClass(page, 'Car');
@@ -73,10 +72,6 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
   expect(turtle).toContain('@prefix auto: <https://example.org/auto/>');
   expect(turtle).toContain('auto:Car a owl:Class');
   expect(turtle).toContain('auto:Dealership a owl:Class');
-  expect(turtle).toMatch(/auto:offeredBy[\s\S]*rdfs:domain auto:Car/);
-  expect(turtle).toMatch(/auto:offeredBy[\s\S]*rdfs:range auto:Dealership/);
-  expect(turtle).toMatch(/auto:year[\s\S]*rdfs:range xsd:integer/);
-  expect(turtle).toMatch(/auto:price[\s\S]*rdfs:range xsd:decimal/);
   expect(turtle).toContain('"Car"@en');
   expect(turtle).toContain('"Auto"@nl');
 
@@ -90,6 +85,7 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
         quad.object.value === object,
     );
 
+  // Used once, so RDFS can state the domain and range truthfully.
   expect(
     has(
       'https://example.org/auto/offeredBy',
@@ -99,9 +95,32 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
   ).toBe(true);
   expect(
     has(
+      'https://example.org/auto/offeredBy',
+      'http://www.w3.org/2000/01/rdf-schema#range',
+      'https://example.org/auto/Dealership',
+    ),
+  ).toBe(true);
+  expect(
+    has(
       'https://example.org/auto/make',
       'http://www.w3.org/2000/01/rdf-schema#domain',
       'https://example.org/auto/Car',
+    ),
+  ).toBe(true);
+
+  // And the same facts are carried precisely by the shapes.
+  expect(
+    has(
+      'https://example.org/auto/CarShape',
+      'http://www.w3.org/ns/shacl#targetClass',
+      'https://example.org/auto/Car',
+    ),
+  ).toBe(true);
+  expect(
+    has(
+      'https://example.org/auto/Car_offeredBy',
+      'http://www.w3.org/ns/shacl#class',
+      'https://example.org/auto/Dealership',
     ),
   ).toBe(true);
 
@@ -138,47 +157,110 @@ test('all four serializations download and agree with each other', async ({ page
   expect(parsed['@graph'].length).toBeGreaterThan(0);
   expect(Object.keys(parsed['@context'])).toContain('owl');
 
-  // Every format carries the same class and attribute.
   for (const content of [turtle, rdf, jsonld]) {
     expect(content).toContain('Car');
     expect(content).toContain('make');
   }
 });
 
-test('a generic object property is created from the palette and exported without domain or range', async ({
+test('an object property stays off the canvas until it is used in a relation', async ({ page }) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Car');
+  await page.getByLabel('Class name').press('Enter');
+  await dragFromPalette(page, 'class', { x: 380, y: 120 });
+  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Wheel');
+  await page.getByLabel('Class name').press('Enter');
+
+  await createObjectProperty(page, 'hasPart');
+
+  // It exists in the property list, marked unused, and nothing is drawn for it.
+  await page.getByRole('tab', { name: 'Object props' }).click();
+  await expect(page.locator('[data-tree-item="hasPart"]')).toBeVisible();
+  await expect(page.locator('[data-tree-item="hasPart"]')).toContainText('unused');
+  await expect(page.locator('[data-relation-name]')).toHaveCount(0);
+
+  // It is still declared in the export, just without any domain or range.
+  const declaredOnly = await downloadExport(page, 'ttl');
+  expect(declaredOnly).toContain(':hasPart a owl:ObjectProperty.');
+
+  // Using it between two classes is what puts it on the canvas.
+  await connectClasses(page, 'Car', 'Wheel');
+  await chooseExistingProperty(page, 'hasPart');
+  await expect(page.locator('[data-relation-name="hasPart"]')).toBeVisible();
+
+  // Used exactly once, so RDFS can now state its domain and range truthfully.
+  const used = await downloadExport(page, 'ttl');
+  expect(used).toMatch(
+    /:hasPart a owl:ObjectProperty;\s*rdfs:domain \w*:Car;\s*rdfs:range \w*:Wheel/,
+  );
+  expect(used).toMatch(/:Car_hasPart[\s\S]*sh:class \w*:Wheel/);
+});
+
+test('a datatype property must be dropped onto a class, not onto empty canvas', async ({
   page,
 }) => {
   await openApp(page);
-  await dragFromPalette(page, 'class', { x: 220, y: 160 });
-  await dragFromPalette(page, 'genericProperty', { x: 220, y: 420 });
-
-  const pill = page.locator('[data-generic-property-id]');
-  await expect(pill).toHaveCount(1);
-  await expect(pill).toContainText('generic · no domain or range');
-
-  await pill.dblclick();
-  await page.getByLabel('Generic property name').fill('hasPart');
-  await page.getByLabel('Generic property name').press('Enter');
-
-  const turtle = await downloadExport(page, 'ttl');
-  expect(turtle).toMatch(/:hasPart a owl:ObjectProperty/);
-
-  const hasPartBlock = turtle.slice(turtle.indexOf(':hasPart'));
-  const statement = hasPartBlock.slice(0, hasPartBlock.indexOf('.') + 1);
-  expect(statement).not.toContain('rdfs:domain');
-  expect(statement).not.toContain('rdfs:range');
-});
-
-test('a datatype property dropped onto a class attaches to it', async ({ page }) => {
-  await openApp(page);
-  await dragFromPalette(page, 'class', { x: 260, y: 200 });
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
   await page.locator('[data-class-node-id]').first().locator('header').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
 
-  await dragFromPalette(page, 'attribute', { onClass: 'Car' });
+  // Dropping on empty canvas is refused and explained, and creates nothing.
+  await dragFromPalette(page, 'attribute', { x: 520, y: 420 });
+  await expect(page.getByTestId('drop-rejected')).toBeVisible();
+  await expect(page.locator('[data-class-name="Car"] [data-attribute-name]')).toHaveCount(0);
+  await expect(page.locator('[data-class-node-id]')).toHaveCount(1);
 
-  const carNode = page.locator('[data-class-name="Car"]');
-  await expect(carNode.locator('[data-attribute-name]')).toHaveCount(1);
-  await expect(carNode.getByText('xsd:string')).toBeVisible();
+  // Dropping onto the class attaches it.
+  await dragFromPalette(page, 'attribute', { onClass: 'Car' });
+  await expect(page.locator('[data-class-name="Car"] [data-attribute-name]')).toHaveCount(1);
+  await expect(page.locator('[data-class-name="Car"]').getByText('xsd:string')).toBeVisible();
+});
+
+test('a datatype property is reused on a second class by dragging it from the list', async ({
+  page,
+}) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Car');
+  await page.getByLabel('Class name').press('Enter');
+  await dragFromPalette(page, 'class', { x: 380, y: 120 });
+  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Product');
+  await page.getByLabel('Class name').press('Enter');
+
+  await selectClass(page, 'Car');
+  await addAttribute(page, 'price', 'decimal');
+
+  await dragPropertyOntoClass(page, 'price', 'Product');
+
+  // One property, used on two classes — not a duplicate.
+  await expect(page.locator('[data-datatype-property="price"]')).toHaveCount(1);
+  await expect(page.locator('[data-datatype-property="price"]')).toContainText('2×');
+  await expect(page.locator('[data-class-name="Product"] [data-attribute-name]')).toHaveCount(1);
+
+  const turtle = await downloadExport(page, 'ttl');
+  const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
+
+  // Reused, so no rdfs:domain — repeating it would mean Car and Product are the same thing.
+  const domains = quads.filter(
+    (quad) =>
+      quad.subject.value.endsWith('/price') &&
+      quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#domain',
+  );
+  expect(domains).toHaveLength(0);
+
+  // The per-class truth is in the shapes instead, one for each class.
+  const paths = quads.filter(
+    (quad) =>
+      quad.predicate.value === 'http://www.w3.org/ns/shacl#path' &&
+      quad.object.value.endsWith('/price'),
+  );
+  expect(paths).toHaveLength(2);
+  expect(turtle).toContain('Car_price');
+  expect(turtle).toContain('Product_price');
 });

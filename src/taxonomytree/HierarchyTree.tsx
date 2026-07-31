@@ -1,29 +1,67 @@
 import { useMemo, useState } from 'react';
-import { canSubclass, canSubproperty, classForest, objectPropertyForest } from '../ontologymodel';
+import { xsdDatatypeCurie } from '../annotationvocabulary';
+import {
+  canSubclass,
+  canSubproperty,
+  classForest,
+  datatypePropertyList,
+  objectPropertyForest,
+  usagesOfProperty,
+} from '../ontologymodel';
 import type { ObjectProperty, OntologyClass, TaxonomyNode } from '../ontologymodel';
-import { useOntology, useProjectStore, useSelection } from '../projectstore';
+import {
+  DRAG_MIME,
+  encodeDragPayload,
+  useOntology,
+  useProjectStore,
+  useSelection,
+} from '../projectstore';
 import { Button, EmptyState, Tabs } from '../designsystem';
 import styles from './taxonomytree.module.css';
 
 /**
- * The Protégé-style hierarchy panel: the place where taxonomies are actually built.
+ * The panel where the property pool lives and taxonomies are built.
  *
- * Classes and object properties each get a tab. A node can be dragged onto another to
- * re-parent it, or onto the empty area below to become a root. Datatype properties are
- * deliberately absent — they belong to their class, not to a hierarchy of their own.
+ * Classes and object properties are hierarchies, so they get trees: drag a node onto
+ * another to re-parent it, or onto empty space to promote it to a root. Datatype properties
+ * get a flat list instead — arranging attributes into a taxonomy is rarely meaningful, and
+ * the useful question is only which ones exist and where they are used. Dragging one from
+ * that list onto a class on the canvas is how a property gets reused.
  */
 
-type TreeTab = 'classes' | 'objectProperties';
+type PanelTab = 'classes' | 'objectProperties' | 'datatypeProperties';
 
 const TABS = [
   { value: 'classes' as const, label: 'Classes' },
-  { value: 'objectProperties' as const, label: 'Object properties' },
+  { value: 'objectProperties' as const, label: 'Object props' },
+  { value: 'datatypeProperties' as const, label: 'Data props' },
 ];
 
 export function HierarchyTree() {
+  const [tab, setTab] = useState<PanelTab>('classes');
+
+  return (
+    <>
+      <Tabs options={TABS} value={tab} onChange={setTab} ariaLabel="Ontology entities" />
+      {tab === 'datatypeProperties' ? (
+        <DatatypePropertyPool />
+      ) : (
+        <HierarchyFor kind={tab} key={tab} />
+      )}
+      <p className={styles.hint}>
+        {tab === 'datatypeProperties'
+          ? 'Drag a property onto a class on the canvas to use it there. The same property can be used on any number of classes.'
+          : 'Drag an item onto another to make it a subclass; drop it on empty space to promote it to a root.'}
+      </p>
+    </>
+  );
+}
+
+/* ----------------------------------------------------------- hierarchies */
+
+function HierarchyFor({ kind }: { kind: 'classes' | 'objectProperties' }) {
   const ontology = useOntology();
   const selection = useSelection();
-  const [tab, setTab] = useState<TreeTab>('classes');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [dragging, setDragging] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -39,8 +77,10 @@ export function HierarchyTree() {
   const classes = useMemo(() => classForest(ontology), [ontology]);
   const properties = useMemo(() => objectPropertyForest(ontology), [ontology]);
 
-  const isClasses = tab === 'classes';
+  const isClasses = kind === 'classes';
   const forest: TaxonomyNode<OntologyClass | ObjectProperty>[] = isClasses ? classes : properties;
+  const selectableKind = isClasses ? 'class' : 'objectProperty';
+  const hasSelection = selection?.kind === selectableKind;
 
   const toggle = (id: string) =>
     setCollapsed((current) => {
@@ -58,37 +98,25 @@ export function HierarchyTree() {
   const reparent = (childId: string, parentId: string | null) =>
     isClasses ? reparentClass(childId, parentId) : reparentObjectProperty(childId, parentId);
 
-  const addSibling = () => {
-    if (isClasses) createClass();
-    else createObjectProperty({ kind: 'generic' });
-  };
+  const addRoot = () => (isClasses ? createClass() : createObjectProperty());
 
   const addChild = () => {
     const parentId = selection?.id;
-    if (isClasses) {
-      const id = createClass();
-      if (parentId && selection?.kind === 'class' && id) reparentClass(id, parentId);
-    } else {
-      const id = createObjectProperty({ kind: 'generic' });
-      if (parentId && selection?.kind === 'objectProperty' && id) {
-        reparentObjectProperty(id, parentId);
-      }
-    }
+    const id = isClasses ? createClass() : createObjectProperty();
+    if (parentId && hasSelection && id) reparent(id, parentId);
   };
 
   const removeSelected = () => {
-    if (!selection) return;
-    if (isClasses && selection.kind === 'class') deleteClass(selection.id);
-    if (!isClasses && selection.kind === 'objectProperty') deleteObjectProperty(selection.id);
+    if (!selection || !hasSelection) return;
+    if (isClasses) deleteClass(selection.id);
+    else deleteObjectProperty(selection.id);
   };
-
-  const selectableKind = isClasses ? 'class' : 'objectProperty';
-  const hasSelection = selection?.kind === selectableKind;
 
   const renderNode = (node: TaxonomyNode<OntologyClass | ObjectProperty>) => {
     const { entity, children } = node;
     const isCollapsed = collapsed.has(entity.id);
     const isSelected = selection?.kind === selectableKind && selection.id === entity.id;
+    const uses = isClasses ? null : usagesOfProperty(ontology, entity.id).length;
 
     return (
       <div className={styles.node} key={`${entity.id}:${node.depth}`}>
@@ -156,6 +184,11 @@ export function HierarchyTree() {
             <span className={styles.twistySpacer} />
           )}
           <span className={styles.label}>{entity.localName}</span>
+          {uses !== null ? (
+            <span className={uses === 0 ? styles.unusedCount : styles.count}>
+              {uses === 0 ? 'unused' : `${uses}×`}
+            </span>
+          ) : null}
           {children.length > 0 ? <span className={styles.count}>{children.length}</span> : null}
         </div>
 
@@ -168,10 +201,8 @@ export function HierarchyTree() {
 
   return (
     <>
-      <Tabs options={TABS} value={tab} onChange={setTab} ariaLabel="Hierarchy" />
-
-      <div className={styles.toolbar} style={{ margin: 'var(--space-2) 0' }}>
-        <Button size="small" onClick={addSibling}>
+      <div className={styles.toolbar}>
+        <Button size="small" onClick={addRoot}>
           + Root
         </Button>
         <Button size="small" onClick={addChild} disabled={!hasSelection}>
@@ -186,7 +217,7 @@ export function HierarchyTree() {
         <EmptyState>
           {isClasses
             ? 'No classes yet. Add one here or drag a class onto the canvas.'
-            : 'No object properties yet. Draw a relation between two classes, or add a generic property.'}
+            : 'No object properties yet. Add one here, then draw an edge between two classes to use it.'}
         </EmptyState>
       ) : (
         <div
@@ -206,11 +237,79 @@ export function HierarchyTree() {
           {forest.map(renderNode)}
         </div>
       )}
+    </>
+  );
+}
 
-      <p className={styles.hint}>
-        Drag an item onto another to make it a subclass; drop it on empty space to promote it to a
-        root.
-      </p>
+/* -------------------------------------------------- datatype property pool */
+
+function DatatypePropertyPool() {
+  const ontology = useOntology();
+  const selection = useSelection();
+  const select = useProjectStore((state) => state.select);
+  const deleteProperty = useProjectStore((state) => state.deleteDatatypePropertyById);
+
+  const properties = useMemo(() => datatypePropertyList(ontology), [ontology]);
+  const selected = selection?.kind === 'datatypeProperty' ? selection.id : null;
+
+  return (
+    <>
+      <div className={styles.toolbar}>
+        <Button
+          size="small"
+          variant="danger"
+          onClick={() => selected && deleteProperty(selected)}
+          disabled={selected === null}
+        >
+          Delete
+        </Button>
+      </div>
+
+      {properties.length === 0 ? (
+        <EmptyState>
+          No datatype properties yet. Drop one from the palette onto a class, or add one from a
+          class in the inspector.
+        </EmptyState>
+      ) : (
+        <ul className={styles.pool} aria-label="Datatype properties">
+          {properties.map((property) => {
+            const uses = usagesOfProperty(ontology, property.id).length;
+            return (
+              <li key={property.id}>
+                <div
+                  className={`${styles.poolRow} ${selected === property.id ? styles.rowSelected : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  draggable
+                  data-datatype-property={property.localName}
+                  title={`Drag ${property.localName} onto a class to use it there`}
+                  onClick={() => select({ kind: 'datatypeProperty', id: property.id })}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      select({ kind: 'datatypeProperty', id: property.id });
+                    }
+                  }}
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData(
+                      DRAG_MIME,
+                      encodeDragPayload({ kind: 'existingAttribute', propertyId: property.id }),
+                    );
+                    event.dataTransfer.effectAllowed = 'copy';
+                  }}
+                >
+                  <span className={styles.poolMarker} aria-hidden="true" />
+                  <span className={styles.label}>{property.localName}</span>
+                  <span className={styles.poolRange}>{xsdDatatypeCurie(property.range)}</span>
+                  <span className={uses === 0 ? styles.unusedCount : styles.count}>
+                    {uses === 0 ? 'unused' : `${uses}×`}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </>
   );
 }

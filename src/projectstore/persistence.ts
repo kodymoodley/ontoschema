@@ -1,5 +1,5 @@
 import { createEmptyOntology, createId, createProject } from '../ontologymodel';
-import type { Annotation, Ontology, Project } from '../ontologymodel';
+import type { Annotation, Ontology, Project, PropertyUsage } from '../ontologymodel';
 import { isXsdDatatype } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 
@@ -114,25 +114,57 @@ function reviveOntology(value: unknown): Ontology | null {
       .map((entity) => ({
         id: entity.id as string,
         localName: entity.localName as string,
-        kind: entity.kind === 'generic' ? ('generic' as const) : ('scoped' as const),
-        domainClassId: typeof entity.domainClassId === 'string' ? entity.domainClassId : null,
-        rangeClassId: typeof entity.rangeClassId === 'string' ? entity.rangeClassId : null,
         superPropertyIds: toStringArray(entity.superPropertyIds),
         annotations: reviveAnnotations(entity.annotations),
-        position: revivePosition(entity.position),
       })),
     datatypeProperties: records(value.datatypeProperties)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')
       .map((entity) => ({
         id: entity.id as string,
         localName: entity.localName as string,
-        domainClassId: typeof entity.domainClassId === 'string' ? entity.domainClassId : null,
         range: isXsdDatatype(String(entity.range)) ? (entity.range as XsdDatatype) : 'string',
         superPropertyIds: toStringArray(entity.superPropertyIds),
         annotations: reviveAnnotations(entity.annotations),
-        position: revivePosition(entity.position),
       })),
+    usages: reviveUsages(value),
   };
+}
+
+/**
+ * Usages, either read directly or reconstructed from a document written before properties
+ * carried their domain and range on the property itself.
+ */
+function reviveUsages(value: Record<string, unknown>): PropertyUsage[] {
+  const stored = records(value.usages)
+    .filter(
+      (usage) => typeof usage.propertyId === 'string' && typeof usage.subjectClassId === 'string',
+    )
+    .map((usage) => ({
+      id: typeof usage.id === 'string' ? usage.id : createId('use'),
+      propertyId: usage.propertyId as string,
+      subjectClassId: usage.subjectClassId as string,
+      objectClassId: typeof usage.objectClassId === 'string' ? usage.objectClassId : null,
+    }));
+  if (stored.length > 0 || Array.isArray(value.usages)) return stored;
+
+  return [
+    ...records(value.datatypeProperties)
+      .filter((entity) => typeof entity.id === 'string' && typeof entity.domainClassId === 'string')
+      .map((entity) => ({
+        id: createId('use'),
+        propertyId: entity.id as string,
+        subjectClassId: entity.domainClassId as string,
+        objectClassId: null,
+      })),
+    ...records(value.objectProperties)
+      .filter((entity) => typeof entity.id === 'string' && typeof entity.domainClassId === 'string')
+      .map((entity) => ({
+        id: createId('use'),
+        propertyId: entity.id as string,
+        subjectClassId: entity.domainClassId as string,
+        objectClassId: typeof entity.rangeClassId === 'string' ? entity.rangeClassId : null,
+      })),
+  ];
 }
 
 function reviveAnnotations(value: unknown): Annotation[] {

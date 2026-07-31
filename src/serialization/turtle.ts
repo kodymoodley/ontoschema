@@ -1,7 +1,7 @@
 import { DataFactory, Writer } from 'n3';
 import type { Quad } from 'n3';
 import { ontologyToTriples } from '../ontologymodel';
-import type { Ontology, Triple } from '../ontologymodel';
+import type { Ontology, SerializationOptions, Triple } from '../ontologymodel';
 import { prefixesFor } from './prefixes';
 
 const { namedNode, literal, quad, defaultGraph } = DataFactory;
@@ -23,8 +23,8 @@ export function toQuad(triple: Triple): Quad {
  * Turtle output. N3's writer handles escaping, literal forms and prefix folding, which is
  * exactly the fiddly part worth taking a dependency for.
  */
-export function serializeTurtle(ontology: Ontology): string {
-  const triples = ontologyToTriples(ontology);
+export function serializeTurtle(ontology: Ontology, options: SerializationOptions = {}): string {
+  const triples = ontologyToTriples(ontology, options);
   const writer = new Writer({ prefixes: prefixesFor(ontology, triples), format: 'text/turtle' });
   for (const triple of triples) writer.addQuad(toQuad(triple));
 

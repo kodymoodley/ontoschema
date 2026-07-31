@@ -1,42 +1,61 @@
-import { canSubproperty, entityIri, findObjectProperty, validateLocalName } from '../ontologymodel';
+import {
+  canSubproperty,
+  entityIri,
+  findClass,
+  findObjectProperty,
+  toPropertyLocalName,
+  usagesOfProperty,
+} from '../ontologymodel';
 import { useOntology, useProjectStore } from '../projectstore';
-import { Badge, Button, Field, Select, TextInput } from '../designsystem';
+import { Badge, Button, Field, NameInput, Select } from '../designsystem';
 import styles from './relationeditor.module.css';
 
 /**
- * Inspector section for a selected object property, of either kind.
+ * Inspector section for a selected object property: what it is, and every pair of classes
+ * it is drawn between.
  *
- * A scoped property shows its domain and range and can be re-pointed; a generic one shows
- * why it deliberately has neither, and offers promotion to a scoped relation.
+ * There is no "generic" flag any more — a property is simply used zero, one or many times.
+ * Unused, it sits in the list with nothing on the canvas; used once, RDFS can state its
+ * domain and range; used many times, only the SHACL shapes can express it without lying.
  */
 export function RelationDetails({ propertyId }: { propertyId: string }) {
   const ontology = useOntology();
   const entity = findObjectProperty(ontology, propertyId);
 
   const rename = useProjectStore((state) => state.renameObjectPropertyById);
-  const setEndpoints = useProjectStore((state) => state.setRelationEndpoints);
   const reparent = useProjectStore((state) => state.reparentObjectProperty);
+  const setUsageTarget = useProjectStore((state) => state.setUsageTarget);
+  const detachUsage = useProjectStore((state) => state.detachUsageById);
   const remove = useProjectStore((state) => state.deleteObjectPropertyById);
+  const select = useProjectStore((state) => state.select);
 
   if (!entity) return null;
-  const nameCheck = validateLocalName(entity.localName);
+
+  const usages = usagesOfProperty(ontology, propertyId);
   const superPropertyId = entity.superPropertyIds[0] ?? '';
 
   return (
     <div className={styles.section}>
-      <Field label="Kind">
+      <Field label="Status">
         <div>
           <Badge tone="relation">
-            {entity.kind === 'scoped' ? 'Scoped relation' : 'Generic property'}
+            {usages.length === 0
+              ? 'Unused'
+              : usages.length === 1
+                ? 'Used once'
+                : `Reused (${usages.length}×)`}
           </Badge>
         </div>
       </Field>
 
-      <Field label="Local name" error={nameCheck.valid ? undefined : nameCheck.message}>
-        <TextInput
+      <Field label="Local name">
+        <NameInput
           value={entity.localName}
           aria-label="Object property local name"
-          onChange={(event) => rename(propertyId, event.target.value)}
+          onCommit={(value) => rename(propertyId, value)}
+          validate={(value) =>
+            toPropertyLocalName(value) === '' ? 'A property needs a name.' : undefined
+          }
         />
       </Field>
 
@@ -44,89 +63,64 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
         <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
       </Field>
 
-      {entity.kind === 'scoped' ? (
-        <Field label="Domain and range" hint="The edge direction: domain → range.">
-          <div className={styles.endpoints}>
-            <Select
-              value={entity.domainClassId ?? ''}
-              aria-label="Relation domain"
-              onChange={(event) =>
-                setEndpoints(propertyId, { domainClassId: event.target.value || null })
-              }
-            >
-              <option value="">— none —</option>
-              {ontology.classes.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.localName}
-                </option>
-              ))}
-            </Select>
-            <span className={styles.arrow} aria-hidden="true">
-              →
-            </span>
-            <Select
-              value={entity.rangeClassId ?? ''}
-              aria-label="Relation range"
-              onChange={(event) =>
-                setEndpoints(propertyId, { rangeClassId: event.target.value || null })
-              }
-            >
-              <option value="">— none —</option>
-              {ontology.classes.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.localName}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </Field>
-      ) : (
-        <p className={styles.kindNote}>
-          A generic property is reusable between any classes, so it is exported without{' '}
-          <code>rdfs:domain</code> or <code>rdfs:range</code>. Give it a domain and range below to
-          turn it into a scoped relation on the canvas.
-        </p>
-      )}
-
-      {entity.kind === 'generic' ? (
-        <Field label="Promote to a scoped relation">
-          <div className={styles.endpoints}>
-            <Select
-              value=""
-              aria-label="Promote domain"
-              onChange={(event) => {
-                const domainClassId = event.target.value || null;
-                if (domainClassId) setEndpoints(propertyId, { domainClassId });
-              }}
-            >
-              <option value="">choose domain…</option>
-              {ontology.classes.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.localName}
-                </option>
-              ))}
-            </Select>
-            <span className={styles.arrow} aria-hidden="true">
-              →
-            </span>
-            <Select
-              value=""
-              aria-label="Promote range"
-              onChange={(event) => {
-                const rangeClassId = event.target.value || null;
-                if (rangeClassId) setEndpoints(propertyId, { rangeClassId });
-              }}
-            >
-              <option value="">choose range…</option>
-              {ontology.classes.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.localName}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </Field>
-      ) : null}
+      <Field
+        label={`Used between (${usages.length})`}
+        hint={
+          usages.length > 1
+            ? 'Reused, so rdfs:domain and rdfs:range are omitted — a union would lose the pairing. The SHACL shapes keep each pair intact.'
+            : usages.length === 1
+              ? 'A single use exports as rdfs:domain and rdfs:range as well as a SHACL shape.'
+              : undefined
+        }
+      >
+        {usages.length === 0 ? (
+          <p className={styles.unusedNote}>
+            Not used yet, so nothing is drawn on the canvas. Drag an edge between two classes and
+            pick this property to use it.
+          </p>
+        ) : (
+          <ul className={styles.list}>
+            {usages.map((usage) => {
+              const subject = findClass(ontology, usage.subjectClassId);
+              if (!subject) return null;
+              return (
+                <li key={usage.id} className={styles.usageRow}>
+                  <button
+                    type="button"
+                    className={styles.linkButton}
+                    onClick={() => select({ kind: 'class', id: subject.id })}
+                  >
+                    {subject.localName}
+                  </button>
+                  <span className={styles.arrow} aria-hidden="true">
+                    →
+                  </span>
+                  <Select
+                    value={usage.objectClassId ?? ''}
+                    aria-label={`Range of ${entity.localName} on ${subject.localName}`}
+                    onChange={(event) => setUsageTarget(usage.id, event.target.value || null)}
+                  >
+                    <option value="">— none —</option>
+                    {ontology.classes.map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.localName}
+                      </option>
+                    ))}
+                  </Select>
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    aria-label={`Remove the ${entity.localName} relation on ${subject.localName}`}
+                    onClick={() => detachUsage(usage.id)}
+                  >
+                    ×
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Field>
 
       <Field label="Superproperty">
         <Select

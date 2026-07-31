@@ -3,18 +3,11 @@ import { createEmptyOntology } from '../ontologymodel';
 import type { EntityRef, Ontology, Project } from '../ontologymodel';
 
 export { useProjectStore, activeOntology } from './store';
-export type { ProjectStoreState, CanvasView } from './store';
-export {
-  clearWorkspace,
-  emptyWorkspace,
-  loadWorkspace,
-  projectFromFile,
-  projectToFile,
-  saveWorkspace,
-  reviveWorkspace,
-  PROJECT_FILE_VERSION,
-} from './persistence';
+export type { ProjectStoreState, CanvasView, PendingConnection } from './store';
+export { clearWorkspace, loadWorkspace, projectFromFile, projectToFile } from './persistence';
 export type { Workspace } from './persistence';
+export { DRAG_MIME, encodeDragPayload, decodeDragPayload } from './dragpayload';
+export type { DragPayload } from './dragpayload';
 
 /**
  * Read hooks. UI modules subscribe through these rather than reaching into store internals,

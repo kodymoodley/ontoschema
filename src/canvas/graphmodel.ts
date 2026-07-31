@@ -1,6 +1,12 @@
 import type { Edge, Node } from '@xyflow/react';
-import { attributesOfClass, subClassEdges, taxonomyModules } from '../ontologymodel';
-import type { DatatypeProperty, ObjectProperty, Ontology, OntologyClass } from '../ontologymodel';
+import { indexOntology, subClassEdges, taxonomyModules } from '../ontologymodel';
+import type {
+  DatatypeProperty,
+  ObjectProperty,
+  Ontology,
+  OntologyClass,
+  PropertyUsage,
+} from '../ontologymodel';
 import { layoutTaxonomyModule } from './layout';
 
 /**
@@ -9,12 +15,14 @@ import { layoutTaxonomyModule } from './layout';
  * Node *type names* are plain strings; the components that render them are supplied from
  * outside (see appshell), so the canvas never imports an editor module and the editors
  * never import the canvas.
+ *
+ * Only classes are nodes. Properties are a reusable pool, not canvas objects: a property
+ * appears on the canvas exactly when it is used — as a typed row inside a class box, or as
+ * an edge between two classes. An unused property has nothing to draw.
  */
 
 export const NODE_TYPE = {
   ontologyClass: 'ontologyClass',
-  genericProperty: 'genericProperty',
-  floatingAttribute: 'floatingAttribute',
   taxonomyClass: 'taxonomyClass',
   taxonomyModule: 'taxonomyModule',
 } as const;
@@ -24,18 +32,18 @@ export const EDGE_TYPE = {
   subClassOf: 'subClassOf',
 } as const;
 
+/** One attribute row inside a class box. */
+export interface AttributeRow {
+  usageId: string;
+  property: DatatypeProperty;
+  /** True when the same property is also used on another class. */
+  shared: boolean;
+}
+
 export interface ClassNodeData extends Record<string, unknown> {
   entity: OntologyClass;
-  attributes: DatatypeProperty[];
+  attributes: AttributeRow[];
   superClassNames: string[];
-}
-
-export interface GenericPropertyNodeData extends Record<string, unknown> {
-  entity: ObjectProperty;
-}
-
-export interface FloatingAttributeNodeData extends Record<string, unknown> {
-  entity: DatatypeProperty;
 }
 
 export interface TaxonomyClassNodeData extends Record<string, unknown> {
@@ -52,7 +60,10 @@ export interface TaxonomyModuleNodeData extends Record<string, unknown> {
 }
 
 export interface RelationEdgeData extends Record<string, unknown> {
-  entity: ObjectProperty;
+  usage: PropertyUsage;
+  property: ObjectProperty;
+  /** True when the same property is also used elsewhere in the schema. */
+  shared: boolean;
 }
 
 /* ------------------------------------------------------------ schema view */
@@ -64,62 +75,61 @@ export interface RelationEdgeData extends Record<string, unknown> {
  * multi-click interactions such as double-click-to-rename.
  */
 export function schemaNodes(ontology: Ontology): Node[] {
-  const classNodes: Node[] = ontology.classes.map((entity) => ({
-    id: entity.id,
-    type: NODE_TYPE.ontologyClass,
-    position: entity.position,
-    data: {
-      entity,
-      attributes: attributesOfClass(ontology, entity.id),
-      superClassNames: entity.superClassIds
-        .map((id) => ontology.classes.find((c) => c.id === id)?.localName)
-        .filter((name): name is string => Boolean(name)),
-    } satisfies ClassNodeData,
-  }));
+  const index = indexOntology(ontology);
 
-  const genericNodes: Node[] = ontology.objectProperties
-    .filter((property) => property.kind === 'generic')
-    .map((entity) => ({
+  return ontology.classes.map((entity) => {
+    const attributes: AttributeRow[] = (index.attributeUsagesByClass.get(entity.id) ?? [])
+      .map((usage) => {
+        const property = index.datatypePropertyById.get(usage.propertyId);
+        if (!property) return null;
+        return {
+          usageId: usage.id,
+          property,
+          shared: (index.usagesByProperty.get(usage.propertyId) ?? []).length > 1,
+        };
+      })
+      .filter((row): row is AttributeRow => row !== null);
+
+    return {
       id: entity.id,
-      type: NODE_TYPE.genericProperty,
+      type: NODE_TYPE.ontologyClass,
       position: entity.position,
-      data: { entity } satisfies GenericPropertyNodeData,
-    }));
-
-  // Attributes that are not yet attached to a class float on the canvas until dropped on one.
-  const floatingAttributes: Node[] = ontology.datatypeProperties
-    .filter((property) => property.domainClassId === null)
-    .map((entity) => ({
-      id: entity.id,
-      type: NODE_TYPE.floatingAttribute,
-      position: entity.position,
-      data: { entity } satisfies FloatingAttributeNodeData,
-    }));
-
-  return [...classNodes, ...genericNodes, ...floatingAttributes];
+      data: {
+        entity,
+        attributes,
+        superClassNames: entity.superClassIds
+          .map((id) => index.classById.get(id)?.localName)
+          .filter((name): name is string => Boolean(name)),
+      } satisfies ClassNodeData,
+    };
+  });
 }
 
 export function schemaEdges(ontology: Ontology): Edge[] {
-  const classIds = new Set(ontology.classes.map((entity) => entity.id));
+  const index = indexOntology(ontology);
 
-  const relations: Edge[] = ontology.objectProperties
-    .filter(
-      (property) =>
-        property.kind === 'scoped' &&
-        property.domainClassId !== null &&
-        property.rangeClassId !== null &&
-        classIds.has(property.domainClassId) &&
-        classIds.has(property.rangeClassId),
-    )
-    .map((entity) => ({
-      id: entity.id,
+  const relations: Edge[] = [];
+  for (const usage of ontology.usages) {
+    const property = index.objectPropertyById.get(usage.propertyId);
+    if (!property || usage.objectClassId === null) continue;
+    if (!index.classById.has(usage.subjectClassId) || !index.classById.has(usage.objectClassId)) {
+      continue;
+    }
+    relations.push({
+      // The edge is the usage, not the property: one property can be drawn many times.
+      id: usage.id,
       type: EDGE_TYPE.relation,
-      source: entity.domainClassId as string,
-      target: entity.rangeClassId as string,
+      source: usage.subjectClassId,
+      target: usage.objectClassId,
       sourceHandle: 'out',
       targetHandle: 'in',
-      data: { entity } satisfies RelationEdgeData,
-    }));
+      data: {
+        usage,
+        property,
+        shared: (index.usagesByProperty.get(usage.propertyId) ?? []).length > 1,
+      } satisfies RelationEdgeData,
+    });
+  }
 
   // Subclass links also show on the schema canvas, in the taxonomy's own visual language,
   // so the two views never disagree about what the model contains. They attach to the
@@ -156,6 +166,10 @@ export function taxonomyGraph(
   selectedId: string | null,
 ): { nodes: Node[]; edges: Edge[] } {
   const modules = taxonomyModules(ontology);
+  const index = indexOntology(ontology);
+  // Computed once for the whole graph rather than per module.
+  const allLinks = subClassEdges(ontology);
+
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
@@ -165,11 +179,11 @@ export function taxonomyGraph(
 
   for (const module of modules) {
     const members = module.members
-      .map((id) => ontology.classes.find((entity) => entity.id === id))
+      .map((id) => index.classById.get(id))
       .filter((entity): entity is OntologyClass => entity !== undefined);
     const memberIds = new Set(members.map((entity) => entity.id));
 
-    const links = subClassEdges(ontology).filter(
+    const links = allLinks.filter(
       ({ childId, parentId }) => memberIds.has(childId) && memberIds.has(parentId),
     );
 
@@ -213,7 +227,7 @@ export function taxonomyGraph(
         data: {
           entity,
           classId: entity.id,
-          attributeCount: attributesOfClass(ontology, entity.id).length,
+          attributeCount: (index.attributeUsagesByClass.get(entity.id) ?? []).length,
           isRoot: entity.id === module.root.id,
         } satisfies TaxonomyClassNodeData,
       });

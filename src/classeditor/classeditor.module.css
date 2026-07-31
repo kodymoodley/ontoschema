@@ -68,6 +68,18 @@
   font-weight: 600;
 }
 
+/* Cleared or unusable: flagged like a required form field rather than snapping back. */
+.nameInputInvalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 22%, transparent);
+}
+
+.sharedMark {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
 .superclass {
   padding: 2px var(--space-3) var(--space-1);
   font-size: var(--text-xs);

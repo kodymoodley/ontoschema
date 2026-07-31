@@ -1,6 +1,6 @@
 import { RDF_TYPE } from '../annotationvocabulary';
 import { ontologyToTriples } from '../ontologymodel';
-import type { Ontology, TripleObject } from '../ontologymodel';
+import type { Ontology, SerializationOptions, TripleObject } from '../ontologymodel';
 import { prefixesFor, toCurie } from './prefixes';
 import type { PrefixTable } from './prefixes';
 
@@ -22,8 +22,8 @@ interface JsonLdNode {
   [predicate: string]: unknown;
 }
 
-export function serializeJsonLd(ontology: Ontology): string {
-  const triples = ontologyToTriples(ontology);
+export function serializeJsonLd(ontology: Ontology, options: SerializationOptions = {}): string {
+  const triples = ontologyToTriples(ontology, options);
   const prefixes = prefixesFor(ontology, triples);
 
   const nodes = new Map<string, JsonLdNode>();

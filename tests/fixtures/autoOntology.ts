@@ -1,9 +1,11 @@
 import {
   addAnnotation,
+  addAttributeToClass,
   addClass,
-  addDatatypeProperty,
   addObjectProperty,
+  addRelationBetween,
   addSubClassOf,
+  attachProperty,
   createEmptyOntology,
 } from '../../src/ontologymodel';
 import type { Ontology } from '../../src/ontologymodel';
@@ -16,7 +18,7 @@ import type { XsdDatatype } from '../../src/annotationvocabulary';
  * Vehicle
  *   +- Car (make, model, year, engine, price)  --offeredBy-->  Dealership
  *   +- Truck                                                   (Organization)
- * plus a generic `hasPart` with no domain or range.
+ * plus `hasPart`, an object property that exists but is not used anywhere.
  */
 export interface AutoOntology {
   ontology: Ontology;
@@ -35,6 +37,7 @@ export interface AutoOntology {
     | 'price',
     string
   >;
+  usageIds: Record<'offeredBy' | 'price', string>;
 }
 
 export function buildAutoOntology(): AutoOntology {
@@ -66,25 +69,23 @@ export function buildAutoOntology(): AutoOntology {
     ['price', 'decimal'],
   ];
   const attributeIds: Record<string, string> = {};
+  let priceUsageId = '';
   for (const [localName, range] of attributes) {
-    const added = addDatatypeProperty(ontology, { localName, domainClassId: car.id, range });
+    const added = addAttributeToClass(ontology, { classId: car.id, localName, range });
     ontology = added.ontology;
-    attributeIds[localName] = added.id;
+    attributeIds[localName] = added.propertyId;
+    if (localName === 'price') priceUsageId = added.usageId;
   }
 
-  const offeredBy = addObjectProperty(ontology, {
+  const offeredBy = addRelationBetween(ontology, {
     localName: 'offeredBy',
-    kind: 'scoped',
-    domainClassId: car.id,
-    rangeClassId: dealership.id,
+    subjectClassId: car.id,
+    objectClassId: dealership.id,
   });
   ontology = offeredBy.ontology;
 
-  const hasPart = addObjectProperty(ontology, {
-    localName: 'hasPart',
-    kind: 'generic',
-    position: { x: 260, y: 360 },
-  });
+  // Declared but never used, so it appears in the property list and nowhere on the canvas.
+  const hasPart = addObjectProperty(ontology, { localName: 'hasPart' });
   ontology = hasPart.ontology;
 
   ontology = addAnnotation(ontology, 'class', car.id, 'skos:prefLabel', 'Car', 'en');
@@ -103,7 +104,7 @@ export function buildAutoOntology(): AutoOntology {
   ontology = addAnnotation(
     ontology,
     'objectProperty',
-    offeredBy.id,
+    offeredBy.propertyId,
     'rdfs:label',
     'offered by',
     'en',
@@ -145,7 +146,7 @@ export function buildAutoOntology(): AutoOntology {
       truck: truck.id,
       organization: organization.id,
       dealership: dealership.id,
-      offeredBy: offeredBy.id,
+      offeredBy: offeredBy.propertyId,
       hasPart: hasPart.id,
       make: attributeIds.make ?? '',
       model: attributeIds.model ?? '',
@@ -153,5 +154,33 @@ export function buildAutoOntology(): AutoOntology {
       engine: attributeIds.engine ?? '',
       price: attributeIds.price ?? '',
     },
+    usageIds: { offeredBy: offeredBy.usageId, price: priceUsageId },
   };
+}
+
+/**
+ * The same scenario with `price` also used on a second class, and `offeredBy` drawn a
+ * second time between a different pair — the reuse case that RDFS cannot express.
+ */
+export function buildReusedOntology(): { ontology: Ontology; ids: AutoOntology['ids'] } {
+  const base = buildAutoOntology();
+  let ontology = base.ontology;
+
+  const product = addClass(ontology, { localName: 'Product' });
+  ontology = product.ontology;
+  const garage = addClass(ontology, { localName: 'Garage' });
+  ontology = garage.ontology;
+
+  ontology = attachProperty(ontology, {
+    propertyId: base.ids.price,
+    subjectClassId: product.id,
+  }).ontology;
+
+  ontology = attachProperty(ontology, {
+    propertyId: base.ids.offeredBy,
+    subjectClassId: base.ids.truck,
+    objectClassId: garage.id,
+  }).ontology;
+
+  return { ontology, ids: base.ids };
 }

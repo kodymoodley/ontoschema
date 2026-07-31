@@ -15,11 +15,14 @@ export function ExportPanel() {
   const ontology = useOntology();
   const project = useActiveProject();
   const [preview, setPreview] = useState<SerializationFormat>('turtle');
+  const [includeAxioms, setIncludeAxioms] = useState(true);
+  const [includeShapes, setIncludeShapes] = useState(true);
 
   const baseName = project?.name ?? 'ontology';
+  const options = useMemo(() => ({ includeAxioms, includeShapes }), [includeAxioms, includeShapes]);
   const previewText = useMemo(
-    () => serialize(ontology, preview, baseName).content,
-    [ontology, preview, baseName],
+    () => serialize(ontology, preview, baseName, options).content,
+    [ontology, preview, baseName, options],
   );
 
   const empty = isOntologyEmpty(ontology);
@@ -33,6 +36,46 @@ export function ExportPanel() {
         </p>
       ) : null}
 
+      {/*
+        SHACL is a vocabulary, not a serialization, so shapes ride inside the same files
+        rather than being a fifth format. They carry what the canvas actually means: a
+        per-class constraint, which rdfs:domain and rdfs:range cannot express once a
+        property is reused.
+      */}
+      <fieldset className={styles.layers}>
+        <legend className={styles.layersLegend}>Include</legend>
+        <label className={styles.layer}>
+          <input
+            type="checkbox"
+            checked={includeAxioms}
+            aria-label="Include OWL and RDFS axioms"
+            onChange={(event) => setIncludeAxioms(event.target.checked)}
+          />
+          <span>
+            <strong>OWL / RDFS axioms</strong>
+            <span className={styles.layerHint}>
+              Class and property declarations, hierarchies, and domain/range where a property is
+              used only once.
+            </span>
+          </span>
+        </label>
+        <label className={styles.layer}>
+          <input
+            type="checkbox"
+            checked={includeShapes}
+            aria-label="Include SHACL shapes"
+            onChange={(event) => setIncludeShapes(event.target.checked)}
+          />
+          <span>
+            <strong>SHACL shapes</strong>
+            <span className={styles.layerHint}>
+              One property shape per use, so every class keeps its own constraints even when a
+              property is shared.
+            </span>
+          </span>
+        </label>
+      </fieldset>
+
       <div className={styles.formats}>
         {SERIALIZATION_FORMATS.map((descriptor) => (
           <div key={descriptor.format} className={styles.format}>
@@ -45,7 +88,7 @@ export function ExportPanel() {
               variant="primary"
               data-testid={`download-${descriptor.extension}`}
               onClick={() => {
-                const file = serialize(ontology, descriptor.format, baseName);
+                const file = serialize(ontology, descriptor.format, baseName, options);
                 downloadFile(file.filename, file.mimeType, file.content);
               }}
             >

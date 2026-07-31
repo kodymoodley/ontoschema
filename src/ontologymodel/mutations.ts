@@ -12,10 +12,10 @@ import type {
   Annotation,
   DatatypeProperty,
   ObjectProperty,
-  ObjectPropertyKind,
   Ontology,
   OntologyClass,
   Position,
+  PropertyUsage,
 } from './types';
 
 /**
@@ -63,9 +63,9 @@ export function moveClass(ontology: Ontology, id: string, position: Position): O
 }
 
 /**
- * Deleting a class cascades: its attributes go with it, and any scoped relation that
- * touched it is removed rather than left dangling with a half-defined domain or range.
- * Generic properties survive untouched because they never referenced the class.
+ * Deleting a class cascades to its usages: every attribute row it carried and every
+ * relation pointing at or away from it goes with it. The properties themselves survive in
+ * the pool, because they were never owned by the class.
  */
 export function deleteClass(ontology: Ontology, id: string): Ontology {
   return {
@@ -76,15 +76,8 @@ export function deleteClass(ontology: Ontology, id: string): Ontology {
         ...entity,
         superClassIds: entity.superClassIds.filter((parentId) => parentId !== id),
       })),
-    datatypeProperties: ontology.datatypeProperties.filter(
-      (property) => property.domainClassId !== id,
-    ),
-    objectProperties: ontology.objectProperties.filter(
-      (property) =>
-        !(
-          property.kind === 'scoped' &&
-          (property.domainClassId === id || property.rangeClassId === id)
-        ),
+    usages: ontology.usages.filter(
+      (usage) => usage.subjectClassId !== id && usage.objectClassId !== id,
     ),
   };
 }
@@ -98,16 +91,6 @@ export function addSubClassOf(ontology: Ontology, childId: string, parentId: str
         ? entity
         : { ...entity, superClassIds: [...entity.superClassIds, parentId] },
     ),
-  };
-}
-
-export function removeSubClassOf(ontology: Ontology, childId: string, parentId: string): Ontology {
-  return {
-    ...ontology,
-    classes: mapById(ontology.classes, childId, (entity) => ({
-      ...entity,
-      superClassIds: entity.superClassIds.filter((id) => id !== parentId),
-    })),
   };
 }
 
@@ -131,22 +114,15 @@ export function setSuperClass(
 
 export function addDatatypeProperty(
   ontology: Ontology,
-  options: {
-    localName?: string;
-    domainClassId?: string | null;
-    range?: XsdDatatype;
-    position?: Position;
-  } = {},
+  options: { localName?: string; range?: XsdDatatype } = {},
 ): { ontology: Ontology; id: string } {
   const desired = toPropertyLocalName(options.localName ?? 'newAttribute') || 'newAttribute';
   const property: DatatypeProperty = {
     id: createId('dtp'),
     localName: uniqueLocalName(desired, propertyLocalNames(ontology)),
-    domainClassId: options.domainClassId ?? null,
     range: options.range ?? DEFAULT_XSD_DATATYPE,
     superPropertyIds: [],
     annotations: [],
-    position: options.position ?? { x: 0, y: 0 },
   };
   return {
     ontology: { ...ontology, datatypeProperties: [...ontology.datatypeProperties, property] },
@@ -186,24 +162,6 @@ export function setDatatypePropertyRange(
   };
 }
 
-export function setDatatypePropertyDomain(
-  ontology: Ontology,
-  id: string,
-  domainClassId: string | null,
-): Ontology {
-  return {
-    ...ontology,
-    datatypeProperties: mapById(ontology.datatypeProperties, id, (e) => ({ ...e, domainClassId })),
-  };
-}
-
-export function moveDatatypeProperty(ontology: Ontology, id: string, position: Position): Ontology {
-  return {
-    ...ontology,
-    datatypeProperties: mapById(ontology.datatypeProperties, id, (e) => ({ ...e, position })),
-  };
-}
-
 export function deleteDatatypeProperty(ontology: Ontology, id: string): Ontology {
   return {
     ...ontology,
@@ -213,6 +171,7 @@ export function deleteDatatypeProperty(ontology: Ontology, id: string): Ontology
         ...property,
         superPropertyIds: property.superPropertyIds.filter((parentId) => parentId !== id),
       })),
+    usages: ontology.usages.filter((usage) => usage.propertyId !== id),
   };
 }
 
@@ -220,26 +179,14 @@ export function deleteDatatypeProperty(ontology: Ontology, id: string): Ontology
 
 export function addObjectProperty(
   ontology: Ontology,
-  options: {
-    localName?: string;
-    kind?: ObjectPropertyKind;
-    domainClassId?: string | null;
-    rangeClassId?: string | null;
-    position?: Position;
-  } = {},
+  options: { localName?: string } = {},
 ): { ontology: Ontology; id: string } {
-  const kind = options.kind ?? 'scoped';
-  const fallback = kind === 'generic' ? 'isRelatedTo' : 'relatesTo';
-  const desired = toPropertyLocalName(options.localName ?? fallback) || fallback;
+  const desired = toPropertyLocalName(options.localName ?? 'isRelatedTo') || 'isRelatedTo';
   const property: ObjectProperty = {
     id: createId('obp'),
     localName: uniqueLocalName(desired, propertyLocalNames(ontology)),
-    kind,
-    domainClassId: kind === 'generic' ? null : (options.domainClassId ?? null),
-    rangeClassId: kind === 'generic' ? null : (options.rangeClassId ?? null),
     superPropertyIds: [],
     annotations: [],
-    position: options.position ?? { x: 0, y: 0 },
   };
   return {
     ontology: { ...ontology, objectProperties: [...ontology.objectProperties, property] },
@@ -261,30 +208,6 @@ export function renameObjectProperty(ontology: Ontology, id: string, localName: 
   };
 }
 
-export function setObjectPropertyEndpoints(
-  ontology: Ontology,
-  id: string,
-  endpoints: { domainClassId?: string | null; rangeClassId?: string | null },
-): Ontology {
-  return {
-    ...ontology,
-    objectProperties: mapById(ontology.objectProperties, id, (entity) => ({
-      ...entity,
-      domainClassId:
-        endpoints.domainClassId !== undefined ? endpoints.domainClassId : entity.domainClassId,
-      rangeClassId:
-        endpoints.rangeClassId !== undefined ? endpoints.rangeClassId : entity.rangeClassId,
-    })),
-  };
-}
-
-export function moveObjectProperty(ontology: Ontology, id: string, position: Position): Ontology {
-  return {
-    ...ontology,
-    objectProperties: mapById(ontology.objectProperties, id, (e) => ({ ...e, position })),
-  };
-}
-
 export function deleteObjectProperty(ontology: Ontology, id: string): Ontology {
   return {
     ...ontology,
@@ -294,6 +217,7 @@ export function deleteObjectProperty(ontology: Ontology, id: string): Ontology {
         ...property,
         superPropertyIds: property.superPropertyIds.filter((parentId) => parentId !== id),
       })),
+    usages: ontology.usages.filter((usage) => usage.propertyId !== id),
   };
 }
 
@@ -310,6 +234,111 @@ export function setSuperObjectProperty(
       superPropertyIds: parentId === null ? [] : [parentId],
     })),
   };
+}
+
+/* ------------------------------------------------------------------ usages */
+
+function propertyExists(ontology: Ontology, propertyId: string): boolean {
+  return (
+    ontology.datatypeProperties.some((entity) => entity.id === propertyId) ||
+    ontology.objectProperties.some((entity) => entity.id === propertyId)
+  );
+}
+
+/**
+ * Attaches a property to a class. Attaching the same property to the same class with the
+ * same target twice is a no-op — that would be one fact stated twice, and would emit two
+ * conflicting SHACL property shapes.
+ */
+export function attachProperty(
+  ontology: Ontology,
+  options: { propertyId: string; subjectClassId: string; objectClassId?: string | null },
+): { ontology: Ontology; id: string } {
+  const objectClassId = options.objectClassId ?? null;
+  if (
+    !propertyExists(ontology, options.propertyId) ||
+    !ontology.classes.some((entity) => entity.id === options.subjectClassId) ||
+    (objectClassId !== null && !ontology.classes.some((entity) => entity.id === objectClassId))
+  ) {
+    return { ontology, id: '' };
+  }
+
+  const existing = ontology.usages.find(
+    (usage) =>
+      usage.propertyId === options.propertyId &&
+      usage.subjectClassId === options.subjectClassId &&
+      usage.objectClassId === objectClassId,
+  );
+  if (existing) return { ontology, id: existing.id };
+
+  const usage: PropertyUsage = {
+    id: createId('use'),
+    propertyId: options.propertyId,
+    subjectClassId: options.subjectClassId,
+    objectClassId,
+  };
+  return { ontology: { ...ontology, usages: [...ontology.usages, usage] }, id: usage.id };
+}
+
+/** Removes a single usage. The property stays in the pool, ready to be used elsewhere. */
+export function detachUsage(ontology: Ontology, usageId: string): Ontology {
+  return { ...ontology, usages: ontology.usages.filter((usage) => usage.id !== usageId) };
+}
+
+/** Re-points one end of a relation usage. */
+export function setUsageEndpoints(
+  ontology: Ontology,
+  usageId: string,
+  endpoints: { subjectClassId?: string; objectClassId?: string | null },
+): Ontology {
+  return {
+    ...ontology,
+    usages: mapById(ontology.usages, usageId, (usage) => ({
+      ...usage,
+      subjectClassId: endpoints.subjectClassId ?? usage.subjectClassId,
+      objectClassId:
+        endpoints.objectClassId !== undefined ? endpoints.objectClassId : usage.objectClassId,
+    })),
+  };
+}
+
+/**
+ * Creates a datatype property and attaches it to a class in one step — the common path,
+ * since a datatype property can never exist unattached in the editor.
+ */
+export function addAttributeToClass(
+  ontology: Ontology,
+  options: { classId: string; localName?: string; range?: XsdDatatype },
+): { ontology: Ontology; propertyId: string; usageId: string } {
+  const created = addDatatypeProperty(ontology, {
+    ...(options.localName !== undefined ? { localName: options.localName } : {}),
+    ...(options.range !== undefined ? { range: options.range } : {}),
+  });
+  const attached = attachProperty(created.ontology, {
+    propertyId: created.id,
+    subjectClassId: options.classId,
+  });
+  return { ontology: attached.ontology, propertyId: created.id, usageId: attached.id };
+}
+
+/**
+ * Creates an object property and uses it between two classes — what the connection picker
+ * calls when the user chooses "new property" rather than an existing one.
+ */
+export function addRelationBetween(
+  ontology: Ontology,
+  options: { localName?: string; subjectClassId: string; objectClassId: string },
+): { ontology: Ontology; propertyId: string; usageId: string } {
+  const created = addObjectProperty(
+    ontology,
+    options.localName !== undefined ? { localName: options.localName } : {},
+  );
+  const attached = attachProperty(created.ontology, {
+    propertyId: created.id,
+    subjectClassId: options.subjectClassId,
+    objectClassId: options.objectClassId,
+  });
+  return { ontology: attached.ontology, propertyId: created.id, usageId: attached.id };
 }
 
 /* ------------------------------------------------------------ annotations */

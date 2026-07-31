@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildAutoOntology } from '../../tests/fixtures/autoOntology';
-import { addClass, addSubClassOf, setSuperObjectProperty } from './mutations';
+import { addClass, addDatatypeProperty, addSubClassOf, setSuperObjectProperty } from './mutations';
 import {
   canSubclass,
   classForest,
   classWithDescendants,
+  datatypePropertyList,
   objectPropertyForest,
   rootClasses,
   subClassEdges,
@@ -144,5 +145,24 @@ describe('object property hierarchy', () => {
     expect(forest[0]?.children.map((n) => n.entity.localName)).toEqual(['offeredBy']);
 
     expect(setSuperObjectProperty(nested, ids.hasPart, ids.offeredBy)).toBe(nested);
+  });
+});
+
+describe('datatype property pool', () => {
+  it('is a flat alphabetical list, not a hierarchy', () => {
+    const { ontology } = buildAutoOntology();
+    expect(datatypePropertyList(ontology).map((property) => property.localName)).toEqual([
+      'engine',
+      'make',
+      'model',
+      'price',
+      'year',
+    ]);
+  });
+
+  it('lists a property that is not used by any class', () => {
+    const { ontology } = buildAutoOntology();
+    const added = addDatatypeProperty(ontology, { localName: 'vin' });
+    expect(datatypePropertyList(added.ontology).map((p) => p.localName)).toContain('vin');
   });
 });

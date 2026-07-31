@@ -10,6 +10,18 @@ export {
   OWL_OBJECT_PROPERTY,
   OWL_DATATYPE_PROPERTY,
   OWL_ONTOLOGY,
+  RDF_FIRST,
+  RDF_REST,
+  RDF_NIL,
+  SH_NODE_SHAPE,
+  SH_PROPERTY_SHAPE,
+  SH_TARGET_CLASS,
+  SH_PROPERTY,
+  SH_PATH,
+  SH_CLASS,
+  SH_DATATYPE,
+  SH_OR,
+  SH_NAME,
 } from './namespaces';
 export type { KnownPrefix } from './namespaces';
 
