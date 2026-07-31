@@ -12,7 +12,8 @@ export async function openApp(page: Page) {
   // Clearing it in an init script would also wipe the workspace on reload, which is
   // exactly what the persistence test needs to survive.
   await page.goto('/');
-  await expect(page.getByText('OntoSchema')).toBeVisible();
+  // The brand wordmark is hidden on narrow viewports, so the header is identified by role.
+  await expect(page.getByRole('banner')).toBeVisible();
   await expect(page.getByTestId('schema-canvas')).toBeVisible();
 }
 

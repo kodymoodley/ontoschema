@@ -54,7 +54,7 @@ export function Inspector() {
   }
 
   return (
-    <aside className={styles.right} aria-label="Inspector">
+    <aside id="ontoschema-inspector" className={styles.right} aria-label="Inspector">
       <div className={styles.inspectorTabs}>
         <Tabs options={TABS} value={tab} onChange={setTab} ariaLabel="Inspector section" />
       </div>
