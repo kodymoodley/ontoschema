@@ -166,10 +166,21 @@ src/
   serialization/          Pure. Renders Triple[] as Turtle, RDF/XML and JSON-LD, plus the
                           download descriptors. Depends only on the domain model.
 
-  projectstore/           App state. Zustand store owning *when* the ontology changes,
-                          undo/redo, selection, pending connections, project CRUD, and
-                          localStorage persistence. Also owns dragpayload.ts, the drag
-                          contract shared by the palette, the property pool and the canvas.
+  projectstore/           App state: owns *when* the ontology changes, while ontologymodel
+                          owns *how*.
+                            history.ts             PURE. Undo stack and its transitions,
+                                                   including keystroke coalescing.
+                            workspace.ts           PURE. Which projects exist and which is
+                                                   open, with the always-one invariant.
+                            editing.ts             The single path by which the ontology
+                                                   changes: record history, stamp, persist.
+                            ontologyactions.ts     Editing the schema.
+                            interactionactions.ts  Selection, view, pending connections.
+                            workspaceactions.ts    Projects, undo/redo.
+                            persistence.ts         localStorage and document revival.
+                            dragpayload.ts         The drag contract shared by the palette,
+                                                   the property pool and the canvas.
+                            store.ts               Composition only.
 
   designsystem/           Leaf UI primitives and design tokens. Imports nothing from src/.
 
