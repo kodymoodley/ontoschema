@@ -61,6 +61,19 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
+### Start from an example
+
+The quickest way in is **Examples** in the header. Each opens as its own project, so anything
+you are already working on is left alone.
+
+| Example                 | Classes | What it shows                                                                                                             |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Music library**       | 13      | The gentlest start — everyone knows the domain, so only the modelling is new. `performedBy` covers both studio and stage. |
+| **Recipes and cooking** | 13      | The most useful habit there is: when a link needs its own facts (_how much_ flour), it needs its own class.               |
+| **Vehicle dealership**  | 15      | A branching taxonomy, and `offeredBy` drawn from three vehicle kinds — watch `rdfs:domain` disappear in the Export tab.   |
+| **University**          | 14      | The catalogue-versus-offering distinction, and a course that is a prerequisite of a course.                               |
+| **Insurance firm**      | 15      | A `Party` abstraction over people and companies, and one relation whose range differs per policy type.                    |
+
 ### The five-minute tour
 
 1. Drag **Class** from the palette onto the canvas twice; double-click each header to name them
@@ -166,6 +179,10 @@ src/
   serialization/          Pure. Renders Triple[] as Turtle, RDF/XML and JSON-LD, plus the
                           download descriptors. Depends only on the domain model.
 
+  examplelibrary/         Pure. The ready-made schemas, written as declarative specs and
+                          built through the ordinary mutation API — so an example can only
+                          ever be a state the editor could have produced by hand.
+
   projectstore/           App state: owns *when* the ontology changes, while ontologymodel
                           owns *how*.
                             history.ts             PURE. Undo stack and its transitions,
@@ -211,6 +228,7 @@ These are **enforced by ESLint**, not just documented. `npm run lint` fails on a
 | `annotationvocabulary/` | nothing from `src/`                                                                           | everything else                                      |
 | `ontologymodel/`        | `annotationvocabulary/`                                                                       | React, React Flow, zustand, the store, any UI module |
 | `serialization/`        | `ontologymodel/`, `annotationvocabulary/`                                                     | React, the store, any UI module                      |
+| `examplelibrary/`       | `ontologymodel/`, `annotationvocabulary/`                                                     | React, the store, any UI module                      |
 | `designsystem/`         | nothing from `src/`                                                                           | every other `src/` module                            |
 | `projectstore/`         | `ontologymodel/`, `annotationvocabulary/`                                                     | any UI module                                        |
 | UI modules              | `ontologymodel/`, `projectstore/`, `designsystem/`, `annotationvocabulary/`, `serialization/` | **each other**, and `appshell/`                      |
