@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -21,7 +21,11 @@ import {
 } from '../projectstore';
 import styles from './canvas.module.css';
 import { NODE_TYPE, schemaEdges, schemaNodes } from './graphmodel';
-import { nextFreePosition } from './layout';
+import { focusZoom, nextFreePosition } from './layout';
+
+/** How far the viewport may be pushed, including by a focus request. */
+const MIN_ZOOM = 0.2;
+const MAX_ZOOM = 4;
 
 /**
  * The free-form schema surface: classes carrying their attributes, and relations drawn
@@ -39,7 +43,8 @@ interface SchemaCanvasProps {
 function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const ontology = useOntology();
   const selection = useSelection();
-  const { screenToFlowPosition, getIntersectingNodes } = useReactFlow();
+  const { screenToFlowPosition, getIntersectingNodes, getNode, setCenter } = useReactFlow();
+  const surface = useRef<HTMLDivElement>(null);
 
   const select = useProjectStore((state) => state.select);
   const createClass = useProjectStore((state) => state.createClass);
@@ -138,6 +143,35 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
     [beginConnection],
   );
 
+  /*
+   * A class node has asked to be brought into focus. It is answered here rather than in the
+   * node because moving the viewport is the canvas's business, and the two modules may not
+   * import one another.
+   */
+  const focusRequest = useProjectStore((state) => state.focusRequest);
+  const clearFocus = useProjectStore((state) => state.clearFocus);
+  useEffect(() => {
+    if (!focusRequest) return;
+    const node = getNode(focusRequest);
+    const canvas = surface.current?.getBoundingClientRect();
+    clearFocus();
+    if (!node || !canvas) return;
+
+    const width = node.measured?.width ?? node.width ?? 0;
+    const height = node.measured?.height ?? node.height ?? 0;
+    if (width <= 0 || height <= 0) return;
+
+    void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
+      zoom: focusZoom({
+        node: { width, height },
+        canvas: { width: canvas.width, height: canvas.height },
+        minZoom: MIN_ZOOM,
+        maxZoom: MAX_ZOOM,
+      }),
+      duration: 400,
+    });
+  }, [focusRequest, clearFocus, getNode, setCenter]);
+
   const isEmpty = nodes.length === 0;
 
   // Fit only when opening a project that already has content. Auto-fitting as nodes appear
@@ -146,7 +180,7 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const [fitOnOpen] = useState(() => derivedNodes.length > 0);
 
   return (
-    <div className={styles.canvas} data-testid="schema-canvas">
+    <div className={styles.canvas} data-testid="schema-canvas" ref={surface}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -165,8 +199,8 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
           if (node.type === NODE_TYPE.ontologyClass) select({ kind: 'class', id: node.id });
         }}
         onPaneClick={() => select(null)}
-        minZoom={0.2}
-        maxZoom={2.5}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
         fitView={fitOnOpen}
         fitViewOptions={{ padding: 0.25, maxZoom: 1 }}
         defaultViewport={{ x: 24, y: 24, zoom: 1 }}

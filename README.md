@@ -92,6 +92,16 @@ you are already working on is left alone.
 To see reuse: open the **Data props** tab in the left panel and drag `price` onto another class. The
 list shows it used `2×`, and the export drops its `rdfs:domain` while gaining a second SHACL shape.
 
+### Gestures on the canvas
+
+| Gesture                                             | What it does                                                       |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| Drag from a class's right edge to another class     | Draws a relation, then asks which object property it is            |
+| **Double-click (or double-tap) a class**            | Brings it into focus: centred, filling about a third of the canvas |
+| Double-click a class **header**                     | Renames it in place                                                |
+| Drag a datatype property from the pool onto a class | Reuses that property there                                         |
+| Delete / Backspace                                  | Removes the selection, unless a dialog is open or you are typing   |
+
 ### Scripts
 
 | Command                             | What it does                                                            |

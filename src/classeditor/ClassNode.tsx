@@ -30,6 +30,7 @@ export function ClassNode({ data, selected }: NodeProps) {
   const { entity, attributes, superClassNames } = data as unknown as ClassNodeData;
   const renameClass = useProjectStore((state) => state.renameClassById);
   const select = useProjectStore((state) => state.select);
+  const focusClass = useProjectStore((state) => state.focusClass);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(entity.localName);
@@ -55,6 +56,9 @@ export function ClassNode({ data, selected }: NodeProps) {
       data-class-node-id={entity.id}
       data-class-name={entity.localName}
       data-testid={`class-node-${entity.localName}`}
+      // Double-click, or double-tap, anywhere but the header brings this class into focus.
+      // The header keeps the gesture for renaming in place and stops it propagating here.
+      onDoubleClick={() => focusClass(entity.id)}
     >
       {/* Relations: target on the left, source on the right, so dragging left-to-right
           reads as domain -> range, which is the direction the relation is stored in. */}
@@ -82,7 +86,8 @@ export function ClassNode({ data, selected }: NodeProps) {
 
       <header
         className={styles.header}
-        onDoubleClick={() => {
+        onDoubleClick={(event) => {
+          event.stopPropagation();
           setDraft(entity.localName);
           setEditing(true);
         }}

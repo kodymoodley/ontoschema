@@ -79,6 +79,44 @@ export function layoutTaxonomyModule(
   };
 }
 
+/** How much of the canvas a class should fill when it is brought into focus. */
+export const FOCUS_AREA_FRACTION = 0.35;
+
+export interface FocusZoomInput {
+  node: { width: number; height: number };
+  canvas: { width: number; height: number };
+  minZoom: number;
+  maxZoom: number;
+  /** Share of the canvas *area* the node should occupy, 0–1. */
+  areaFraction?: number;
+}
+
+/**
+ * The zoom at which a node fills the requested share of the canvas.
+ *
+ * Area rather than width, because a class box grows downwards as attributes are added: a
+ * tall class and a short one both need to end up feeling the same size on screen, and
+ * matching widths would leave the tall one overflowing.
+ *
+ * Scaling by `z` multiplies area by `z²`, so `z = √(fraction × canvasArea / nodeArea)`.
+ */
+export function focusZoom({
+  node,
+  canvas,
+  minZoom,
+  maxZoom,
+  areaFraction = FOCUS_AREA_FRACTION,
+}: FocusZoomInput): number {
+  const nodeArea = node.width * node.height;
+  const canvasArea = canvas.width * canvas.height;
+  // Before the first measurement a node can report zero size; leaving the zoom alone beats
+  // dividing by zero and flinging the viewport to infinity.
+  if (nodeArea <= 0 || canvasArea <= 0) return 1;
+
+  const ideal = Math.sqrt((areaFraction * canvasArea) / nodeArea);
+  return Math.min(Math.max(ideal, minZoom), maxZoom);
+}
+
 /**
  * Grid placement for newly created schema nodes, so dropping several classes in a row does
  * not stack them on top of one another when no drop position is known.

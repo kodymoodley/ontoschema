@@ -18,6 +18,7 @@ beforeEach(() => {
     view: 'schema',
     history: { past: [], future: [], lastCoalesceKey: null, lastCoalesceAt: 0 },
     pendingConnection: null,
+    focusRequest: null,
   });
 });
 
