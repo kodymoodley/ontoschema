@@ -1,5 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { STORAGE_KEY, clearWorkspace, useProjectStore } from '../../src/projectstore';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  STORAGE_KEY,
+  clearWorkspace,
+  flushWorkspace,
+  useProjectStore,
+} from '../../src/projectstore';
 import {
   attributeUsagesOfClass,
   classForest,
@@ -487,12 +492,55 @@ describe('multiple projects', () => {
 });
 
 describe('persistence', () => {
-  it('writes the workspace to localStorage as edits happen', () => {
+  it('writes the whole edited workspace to localStorage', () => {
     buildAutomotiveProject();
+    flushWorkspace();
+
     const raw = globalThis.localStorage.getItem(STORAGE_KEY);
     expect(raw).toContain('Automotive Schema');
     expect(raw).toContain('offeredBy');
     expect(raw).toContain('usages');
+  });
+
+  it('batches the writes rather than storing on every edit', () => {
+    const { car } = buildAutomotiveProject();
+    flushWorkspace();
+
+    const writes: string[] = [];
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation((_key, value) => {
+      writes.push(String(value));
+    });
+
+    // A rename commits on every keystroke, which is what made this expensive.
+    for (const name of ['A', 'Au', 'Aut', 'Auto', 'Autom']) store().renameClassById(car, name);
+    expect(writes, 'edits should not each reach storage').toEqual([]);
+
+    flushWorkspace();
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toContain('Autom');
+
+    setItem.mockRestore();
+  });
+
+  it('writes immediately when a project is created, so a commit point is never pending', () => {
+    buildAutomotiveProject();
+    flushWorkspace();
+
+    store().newProject('Second schema');
+    expect(globalThis.localStorage.getItem(STORAGE_KEY)).toContain('Second schema');
+  });
+
+  it('writes what is outstanding when the page is hidden', () => {
+    const { car } = buildAutomotiveProject();
+    flushWorkspace();
+    store().renameClassById(car, 'Automobile');
+
+    expect(globalThis.localStorage.getItem(STORAGE_KEY)).not.toContain('Automobile');
+
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(globalThis.localStorage.getItem(STORAGE_KEY)).toContain('Automobile');
   });
 
   it('survives a corrupt stored workspace instead of failing to start', async () => {

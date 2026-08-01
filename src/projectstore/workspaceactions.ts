@@ -54,13 +54,13 @@ export function createWorkspaceActions(
       if (!moved) return state;
 
       const workspace = withRestoredOntology(state, moved.ontology);
-      saveWorkspace(workspace);
+      saveWorkspace(workspace, { immediate: true });
       return { ...state, ...workspace, selection: null, history: moved.history };
     });
   }
 
   function openWorkspace(next: { projects: Project[]; activeProjectId: string | null }): void {
-    saveWorkspace(next);
+    saveWorkspace(next, { immediate: true });
     set((state) => ({ ...state, ...next, ...freshSession }));
   }
 
@@ -82,7 +82,7 @@ export function createWorkspaceActions(
       const project = createProject(name);
       set((state) => {
         const next = addProject(state, project);
-        saveWorkspace(next);
+        saveWorkspace(next, { immediate: true });
         return { ...state, ...next, ...freshSession, view: 'schema' };
       });
       return project.id;
