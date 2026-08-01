@@ -7,6 +7,7 @@ export type { ProjectStoreState, CanvasView, PendingConnection } from './store';
 export {
   STORAGE_KEY,
   clearWorkspace,
+  flushWorkspace,
   loadWorkspace,
   projectFromFile,
   projectToFile,

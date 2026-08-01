@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { buildLarge } from '../fixtures/scenarios';
+import { SAVE_DELAY_MS } from '../../src/projectstore/savequeue';
 import { openApp, selectClass } from './ontoschema';
 import { seedWorkspace } from './seedWorkspace';
 import {
@@ -19,9 +20,9 @@ import {
  * is visible even while a budget still passes. Where a ceiling records a cost that ought to
  * come down, it says so, and the commit that brings it down tightens it.
  *
- * Measured on this machine at 200 classes: 405ms to open, a steady 16.7ms frame through pan
- * and zoom, 67ms of main thread lost to one keystroke, and 194kB of JSON written to storage
- * per keystroke.
+ * Measured on this machine at 200 classes: around 300ms to open, a steady 16.7ms frame through
+ * pan and zoom, 50ms of main thread lost to one keystroke, and one batched write of 194kB per
+ * burst of typing rather than one per character.
  */
 
 const CLASS_COUNT = 200;
@@ -115,12 +116,16 @@ test('a single edit does not stall the main thread', async ({ page }) => {
   console.log(`one keystroke: worst frame gap ${report.worst.toFixed(1)}ms`);
   await expect(page.locator('[data-class-name="Class0X"]')).toBeVisible();
 
-  // 67ms is four dropped frames for one character, and this ceiling records that rather than
-  // blessing it. Lower it once the edit path stops serialising the workspace on every stroke.
-  expect(report.worst).toBeLessThan(250);
+  /*
+   * Was 67ms before writes were batched, and is 50ms now — better, but still three frames for
+   * one character, so the ceiling still records a cost rather than blessing it. The remaining
+   * time is the derive and re-render, not storage; lower this again when the ontology index
+   * stops being rebuilt three times per change.
+   */
+  expect(report.worst).toBeLessThan(150);
 });
 
-test('reports what a rename costs in storage writes', async ({ page }) => {
+test('batches storage writes instead of one per keystroke', async ({ page }) => {
   await recordStorageWrites(page);
   await openApp(page);
   await expect(page.locator('[data-class-node-id]')).toHaveCount(CLASS_COUNT);
@@ -131,19 +136,21 @@ test('reports what a rename costs in storage writes', async ({ page }) => {
   await page.getByLabel('Class local name').pressSequentially('Renamed', { delay: 30 });
   await expect(page.locator('[data-class-name="Class0Renamed"]')).toBeVisible();
 
+  // Typing is not a moment to serialise 194kB of workspace, seven times over.
+  expect((await storageWrites(page)).slice(before), 'typing should not reach storage').toHaveLength(
+    0,
+  );
+
+  await page.waitForTimeout(SAVE_DELAY_MS * 2);
   const writes = (await storageWrites(page)).slice(before);
   const bytes = writes.reduce((total, write) => total + write.bytes, 0);
   console.log(
-    `rename of 7 characters: ${writes.length} storage writes, ` +
+    `rename of 7 characters: ${writes.length} storage write(s) once typing stopped, ` +
       `${(bytes / 1024).toFixed(0)}kB serialised in total`,
   );
 
-  /*
-   * One write per keystroke, each serialising every project in the workspace: 194kB of JSON
-   * for a single character. Recorded, not blessed — both ceilings come down when the edit
-   * path is debounced and narrowed to the project that changed.
-   */
-  expect(writes.length).toBeGreaterThan(0);
-  expect(writes.length).toBeLessThanOrEqual(10);
-  expect(bytes).toBeLessThan(3 * 1024 * 1024);
+  // One write, carrying the final state rather than an intermediate one.
+  expect(writes).toHaveLength(1);
+  expect(bytes).toBeLessThan(512 * 1024);
+  expect(await page.evaluate(() => window.localStorage.length)).toBeGreaterThan(0);
 });
