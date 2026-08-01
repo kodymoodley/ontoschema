@@ -10,7 +10,11 @@ import type { Workspace } from './workspace';
  * swapping in a real backend later means replacing this file and nothing else.
  */
 
-const STORAGE_KEY = 'ontoschema.workspace.v1';
+/**
+ * Exported so that tests seeding or inspecting a stored workspace name it through the module
+ * that owns it, rather than repeating the literal and drifting from it.
+ */
+export const STORAGE_KEY = 'ontoschema.workspace.v1';
 
 function storage(): Storage | null {
   try {
