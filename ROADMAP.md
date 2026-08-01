@@ -65,12 +65,12 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 
 ## Export and interop
 
-| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Size |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Mermaid diagram export** — asked for in the original brief and still not built. The subclass edge already draws the hollow triangle Mermaid uses, so the visual vocabulary matches. I love the neatness of the taxonomy diagram tab but no non-subclass edges are there which could be the reason they look so neat. _Split out from PlantUML and sized down: it is a text serializer over the model the four existing writers already share, and adds no dependency._                                                                                                                                                                                                                                                                                                                                                                                                            | S    |
-| **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | S    |
-| **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. **Risk: most vocabulary URLs do not serve CORS headers, so a browser-only fetch will fail for a good number of them.** Needs a design pass on that before any code — bundled snapshots of the common vocabularies may be the honest answer. | L    |
-| ~~**SHACL conversion and export**~~ — _already built._ Every usage becomes a named `sh:PropertyShape`, several targets on one path become a single `sh:or`, and the Export panel can switch the OWL/RDFS axioms off. Unticking axioms and downloading `.ttl` already gives a shapes-only Turtle file. See [Two export layers](README.md#two-export-layers). What is missing is not the export but the **vocabulary of constraints** — see the note below.                                                                                                                                                                                                                                                                                                                                                                                                                           | —    |
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Size |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Mermaid diagram export** — asked for in the original brief and still not built. The subclass edge already draws the hollow triangle Mermaid uses, so the visual vocabulary matches. I love the neatness of the taxonomy diagram tab but no non-subclass edges are there which could be the reason they look so neat. _Split out from PlantUML and sized down: it is a text serializer over the model the four existing writers already share, and adds no dependency._                                                                                                                                                                                                                                                                                                               | S    |
+| **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | S    |
+| **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. _Design settled: no proxy, and no fetch on the critical path — see [Resolving external vocabularies](#resolving-external-vocabularies) below._ | L    |
+| ~~**SHACL conversion and export**~~ — _already built._ Every usage becomes a named `sh:PropertyShape`, several targets on one path become a single `sh:or`, and the Export panel can switch the OWL/RDFS axioms off. Unticking axioms and downloading `.ttl` already gives a shapes-only Turtle file. See [Two export layers](README.md#two-export-layers). What is missing is not the export but the **vocabulary of constraints** — see the note below.                                                                                                                                                                                                                                                                                                                              | —    |
 
 > **Decided: deferred, not rejected.** A richer SHACL constraint vocabulary — `sh:minCount`,
 > `sh:maxCount`, `sh:pattern`, `sh:in`, datatype facets — is real and would be useful, but adding
@@ -85,6 +85,33 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 >
 > Nothing is blocked in the meantime. Named shapes stay addressable, so whichever way it goes, the
 > constraints attach to shapes that already exist.
+
+### Resolving external vocabularies
+
+A CORS proxy is not needed, and neither is a desktop app. The trick is that **`owl:imports` never
+depends on a fetch**: the export only needs the IRI, which is one triple the user has typed.
+Resolving that IRI to a browsable list of terms is a separate, best-effort convenience, and it has
+a manual path that always works. Three sources, in order of how much they can be relied on:
+
+1. **The user supplies the file** — drop a `.ttl`, `.rdf` or `.owl` onto the app, or paste it. No
+   network, no CORS, works offline and behind a VPN. This is the primary path, not the fallback:
+   in finance and insurance the vocabulary that matters is often internal and was never on a
+   public URL. The project open/save plumbing already does most of this.
+2. **Bundled snapshots of the common vocabularies** — `dcterms`, `skos`, `foaf`, `prov`, `org`,
+   `dcat`, `qb`. Each is tens of kilobytes of Turtle and has been stable for years. Lazy-loaded
+   chunks, so the initial bundle is untouched and the size budget still holds. Covers the great
+   majority of real reuse with no network at all. `schema.org` is the exception at a couple of
+   megabytes and would need a pruned index — IRIs, labels and comments — rather than the full file.
+3. **Fetch, where it happens to work** — some hosts do send `Access-Control-Allow-Origin`. Worth
+   _testing_ rather than designing around: asking for `text/turtle` triggers a preflight that more
+   servers fail than fail a plain `GET`, and any third-party vocabulary index is also a
+   third-party uptime dependency. A nice-to-have on top of 1 and 2, never the thing they rest on.
+
+**Keeping the desktop option cheap.** The codebase already has the right pattern for this:
+`projectstore/persistence.ts` is the only file that knows storage exists. Adding one more adapter
+— the only file that knows fetching exists — means a desktop shell later is a swap of two small
+modules, not a rewrite. That costs nothing now and buys the whole decision later. See
+[Staying a web app](#staying-a-web-app) under the non-goals for why the decision is _later_.
 
 ## Canvas and readability
 
@@ -126,6 +153,29 @@ UI-free, and `projectstore/persistence.ts` is the only file that knows storage e
 - OWL restrictions, unions, intersections, property chains
 - Reasoning of any kind
 - Server-side persistence, authentication, real-time collaboration
+
+### Staying a web app
+
+Packaging as a desktop app is deferred, and specifically **not** something CORS should decide —
+that is solvable in the browser without a proxy, as above, and is the weakest possible reason to
+change how the tool is delivered.
+
+What would genuinely justify a desktop build is filesystem and local-network access: `Ctrl`+`S`
+straight to `schema.ttl` rather than a downloads-folder dance, no `localStorage` quota, and
+reaching a GraphDB on the local network. None of those are on this roadmap, and the first is
+partly available already — the File System Access API gives a persistent file handle in Chromium
+browsers, with the existing download path as the fallback elsewhere.
+
+Against it: the touch and mobile work becomes dead weight; code signing, auto-update and a
+cross-platform build matrix are real ongoing costs for a deliberately lightweight tool; and "open
+a URL, nothing to install" is a genuine advantage for something whose stated gap is that the
+alternatives are heavyweight. It is also a large new surface area during a phase that has just
+declared none.
+
+If it is ever done, **Tauri over Electron** — a system WebView and a small Rust host, single-digit
+megabytes rather than a hundred, and HTTP issued from the host process, where CORS does not apply
+at all. Either way it is a shell over the same built assets, which is why the adapter seam above
+is worth having.
 
 ---
 
