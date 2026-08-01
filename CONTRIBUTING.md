@@ -55,7 +55,32 @@ run for real. Mocking is for genuine externalities only.
   in it.
 - Comments explain **why**, not what. If a line needs a comment to say what it does, rename
   something instead.
-- Commit one logical change at a time, with a message that says why.
+
+Above all of these: **separation of concerns, clean modularity, and minimal dependencies between
+files and modules.** The table above is that principle written down and made enforceable; when a
+judgement call is not covered by it, decide the way that leaves fewer edges in the graph.
+
+## Commits, branches and pull requests
+
+One commit is **one cohesive change**. Not two small ones that happened to be in flight together,
+and not a refactor riding along with a fix.
+
+| Guide                              | Target    |
+| ---------------------------------- | --------- |
+| Files touched                      | 2–3       |
+| Lines of code changed              | under 50  |
+| Distinct changes in one commit     | exactly 1 |
+| Distinct features in one branch/PR | exactly 1 |
+
+The file and line numbers are a smell test, not a rule to game — a rename that touches nine files
+is still one change, and prose or generated files are not code. But if a diff is over the guide
+because it is doing two things, it is two commits. Split it.
+
+The one that never bends is the last two rows. A branch is one feature; a pull request is one
+feature. If reviewing it means holding two unrelated ideas at once, it should have been two.
+
+Write the message to explain **why**, in the imperative, with the reasoning below a blank line.
+The diff already says what changed.
 
 ## Before you open a pull request
 
