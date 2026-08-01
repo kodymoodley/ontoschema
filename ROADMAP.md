@@ -115,23 +115,38 @@ So the common vocabularies mostly _are_ reachable from a browser. But note what 
 or any vocabulary on a company server — no amount of client-side cleverness helps, and that is
 precisely the case the tool cannot afford to be brittle about.
 
+#### Which vocabularies ship
+
+`dcterms`, `dcat`, `prov-o`, `foaf`, `org`, `vCard`, `schema.org`. FIBO is a candidate for later.
+
+Deliberately **not SKOS**: it belongs to a different job. SKOS models how existing terms are
+organised and aligned — a meta level of labels and concept schemes — whereas an OWL/RDFS schema
+models the domain itself, the things the instances are. Reusing SKOS _terms_ in a domain schema
+invites exactly that confusion. (This is about SKOS as a modelling vocabulary. Its documentation
+properties are a separate question — see the note under _Modelling power_.)
+
+The set as a whole is chosen to cover what a business domain schema actually reaches for: people
+and organisations (`foaf`, `org`, `vCard`), general-purpose types (`schema.org`), dataset and
+catalogue description (`dcat`, `dcterms`), and provenance (`prov-o`).
+
 #### The design
 
 A repo script, `npm run vocab:refresh`, fetches each vocabulary **in Node, where CORS does not
-exist**, parses it with whatever parser is convenient as a dev-only dependency, and writes a small
-normalised index: IRI, label, comment, and whether the term is a class or a property. The app ships
-those indexes as lazy chunks and reads nothing else. A scheduled CI job re-runs the script and
-opens a pull request when a vocabulary has changed.
+exist**, parses it, and writes a small normalised index: IRI, label, comment, and whether the term
+is a class or a property. The app ships those indexes as lazy chunks and reads nothing else. A
+scheduled CI job re-runs the script and opens a pull request when a vocabulary has changed.
 
 This answers the staleness objection head on: updates ripple automatically, they just arrive
 through a release rather than at runtime, and they arrive reviewed. In practice the drift is small
-anyway — SKOS has been unchanged since 2009 and PROV-O since 2013 — but the job means nobody has
-to rely on that.
+anyway — PROV-O has been unchanged since 2013 — but the job means nobody has to rely on that.
 
 Three further things fall out of moving the fetch to build time:
 
-- **Syntax stops mattering.** SKOS is published as RDF/XML and its `.ttl` URL returns a `300`; at
-  build time that is a parser choice, not a browser problem.
+- **Syntax stops mattering.** Vocabularies are published in whatever their authors chose, and at
+  build time that is a parser choice rather than a browser problem. `n3`'s `Parser` is agreed for
+  Turtle and N-Triples, and it is already a runtime dependency for the writer, so it costs nothing;
+  anything published only as RDF/XML gets a dev-only parser in the refresh script, never in the
+  shipped bundle.
 - **Size stops mattering.** The index is a fraction of the source — schema.org is a couple of
   megabytes of Turtle and perhaps a couple of hundred kilobytes of index — so the bundle budget
   survives and `schema.org` needs no special case.
