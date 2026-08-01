@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { clearWorkspace, useProjectStore } from '../../src/projectstore';
+import { STORAGE_KEY, clearWorkspace, useProjectStore } from '../../src/projectstore';
 import {
   attributeUsagesOfClass,
   classForest,
@@ -489,14 +489,14 @@ describe('multiple projects', () => {
 describe('persistence', () => {
   it('writes the workspace to localStorage as edits happen', () => {
     buildAutomotiveProject();
-    const raw = globalThis.localStorage.getItem('ontoschema.workspace.v1');
+    const raw = globalThis.localStorage.getItem(STORAGE_KEY);
     expect(raw).toContain('Automotive Schema');
     expect(raw).toContain('offeredBy');
     expect(raw).toContain('usages');
   });
 
   it('survives a corrupt stored workspace instead of failing to start', async () => {
-    globalThis.localStorage.setItem('ontoschema.workspace.v1', '{ this is not json');
+    globalThis.localStorage.setItem(STORAGE_KEY, '{ this is not json');
     const { loadWorkspace } = await import('../../src/projectstore');
     const workspace = loadWorkspace();
     expect(workspace.projects.length).toBeGreaterThan(0);
