@@ -88,30 +88,77 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 
 ### Resolving external vocabularies
 
-A CORS proxy is not needed, and neither is a desktop app. The trick is that **`owl:imports` never
-depends on a fetch**: the export only needs the IRI, which is one triple the user has typed.
-Resolving that IRI to a browsable list of terms is a separate, best-effort convenience, and it has
-a manual path that always works. Three sources, in order of how much they can be relied on:
+**Decided: vocabularies are bundled, and refreshed at build time — the browser never fetches one.**
+Uploading or pasting a vocabulary file is ruled out.
 
-1. **The user supplies the file** — drop a `.ttl`, `.rdf` or `.owl` onto the app, or paste it. No
-   network, no CORS, works offline and behind a VPN. This is the primary path, not the fallback:
-   in finance and insurance the vocabulary that matters is often internal and was never on a
-   public URL. The project open/save plumbing already does most of this.
-2. **Bundled snapshots of the common vocabularies** — `dcterms`, `skos`, `foaf`, `prov`, `org`,
-   `dcat`, `qb`. Each is tens of kilobytes of Turtle and has been stable for years. Lazy-loaded
-   chunks, so the initial bundle is untouched and the size budget still holds. Covers the great
-   majority of real reuse with no network at all. `schema.org` is the exception at a couple of
-   megabytes and would need a pruned index — IRIs, labels and comments — rather than the full file.
-3. **Fetch, where it happens to work** — some hosts do send `Access-Control-Allow-Origin`. Worth
-   _testing_ rather than designing around: asking for `text/turtle` triggers a preflight that more
-   servers fail than fail a plain `GET`, and any third-party vocabulary index is also a
-   third-party uptime dependency. A nice-to-have on top of 1 and 2, never the thing they rest on.
+The premise that makes this safe is that **`owl:imports` never depends on a fetch**. The export
+needs one triple containing an IRI the user typed, and that works whether or not anything was
+resolved. Everything below is only about the _convenience_ of browsing a vocabulary's terms to
+pick the ones worth reusing.
 
-**Keeping the desktop option cheap.** The codebase already has the right pattern for this:
-`projectstore/persistence.ts` is the only file that knows storage exists. Adding one more adapter
-— the only file that knows fetching exists — means a desktop shell later is a swap of two small
-modules, not a rewrite. That costs nothing now and buys the whole decision later. See
-[Staying a web app](#staying-a-web-app) under the non-goals for why the decision is _later_.
+#### What was measured, not assumed
+
+Probed 2026-08-01 with a cross-origin `Origin` header:
+
+| Vocabulary              | Host                  | Cross-origin?                           | Served as                             |
+| ----------------------- | --------------------- | --------------------------------------- | ------------------------------------- |
+| SKOS, PROV-O, ORG, DCAT | `w3.org`              | yes, Origin reflected                   | RDF/XML for SKOS, Turtle for the rest |
+| `dcterms`               | `purl.org`            | yes, `*`                                | HTML by default                       |
+| FOAF                    | `xmlns.com`           | yes, `*`                                | HTML by default                       |
+| schema.org              | `schema.org`          | yes, `*`                                | Turtle                                |
+| FIBO                    | `spec.edmcouncil.org` | yes, `*`                                | Turtle                                |
+| OMG Commons             | `omg.org`             | **no header**                           | RDF/XML                               |
+| LOV term search API     | `lov.linkeddata.es`   | yes, `*` — but **502 during the probe** | —                                     |
+
+So the common vocabularies mostly _are_ reachable from a browser. But note what that means:
+**nothing here circumvents CORS.** Those hosts simply allow it. Where a host does not — OMG above,
+or any vocabulary on a company server — no amount of client-side cleverness helps, and that is
+precisely the case the tool cannot afford to be brittle about.
+
+#### The design
+
+A repo script, `npm run vocab:refresh`, fetches each vocabulary **in Node, where CORS does not
+exist**, parses it with whatever parser is convenient as a dev-only dependency, and writes a small
+normalised index: IRI, label, comment, and whether the term is a class or a property. The app ships
+those indexes as lazy chunks and reads nothing else. A scheduled CI job re-runs the script and
+opens a pull request when a vocabulary has changed.
+
+This answers the staleness objection head on: updates ripple automatically, they just arrive
+through a release rather than at runtime, and they arrive reviewed. In practice the drift is small
+anyway — SKOS has been unchanged since 2009 and PROV-O since 2013 — but the job means nobody has
+to rely on that.
+
+Three further things fall out of moving the fetch to build time:
+
+- **Syntax stops mattering.** SKOS is published as RDF/XML and its `.ttl` URL returns a `300`; at
+  build time that is a parser choice, not a browser problem.
+- **Size stops mattering.** The index is a fraction of the source — schema.org is a couple of
+  megabytes of Turtle and perhaps a couple of hundred kilobytes of index — so the bundle budget
+  survives and `schema.org` needs no special case.
+- **The app gains no runtime dependency at all.** No network code, no cache, no failure modes.
+
+An optional refresh-at-runtime button could be layered on later for the hosts that allow it, but
+it would be a convenience over a working offline path, never the path itself.
+
+#### The gap this leaves, and it is a real one
+
+With file upload ruled out, a vocabulary that is neither bundled nor CORS-permitted — an internal
+one on a company server, anything on `omg.org` — has **no term browser**. The user can still type
+its IRI and it exports correctly; they just get no discovery for it. That is a coherent product
+line ("we help you reuse the vocabularies we know about, and you can import anything"), but it is
+worth naming rather than discovering later. Widening the bundled set is the lever, and adding to it
+is a one-line change to the refresh script.
+
+#### Correction
+
+An earlier note here claimed that asking for `text/turtle` triggers a CORS preflight. It does not:
+`Accept` is a safelisted request header, so a `GET` carrying it is a simple request. The claim was
+wrong and is not a reason to avoid content negotiation.
+
+**Keeping the desktop option cheap.** The codebase already has the right pattern:
+`projectstore/persistence.ts` is the only file that knows storage exists. If runtime fetching is
+ever added, giving it one adapter module of its own means a desktop shell later is a swap of two
+small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under the non-goals.
 
 ## Canvas and readability
 
