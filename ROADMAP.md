@@ -9,15 +9,51 @@ is the only part that claims to be a commitment.
 
 ---
 
+## What this tool is for
+
+this app is a linked data engineering workflow for building semantic layers for applications in a business context such as: legal compliance checking, RAGs for explainable chatbot responses, building validation, interoperability and provenance infrastructure for heterogeneous data in finance, insurance and pension firms. Often the common pattern is we need to build a lightweight terminology that we use to convert data from Excel, CSV, SQL etc. into RDF triples put them in graphdb with SHACL constraints, and we want to do SHACL validation to verify which data is acceptable or not. Or we want to harmonise data across departments and formats. Or we want to model exclusion and inclusion criteria for insurance coverage rules buried in free text PDF documents in some sort of way that using linked or semantic web technologies. I noticed a gap that ontology editors are either proprietary or very dated, or overly feature-packed with steep learning curve, I wanted a lightweight schema editor to build RDF/OWL vocabularies and schemas which can be used in semantic data engineering workflows.
+
+---
+
 ## Next up
 
-1. SHACL constraint vocabulary — **pending a decision**, see the flagged note under _Export and interop_
-2. Multiple superclasses through the UI
-3. `owl:imports` and selective term reuse
+**Nothing new until the core is solid.** The current phase is hardening what is already here —
+schema editing that is fast, stable and predictable at real sizes — and the bar for that is
+written down in [Hardening the core](#hardening-the-core). Feature work resumes after it.
+
+1. Hardening the core, to the definition of done below
+2. Multiple superclasses through the UI — the one modelling gap that is a defect, not an addition
+3. Mermaid export
 
 The reasoning is in [Proposed running order](#proposed-running-order) at the foot of the file.
 
 ---
+
+## Hardening the core
+
+The tool should do one thing completely rather than several things adequately. Before any new
+surface area, schema editing itself has to be robust, stable and responsive at the sizes real
+work reaches. This section is the current phase.
+
+**Definition of done** — the phase ends when all of these hold, each proved by a test that runs
+in `npm run verify`:
+
+| Bar                                                                                        | How it is proved                                            |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| A 200-class schema opens, pans, zooms and edits without a dropped frame                    | e2e timing against `buildLarge(200)`                        |
+| No edit blocks the main thread for more than one frame                                     | a measured budget in the same test                          |
+| A long random editing session leaves the model self-consistent, and undo returns it intact | seeded fuzz over the store, extending the existing harness  |
+| Every gesture has a keyboard equivalent                                                    | component tests, plus axe on each panel                     |
+| A crash loses no work                                                                      | the error boundary restores the workspace, not just reloads |
+
+| Item                                                                                                                                                                                                                                                                                          | Size |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Measure the canvas and store at scale** — `buildLarge(150–200)` already exercises the model and the serializers, but nothing above them. The canvas and the store have never been measured at that size, so the first task is to find out, not to optimise.                                 | S    |
+| **Stop writing the whole workspace on every keystroke** — `editing.ts` calls `saveWorkspace` on every edit, and that `JSON.stringify`s _every project_ into `localStorage` synchronously. Coalesced typing makes it once per character. Debounce it, and write only the project that changed. | S    |
+| **Build the ontology index once per change, not three times** — `schemaNodes`, `schemaEdges` and the taxonomy each call `indexOntology` independently, so every edit rebuilds it three times over.                                                                                            | S    |
+| **Soak the editing session** — the seeded fuzz harness covers the pure model. Point it at the store instead: long random sessions of create, rename, connect, delete, undo, redo, asserting the invariants hold and that undoing everything returns the starting ontology.                    | M    |
+| **Keyboard equivalents for the mouse-only gestures** — re-parenting in the hierarchy tree and dropping a datatype property onto a class are both drag-only. A tool used all day needs both, and a gesture with no keyboard path is also a gesture with no cheap test.                         | M    |
+| **Recover rather than reload after a crash** — `ErrorBoundary` offers `window.location.reload()`. That is honest but lossy; the workspace is in `localStorage` and could be restored to the last good state instead.                                                                          | S    |
 
 ## Modelling power
 
@@ -29,52 +65,53 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 
 ## Export and interop
 
-| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Size |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Mermaid / PlantUML diagram export** — asked for in the original brief and still not built. The subclass edge already draws the hollow triangle these use, so the visual vocabulary matches. I love the neatness of the taxonomy diagram tab but no non-subclass edges are there which could be the reason they look so neat.                                                                                                                                                                                                                                                                                                          | M    |
-| **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. | L    |
-| ~~**SHACL conversion and export**~~ — _already built._ Every usage becomes a named `sh:PropertyShape`, several targets on one path become a single `sh:or`, and the Export panel can switch the OWL/RDFS axioms off. Unticking axioms and downloading `.ttl` already gives a shapes-only Turtle file. See [Two export layers](README.md#two-export-layers). What is missing is not the export but the **vocabulary of constraints** — see the note below.                                                                                                                                                                               | —    |
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Size |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Mermaid diagram export** — asked for in the original brief and still not built. The subclass edge already draws the hollow triangle Mermaid uses, so the visual vocabulary matches. I love the neatness of the taxonomy diagram tab but no non-subclass edges are there which could be the reason they look so neat. _Split out from PlantUML and sized down: it is a text serializer over the model the four existing writers already share, and adds no dependency._                                                                                                                                                                                                                                                                                                                                                                                                            | S    |
+| **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | S    |
+| **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. **Risk: most vocabulary URLs do not serve CORS headers, so a browser-only fetch will fail for a good number of them.** Needs a design pass on that before any code — bundled snapshots of the common vocabularies may be the honest answer. | L    |
+| ~~**SHACL conversion and export**~~ — _already built._ Every usage becomes a named `sh:PropertyShape`, several targets on one path become a single `sh:or`, and the Export panel can switch the OWL/RDFS axioms off. Unticking axioms and downloading `.ttl` already gives a shapes-only Turtle file. See [Two export layers](README.md#two-export-layers). What is missing is not the export but the **vocabulary of constraints** — see the note below.                                                                                                                                                                                                                                                                                                                                                                                                                           | —    |
 
-> **Flagged for your call.** The shapes we emit today say only _which class_ sits at the end of a
-> path. They cannot say `sh:minCount 1`, `sh:maxCount 1`, `sh:pattern`, `sh:in` or a datatype
-> facet — so a validator can check that a `Policy`'s `policyholder` is a `Person`, but not that it
-> has exactly one, nor that a `claimStatus` is one of four permitted values. For a pipeline whose
-> point is SHACL validation in GraphDB, and for modelling insurance inclusion and exclusion
-> criteria, that is a large gap.
+> **Decided: deferred, not rejected.** A richer SHACL constraint vocabulary — `sh:minCount`,
+> `sh:maxCount`, `sh:pattern`, `sh:in`, datatype facets — is real and would be useful, but adding
+> it now would dilute focus. This tool should be the best and most efficient **schema editor**
+> first: polished, robust, stable, responsive, properly tested. Constraint authoring is a second
+> job, and doing both adequately is worse than doing one completely.
 >
-> These constraints were dropped from the roadmap alongside the OWL items, but they are not OWL:
-> **SHACL is a validation vocabulary, not a logic**, and none of `sh:minCount`, `sh:in` or
-> `sh:pattern` implies any reasoning. They fit the stated intent squarely and do not cross the
-> "not a full OWL editor" line. Proposed as an **M**: a small number field and a values list in the
-> inspector, plus one clause in each of the three writers. Say the word and it goes in.
+> Revisit only once [Hardening the core](#hardening-the-core) is done, and then as an explicit
+> choice between a **SHACL submodule** inside OntoSchema and a **separate tool** that consumes the
+> exported vocabulary. The second is likelier to be right: the two have different users and
+> different cadences, and the export format is already the seam between them.
+>
+> Nothing is blocked in the meantime. Named shapes stay addressable, so whichever way it goes, the
+> constraints attach to shapes that already exist.
 
 ## Canvas and readability
 
-| Item                                                                                                                                                                                                  | Size |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Edge label collision avoidance** — a relation's label can park on top of an unrelated class. Straight edges between aligned classes pass over whatever is between them; the label makes it obvious. | M    |
-| **Tidy-up / auto-layout for the schema view** — the taxonomy view lays itself out with dagre; the schema view never does. A button, not automatic.                                                    | M    |
-| **Find and jump to an entity** — a search box or `Ctrl`+`K`. Already wanted at fifteen classes, which the examples reach.                                                                             | S    |
-| **Neighbourhood filter** — show one class and what it touches, hide the rest. The answer to a spaghetti diagram that no amount of layout fixes.                                                       | M    |
-| **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                              | M    |
-| **Stepped / orthogonal edges as an option** — now that each edge picks a side, right-angled routing is a small step and reads better for dense schemas.                                               | S    |
+| Item                                                                                                                                                                                                                                                                                                                                              | Size |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Edge label collision avoidance** — a relation's label can park on top of an unrelated class. Straight edges between aligned classes pass over whatever is between them; the label makes it obvious.                                                                                                                                             | M    |
+| **Tidy-up / auto-layout for the schema view** — the taxonomy view lays itself out with dagre; the schema view never does. A button, not automatic.                                                                                                                                                                                                | M    |
+| **Find and jump to an entity** — a search box or `Ctrl`+`K`. Already wanted at fifteen classes, which the examples reach.                                                                                                                                                                                                                         | S    |
+| **Subschema filter** — narrow the canvas to a chosen set of classes and relations, or to one class and what it touches, and hide the rest. The answer to a spaghetti diagram that no amount of layout fixes, and the only thing that actually scales. _Was listed twice: also appeared under Editing workflow as "filter schema for subschemas"._ | M    |
+| **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                                                                                                                                                                          | M    |
+| **Stepped / orthogonal edges as an option** — now that each edge picks a side, right-angled routing is a small step and reads better for dense schemas.                                                                                                                                                                                           | S    |
 
 ## Editing workflow
 
-| Item                                                                                                                                                                                                           | Size |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Multi-select** — box-select several classes, then move or delete them together.                                                                                                                              | M    |
-| **Duplicate a class** — with its attributes, as a starting point for a sibling.                                                                                                                                | S    |
-| **Filter schema for subschemas based on specified classes and relations involved** — helps deal with larger schemas to make them more manageable and navigatable.                                              | S    |
-| **Schema diffing feature (given two loaded schemas) to compute and generate changelog entries using keep a changelog standard** — helps deal with larger schemas to make them more manageable and navigatable. | S    |
+| Item                                                                                                                                                                                                                                                                                                                                     | Size |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Multi-select** — box-select several classes, then move or delete them together.                                                                                                                                                                                                                                                        | M    |
+| **Duplicate a class** — with its attributes, as a starting point for a sibling.                                                                                                                                                                                                                                                          | S    |
+| **Schema diffing (given two loaded schemas) to compute and generate changelog entries using the Keep a Changelog standard** — governance for a vocabulary that other teams depend on. Sized up from S: it needs two ontologies loaded at once, a structural diff that survives renames, and a mapping from diff to changelog categories. | L    |
 
 ## Housekeeping
 
-| Item                                                                                                                                     | Size |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Export and import a whole workspace** — save/open works per project; there is no way to move all of them between machines in one file. | S    |
-| **Undo across a project switch** — history is per session, and switching projects loses it silently.                                     | S    |
-| **Cross-tab safety** — two tabs on the same workspace both write `localStorage` and the last one wins.                                   | M    |
+| Item                                                                                                                                                                                                                                                                   | Size |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Export and import a whole workspace** — save/open works per project; there is no way to move all of them between machines in one file.                                                                                                                               | S    |
+| **Undo across a project switch** — history is per session, and switching projects loses it silently. Sized up from S: making it per-project means re-keying `history.ts` and deciding what a deleted project's history does.                                           | M    |
+| **Cross-tab safety** — two tabs on the same workspace both write `localStorage` and the last one wins. Worth splitting: _detecting_ it with a `storage` listener and warning is **S**; merging the two versions is **L**. Do the first, and probably never the second. | S    |
 
 ---
 
@@ -90,45 +127,56 @@ UI-free, and `projectstore/persistence.ts` is the only file that knows storage e
 - Reasoning of any kind
 - Server-side persistence, authentication, real-time collaboration
 
-Statement about apps intent and scope so you can know what features to suggest and what are out of scope and not keeping with the intent and vision: this app is a linked data engineering workflow for building semantic layers for applications in a business context such as: legal compliance checking, RAGs for explainable chatbot responses, building validation, interoperability and provenance infrastructure for heterogeneous data in finance, insurance and pension firms. Often the common pattern is we need to build a lightweight terminology that we use to convert data from Excel, CSV, SQL etc. into RDF triples put them in graphdb with SHACL constraints, and we want to do SHACL validation to verify which data is acceptable or not. Or we want to harmonise data across departments and formats. Or we want to model exclusion and inclusion criteria for insurance coverage rules buried in free text PDF documents in some sort of way that using linked or semantic web technologies. I noticed a gap that ontology editors are either proprietary or very dated, or overly feature-packed with steep learning curve, I wanted a lightweight schema editor to build RDF/OWL vocabularies and schemas which can be used in semantic data engineering workflows.
-
 ---
 
 ## Proposed running order
 
-Read off the intent above rather than off effort alone. If the point of the tool is to produce a
-terminology that a pipeline converts data against and a validator then checks, then the ranking
-question for every item is: **does the artefact we export get more useful, or does the editor get
-more pleasant?** The first kind goes first.
+The tool is not trying to be a Swiss army knife. It should do schema editing better than anything
+else and stop there, so the ranking question is no longer "does this add capability?" but **"does
+this make the one job more solid, or does it widen the job?"** Solidity first, then the smallest
+additions that finish what is already started.
 
-1. **SHACL constraint vocabulary** (M) — _pending your call above._ Everything else on this list
-   improves how a schema is made; this is the only item that changes what the schema can _do_ once
-   it leaves the app. A shape that cannot express "exactly one policyholder" or "status is one of
-   these four" will not carry a compliance rule, and compliance rules are the stated use case.
-2. **Multiple superclasses through the UI** (M) — a real modelling limitation, not a nice-to-have.
-   Business vocabularies are full of classes that are two things at once — a `LeaseAgreement` is a
-   `Contract` and a `FinancialInstrument` — and today the interface silently replaces one parent
-   with the other. The model and the exporters already handle it, so this is UI work only.
-3. **`owl:imports` and selective term reuse** (L) — the interoperability item. Harmonising across
-   departments and formats means agreeing on terms, and agreement means reusing `dcterms`, `skos`,
-   `schema.org`, FIBO rather than minting a private IRI for `name` for the fourth time. This is the
-   biggest single step from "a vocabulary" to "a vocabulary that fits somewhere", and it is worth
-   doing after 1 and 2 so that imported terms arrive into a model that can already constrain them.
-4. **Subschema filter / neighbourhood view** (M, not S) — the first thing that bites when a real
-   schema passes about thirty classes, which the insurance and finance cases will. Cheaper and more
-   effective than any amount of auto-layout: hiding is the only thing that actually scales.
-5. **Mermaid / PlantUML export** (M) — outstanding from the original brief, and the cheapest route
-   from a schema to a document or a pull request. Worth noting the observation in the table above:
-   the taxonomy tab looks clean precisely because it draws one edge kind. A Mermaid class diagram
-   has the same property, so this export will flatter the schema in a way the canvas cannot.
-6. **Schema diffing and changelog** (M/L, not S) — governance, and it only pays once vocabularies
-   are versioned and in use, which is downstream of everything above. Sized up because it needs two
-   ontologies loaded at once, a structural diff that survives renames, and a mapping from diff to
-   Keep a Changelog categories. Worth its own design pass.
-7. **Canvas readability and housekeeping** — edge label collision, tidy-up layout, find-and-jump,
-   orthogonal edges, workspace export, undo across a project switch, cross-tab safety. Individually
-   small, none of them blocking. Good filler between the larger items above, and good candidates
-   whenever one of those is waiting on a decision.
+1. **Hardening the core** (S items, one M) — the current phase, with a written bar to end it.
+   Everything in it is small and independent, which makes it good work to do first: no design
+   pass, no new dependency, and each piece is one commit. The order inside it barely matters,
+   except that measuring at scale comes before optimising anything.
+2. **Multiple superclasses through the UI** (M) — the one modelling item that is a defect rather
+   than an addition. Business vocabularies are full of classes that are two things at once — a
+   `LeaseAgreement` is a `Contract` and a `FinancialInstrument` — and the interface silently
+   replaces one parent with the other. The model, the exporters and the class node already handle
+   several parents, so this widens nothing; it finishes something.
+3. **Mermaid export** (S) — the outstanding item from the original brief, a text serializer over
+   the model the four existing writers already share, and no new dependency. Small enough to fit
+   in the hardening phase if it stalls. The observation in the table is worth acting on: the
+   taxonomy tab reads cleanly because it draws one edge kind, and a Mermaid class diagram has the
+   same property.
+4. **Subschema filter** (M) — the first thing that bites when a schema passes about thirty
+   classes, which the insurance and finance cases will. Cheaper and more effective than any amount
+   of auto-layout, because hiding is the only thing that actually scales. Do this before the
+   layout and grouping items; it may make them unnecessary.
+5. **Canvas readability and housekeeping** (mostly S) — edge label collision, find-and-jump,
+   orthogonal edges, duplicate a class, workspace export, cross-tab detection. Individually small
+   and independently shippable. Good filler, and good work whenever something larger is waiting on
+   a decision.
+6. **`owl:imports` and selective term reuse** (L) — moved down from second. It is the most
+   valuable item on the list for interoperability, and also the largest new dependency surface in
+   a project whose stated virtue is having almost none: network fetching, a cache, a parser for
+   foreign vocabularies, and a search index. The CORS problem noted in the table needs a design
+   pass before any code. Worth doing properly later rather than half-way now.
+7. **Schema diffing and changelog** (L) — governance, and it only pays once vocabularies are
+   versioned and in use, which is downstream of everything above. Its own design pass.
 
-Two sizing disagreements are folded in above: subschema filtering and schema diffing are both
-marked **S** in the tables and are, on reflection, not.
+Deferred deliberately: the SHACL constraint vocabulary, and with it the question of whether
+constraint authoring belongs in this tool at all. See the note under
+[Export and interop](#export-and-interop).
+
+### Sizes revised in this pass
+
+| Item                       | Was | Now | Why                                                             |
+| -------------------------- | --- | --- | --------------------------------------------------------------- |
+| Multiple superclasses      | S   | M   | Verified: a UI gap, not a check. Two controls, not one.         |
+| Mermaid / PlantUML export  | M   | S+S | Split. Each is a text writer over an existing model walk.       |
+| Subschema filter           | S   | M   | Was also listed twice, once per section. Now one item.          |
+| Schema diffing             | S   | L   | Two ontologies loaded, a rename-tolerant diff, a category map.  |
+| Undo across project switch | S   | M   | Re-keys `history.ts` and needs a rule for deleted projects.     |
+| Cross-tab safety           | M   | S   | Detect and warn is small. Merging is large, and probably never. |
