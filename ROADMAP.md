@@ -38,22 +38,22 @@ work reaches. This section is the current phase.
 **Definition of done** — the phase ends when all of these hold, each proved by a test that runs
 in `npm run verify`:
 
-| Bar                                                                                        | How it is proved                                            |
-| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| A 200-class schema opens, pans, zooms and edits without a dropped frame                    | e2e timing against `buildLarge(200)`                        |
-| No edit blocks the main thread for more than one frame                                     | a measured budget in the same test                          |
-| A long random editing session leaves the model self-consistent, and undo returns it intact | seeded fuzz over the store, extending the existing harness  |
-| Every gesture has a keyboard equivalent                                                    | component tests, plus axe on each panel                     |
-| A crash loses no work                                                                      | the error boundary restores the workspace, not just reloads |
+| Bar                                                                                        | How it is proved                                                |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| A 200-class schema opens, pans and zooms without a dropped frame                           | `scale.spec.ts` — **met**: a steady 16.7ms frame                |
+| No edit blocks the main thread for more than one frame                                     | `scale.spec.ts` — **not met**: 67ms, four frames, per keystroke |
+| A long random editing session leaves the model self-consistent, and undo returns it intact | seeded fuzz over the store, extending the existing harness      |
+| Every gesture has a keyboard equivalent                                                    | component tests, plus axe on each panel                         |
+| A crash loses no work                                                                      | the error boundary restores the workspace, not just reloads     |
 
-| Item                                                                                                                                                                                                                                                                                          | Size |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Measure the canvas and store at scale** — `buildLarge(150–200)` already exercises the model and the serializers, but nothing above them. The canvas and the store have never been measured at that size, so the first task is to find out, not to optimise.                                 | S    |
-| **Stop writing the whole workspace on every keystroke** — `editing.ts` calls `saveWorkspace` on every edit, and that `JSON.stringify`s _every project_ into `localStorage` synchronously. Coalesced typing makes it once per character. Debounce it, and write only the project that changed. | S    |
-| **Build the ontology index once per change, not three times** — `schemaNodes`, `schemaEdges` and the taxonomy each call `indexOntology` independently, so every edit rebuilds it three times over.                                                                                            | S    |
-| **Soak the editing session** — the seeded fuzz harness covers the pure model. Point it at the store instead: long random sessions of create, rename, connect, delete, undo, redo, asserting the invariants hold and that undoing everything returns the starting ontology.                    | M    |
-| **Keyboard equivalents for the mouse-only gestures** — re-parenting in the hierarchy tree and dropping a datatype property onto a class are both drag-only. A tool used all day needs both, and a gesture with no keyboard path is also a gesture with no cheap test.                         | M    |
-| **Recover rather than reload after a crash** — `ErrorBoundary` offers `window.location.reload()`. That is honest but lossy; the workspace is in `localStorage` and could be restored to the last good state instead.                                                                          | S    |
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                       | Size |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| ~~**Measure the canvas and store at scale**~~ — _done, `tests/e2e/scale.spec.ts`._ At 200 classes: opens in 405ms; pan and zoom hold a steady 16.7ms frame, because the viewport moves a CSS transform rather than re-rendering; **one keystroke loses 67ms of main thread and writes 194kB of JSON**. The canvas is not the problem. The edit path is.                                                                    | —    |
+| **Stop writing the whole workspace on every keystroke** — _confirmed by measurement: 7 writes and 1.4MB serialised for a 7-character rename._ `editing.ts` calls `saveWorkspace` on every edit, and that `JSON.stringify`s _every project_ into `localStorage` synchronously. Debounce it, and write only the project that changed. **Do this next**, then re-measure: it is the likeliest single cause of the 67ms stall. | S    |
+| **Build the ontology index once per change, not three times** — `schemaNodes`, `schemaEdges` and the taxonomy each call `indexOntology` independently, so every edit rebuilds it three times over. Worth doing after the storage fix, and only if the stall survives it — the measurement will say.                                                                                                                        | S    |
+| **Soak the editing session** — the seeded fuzz harness covers the pure model. Point it at the store instead: long random sessions of create, rename, connect, delete, undo, redo, asserting the invariants hold and that undoing everything returns the starting ontology.                                                                                                                                                 | M    |
+| **Keyboard equivalents for the mouse-only gestures** — re-parenting in the hierarchy tree and dropping a datatype property onto a class are both drag-only. A tool used all day needs both, and a gesture with no keyboard path is also a gesture with no cheap test.                                                                                                                                                      | M    |
+| **Recover rather than reload after a crash** — `ErrorBoundary` offers `window.location.reload()`. That is honest but lossy; the workspace is in `localStorage` and could be restored to the last good state instead.                                                                                                                                                                                                       | S    |
 
 ## Modelling power
 
@@ -266,8 +266,9 @@ additions that finish what is already started.
 
 1. **Hardening the core** (S items, one M) — the current phase, with a written bar to end it.
    Everything in it is small and independent, which makes it good work to do first: no design
-   pass, no new dependency, and each piece is one commit. The order inside it barely matters,
-   except that measuring at scale comes before optimising anything.
+   pass, no new dependency, and each piece is one commit. Measuring came first and has already
+   paid: it retired the canvas performance worry outright and pointed the remaining effort at
+   the edit path, which is where the whole cost turned out to be.
 2. **Multiple superclasses through the UI** (M) — the one modelling item that is a defect rather
    than an addition. Business vocabularies are full of classes that are two things at once — a
    `LeaseAgreement` is a `Contract` and a `FinancialInstrument` — and the interface silently
