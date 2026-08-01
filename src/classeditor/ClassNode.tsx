@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeCurie } from '../annotationvocabulary';
@@ -25,6 +25,14 @@ interface ClassNodeData {
   attributes: AttributeRow[];
   superClassNames: string[];
 }
+
+/** Handle ids match what `canvas/layout.ts` chooses when it routes an edge. */
+const SIDES = [
+  { side: 'left', position: Position.Left },
+  { side: 'right', position: Position.Right },
+  { side: 'top', position: Position.Top },
+  { side: 'bottom', position: Position.Bottom },
+] as const;
 
 export function ClassNode({ data, selected }: NodeProps) {
   const { entity, attributes, superClassNames } = data as unknown as ClassNodeData;
@@ -60,29 +68,33 @@ export function ClassNode({ data, selected }: NodeProps) {
       // The header keeps the gesture for renaming in place and stops it propagating here.
       onDoubleClick={() => focusClass(entity.id)}
     >
-      {/* Relations: target on the left, source on the right, so dragging left-to-right
-          reads as domain -> range, which is the direction the relation is stored in. */}
-      <Handle type="target" position={Position.Left} id="in" isConnectable />
-      <Handle type="source" position={Position.Right} id="out" isConnectable />
+      {/*
+        A connection point on every side, so an edge can leave and arrive wherever the two
+        classes actually face each other rather than always looping right-to-left. The
+        canvas picks the facing pair; a relation may also be drawn by hand from any side.
 
-      {/* Subclass links use their own vertical pair — leaving the child's top edge and
-          arriving at the parent's bottom edge — so hierarchy reads upward instead of
-          looping around the sides. They are not draggable: hierarchy is edited in the
-          tree panel and the superclass picker, not by drawing on the canvas. */}
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="subOut"
-        isConnectable={false}
-        className={styles.hierarchyHandle}
-      />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="subIn"
-        isConnectable={false}
-        className={styles.hierarchyHandle}
-      />
+        Each side carries both a source and a target at the same point. The target is not
+        interactive — React Flow finds it by proximity while a connection is being dragged —
+        so it never steals the pointer from the source underneath it.
+      */}
+      {SIDES.map(({ side, position }) => (
+        <Fragment key={side}>
+          <Handle
+            type="source"
+            position={position}
+            id={`source-${side}`}
+            isConnectable
+            className={styles.sourceHandle}
+          />
+          <Handle
+            type="target"
+            position={position}
+            id={`target-${side}`}
+            isConnectable
+            className={styles.targetHandle}
+          />
+        </Fragment>
+      ))}
 
       <header
         className={styles.header}

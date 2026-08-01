@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { addAttribute, openApp, selectClass } from './ontoschema';
+import { addAttribute, doubleClickClass, openApp, selectClass } from './ontoschema';
 
 /**
  * Double-clicking a class brings it into focus. The measurements here are taken from the
@@ -28,10 +28,6 @@ async function transform(page: Page) {
   return page.locator('.react-flow__viewport').getAttribute('style');
 }
 
-/** The body of the node — double-clicking the header would rename instead. */
-const body = (page: Page, className: string) =>
-  page.locator(`[data-class-name="${className}"] footer`);
-
 async function schemaWithTwoClasses(page: Page) {
   await openApp(page);
   await page.getByTestId('open-examples').click();
@@ -44,7 +40,7 @@ async function schemaWithTwoClasses(page: Page) {
 test('fills 30–40% of the canvas and centres the class', async ({ page }) => {
   await schemaWithTwoClasses(page);
 
-  await body(page, 'Track').dblclick();
+  await doubleClickClass(page, 'Track');
   const after = await measure(page, 'Track');
 
   expect(after.areaShare).toBeGreaterThanOrEqual(0.3);
@@ -61,7 +57,7 @@ test('works for a small class and a large one alike', async ({ page }) => {
   for (const className of ['Genre', 'Track']) {
     await page.locator('.react-flow__controls-fitview').click();
     await page.waitForTimeout(400);
-    await body(page, className).dblclick();
+    await doubleClickClass(page, className);
     const after = await measure(page, className);
 
     expect(after.areaShare, `${className} area`).toBeGreaterThanOrEqual(0.3);
@@ -72,7 +68,7 @@ test('works for a small class and a large one alike', async ({ page }) => {
 
 test('selects the class it focuses, so the inspector follows', async ({ page }) => {
   await schemaWithTwoClasses(page);
-  await body(page, 'Venue').dblclick();
+  await doubleClickClass(page, 'Venue');
   await expect(page.getByLabel('Class local name')).toHaveValue('Venue');
 });
 
@@ -80,7 +76,7 @@ test('moves the viewport rather than the class', async ({ page }) => {
   await schemaWithTwoClasses(page);
   const before = await transform(page);
 
-  await body(page, 'Playlist').dblclick();
+  await doubleClickClass(page, 'Playlist');
   await page.waitForTimeout(700);
 
   expect(await transform(page)).not.toBe(before);
@@ -93,7 +89,7 @@ test('moves the viewport rather than the class', async ({ page }) => {
 test('focusing a second class moves on to it', async ({ page }) => {
   await schemaWithTwoClasses(page);
 
-  await body(page, 'Album').dblclick();
+  await doubleClickClass(page, 'Album');
   const first = await measure(page, 'Album');
   expect(first.areaShare).toBeGreaterThanOrEqual(0.3);
 
@@ -104,7 +100,7 @@ test('focusing a second class moves on to it', async ({ page }) => {
   await page.locator('.react-flow__controls-fitview').click();
   await page.waitForTimeout(500);
 
-  await body(page, 'Concert').dblclick();
+  await doubleClickClass(page, 'Concert');
   const second = await measure(page, 'Concert');
   expect(second.areaShare).toBeGreaterThanOrEqual(0.3);
   expect(second.areaShare).toBeLessThanOrEqual(0.4);
@@ -114,13 +110,13 @@ test('focusing a second class moves on to it', async ({ page }) => {
 test('the same class can be focused twice in a row', async ({ page }) => {
   await schemaWithTwoClasses(page);
 
-  await body(page, 'Genre').dblclick();
+  await doubleClickClass(page, 'Genre');
   await page.waitForTimeout(700);
   await page.locator('.react-flow__controls-fitview').click();
   await page.waitForTimeout(500);
 
   // The request is cleared once acted on, so the second gesture must work like the first.
-  await body(page, 'Genre').dblclick();
+  await doubleClickClass(page, 'Genre');
   const after = await measure(page, 'Genre');
   expect(after.areaShare).toBeGreaterThanOrEqual(0.3);
 });
@@ -145,7 +141,7 @@ test('a freshly drawn class can be focused too', async ({ page }) => {
   await selectClass(page, 'Car');
   await addAttribute(page, 'make', 'string');
 
-  await body(page, 'Car').dblclick();
+  await doubleClickClass(page, 'Car');
   const after = await measure(page, 'Car');
   expect(after.areaShare).toBeGreaterThanOrEqual(0.3);
   expect(after.areaShare).toBeLessThanOrEqual(0.4);
@@ -155,7 +151,7 @@ test('works on a narrow viewport, where the canvas is the whole width', async ({
   await page.setViewportSize({ width: 820, height: 800 });
   await schemaWithTwoClasses(page);
 
-  await body(page, 'Track').dblclick();
+  await doubleClickClass(page, 'Track');
   const after = await measure(page, 'Track');
 
   expect(after.areaShare).toBeGreaterThanOrEqual(0.3);

@@ -28,6 +28,25 @@ const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
 
 /**
+ * Parts of the canvas that answer a double-click themselves: a class focuses, a relation
+ * label opens for editing, and the overlay widgets have their own buttons. Anywhere else
+ * counts as bare canvas.
+ *
+ * The edge *line* is deliberately absent. React Flow gives it an invisible 20px-wide grab
+ * stroke, so excluding it would silently swallow the gesture over a wide band of what looks
+ * like empty canvas.
+ */
+const OWNS_DOUBLE_CLICK =
+  '.react-flow__node, .react-flow__edgelabel-renderer, .react-flow__controls, .react-flow__minimap, .react-flow__panel';
+
+/** How forgiving the double-tap is: the platform interval, and a fingertip's worth of drift. */
+const DOUBLE_TAP_MS = 320;
+const TAP_SLOP_PX = 24;
+
+const distance = (a: { clientX: number; clientY: number }, b: { x: number; y: number }) =>
+  Math.hypot(a.clientX - b.x, a.clientY - b.y);
+
+/**
  * The free-form schema surface: classes carrying their attributes, and relations drawn
  * between classes.
  *
@@ -43,7 +62,8 @@ interface SchemaCanvasProps {
 function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const ontology = useOntology();
   const selection = useSelection();
-  const { screenToFlowPosition, getIntersectingNodes, getNode, setCenter } = useReactFlow();
+  const { screenToFlowPosition, getIntersectingNodes, getNode, setCenter, fitView } =
+    useReactFlow();
   const surface = useRef<HTMLDivElement>(null);
 
   const select = useProjectStore((state) => state.select);
@@ -74,7 +94,17 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   // frame with a stale graph.
   if (adopted.nodes !== derivedNodes || adopted.edges !== derivedEdges) {
     setAdopted({ nodes: derivedNodes, edges: derivedEdges });
-    setNodes(derivedNodes.map((node) => ({ ...node, selected: node.id === selectedId })));
+    setNodes((current) => {
+      // Carry the size React Flow has already measured across to the new node objects. It is
+      // what the handles and the minimap are positioned from, so dropping it makes a node
+      // fall back to its estimate for a frame on every edit.
+      const measured = new Map(current.map((node) => [node.id, node.measured]));
+      return derivedNodes.map((node) => ({
+        ...node,
+        selected: node.id === selectedId,
+        ...(measured.get(node.id) ? { measured: measured.get(node.id) } : {}),
+      }));
+    });
     setEdges(derivedEdges.map((edge) => ({ ...edge, selected: isEdgeSelected(edge, selectedId) })));
   } else if (selectedId !== null && needsNodeSelectionSync(nodes, selectedId)) {
     // Something outside the canvas changed the selection — the hierarchy tree, say. Only
@@ -172,6 +202,88 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
     });
   }, [focusRequest, clearFocus, getNode, setCenter]);
 
+  /**
+   * Double-clicking, or double-tapping, bare canvas frames the whole schema again — the way
+   * back out from having focused a single class, without reaching for the controls.
+   *
+   * Everything that owns the gesture for itself is excluded rather than the pane being named
+   * directly: the double-click on a node bubbles up here too, and the dotted background is
+   * its own element sitting over the pane.
+   */
+  const frameEverything = useCallback(() => {
+    void fitView({ padding: 0.2, maxZoom: 1, duration: 400 });
+  }, [fitView]);
+
+  const onSurfaceDoubleClick = useCallback(
+    (event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest(OWNS_DOUBLE_CLICK)) return;
+      frameEverything();
+    },
+    [frameEverything],
+  );
+
+  /*
+   * Touch is recognised separately, and from a capture-phase listener on the wrapper.
+   * React Flow's pan-and-zoom layer swallows the pane's touch events whole — it both
+   * preventDefaults them, so the browser never synthesizes the double-click the mouse path
+   * relies on, and stops their propagation, so a React handler further up never runs. Only
+   * capture gets in ahead of it. A tap that has not moved, following another in the same
+   * spot, is a double-tap.
+   */
+  const tap = useRef<{ x: number; y: number; at: number } | null>(null);
+  const tapStart = useRef<{ x: number; y: number } | null>(null);
+
+  const onSurfaceTouchStart = useCallback((event: TouchEvent) => {
+    const touch = event.touches[0];
+    tapStart.current =
+      event.touches.length === 1 && touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }, []);
+
+  const onSurfaceTouchEnd = useCallback(
+    (event: TouchEvent) => {
+      const touch = event.changedTouches[0];
+      const start = tapStart.current;
+      tapStart.current = null;
+
+      // Only a single finger lifting cleanly off bare canvas counts. A pinch, a pan, or a
+      // tap on something that owns the gesture all cancel any tap in progress.
+      const cancelled =
+        !touch ||
+        !start ||
+        event.touches.length > 0 ||
+        distance(touch, start) > TAP_SLOP_PX ||
+        (event.target as HTMLElement).closest(OWNS_DOUBLE_CLICK) !== null;
+      if (cancelled) {
+        tap.current = null;
+        return;
+      }
+
+      const previous = tap.current;
+      const now = Date.now();
+      const isSecondTap =
+        previous !== null &&
+        now - previous.at <= DOUBLE_TAP_MS &&
+        distance(touch, previous) <= TAP_SLOP_PX;
+
+      tap.current = isSecondTap ? null : { x: touch.clientX, y: touch.clientY, at: now };
+      if (isSecondTap) frameEverything();
+    },
+    [frameEverything],
+  );
+
+  useEffect(() => {
+    const element = surface.current;
+    if (!element) return;
+    const options = { capture: true, passive: true } as const;
+    element.addEventListener('touchstart', onSurfaceTouchStart, options);
+    element.addEventListener('touchend', onSurfaceTouchEnd, options);
+    return () => {
+      element.removeEventListener('touchstart', onSurfaceTouchStart, options);
+      element.removeEventListener('touchend', onSurfaceTouchEnd, options);
+    };
+  }, [onSurfaceTouchStart, onSurfaceTouchEnd]);
+
   const isEmpty = nodes.length === 0;
 
   // Fit only when opening a project that already has content. Auto-fitting as nodes appear
@@ -180,7 +292,12 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const [fitOnOpen] = useState(() => derivedNodes.length > 0);
 
   return (
-    <div className={styles.canvas} data-testid="schema-canvas" ref={surface}>
+    <div
+      className={styles.canvas}
+      data-testid="schema-canvas"
+      ref={surface}
+      onDoubleClick={onSurfaceDoubleClick}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}

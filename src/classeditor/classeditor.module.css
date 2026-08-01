@@ -1,7 +1,15 @@
-/* Anchor points for subclass edges; never shown, never draggable. */
-.hierarchyHandle {
+/*
+ * Every side carries a source and a target at the same point. Only the source is
+ * interactive; React Flow locates the target by proximity while a connection is dragged,
+ * so the invisible target never intercepts the pointer.
+ */
+.targetHandle {
   opacity: 0 !important;
-  pointer-events: none;
+  pointer-events: none !important;
+}
+
+.sourceHandle {
+  z-index: 1;
 }
 
 .classNode {

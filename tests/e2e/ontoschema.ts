@@ -80,6 +80,40 @@ export async function renameClassOnCanvas(page: Page, from: string, to: string) 
   await expect(page.locator(`[data-class-name="${to}"]`)).toBeVisible();
 }
 
+/**
+ * A point on a class that a gesture will actually reach: below the header, which renames
+ * rather than focuses, and clear of any relation label parked over the node. Labels sit above
+ * the nodes so that they stay clickable, so where they land depends on the whole layout.
+ */
+export async function freePointOnClass(page: Page, className: string) {
+  const found = await page.evaluate((name) => {
+    const node = document.querySelector<HTMLElement>(`[data-class-name="${name}"]`);
+    if (!node) return { point: null, covering: 'not on the canvas' };
+    const box = node.getBoundingClientRect();
+    const header = node.querySelector('header')?.getBoundingClientRect();
+    const from = (header?.bottom ?? box.top) + 4;
+
+    let covering = 'nothing scanned';
+    for (let y = from; y < box.bottom - 2; y += 4) {
+      for (let x = box.left + 6; x < box.right - 6; x += 8) {
+        const top = document.elementFromPoint(x, y);
+        if (node.contains(top)) return { point: { x, y }, covering: '' };
+        covering = `${top?.tagName}.${top?.getAttribute('class') ?? ''}`;
+      }
+    }
+    return { point: null, covering };
+  }, className);
+
+  if (!found.point) throw new Error(`cannot reach ${className}: ${found.covering}`);
+  return found.point;
+}
+
+/** Double-clicks a class where the gesture lands on the class itself, bringing it into focus. */
+export async function doubleClickClass(page: Page, className: string) {
+  const { x, y } = await freePointOnClass(page, className);
+  await page.mouse.dblclick(x, y);
+}
+
 export async function selectClass(page: Page, localName: string) {
   await page.locator(`[data-class-name="${localName}"] header`).click();
   await expect(page.getByLabel('Class local name')).toHaveValue(localName);
@@ -96,11 +130,12 @@ export async function connectClasses(page: Page, sourceName: string, targetName:
   // Drag from the source class's right-hand dot to the target class's left-hand dot. The
   // drop must land on the target handle: React Flow only connects within a small radius of
   // one, so releasing over the middle of the node would do nothing.
-  // `out` and `in` are the relation handles; classes also carry hidden vertical handles
-  // that subclass edges attach to, so the sides must be addressed by id.
-  const from = await source.locator('.react-flow__handle[data-handleid="out"]').boundingBox();
+  // Each side carries a source and a target handle, so they are addressed by id.
+  const from = await source
+    .locator('.react-flow__handle[data-handleid="source-right"]')
+    .boundingBox();
   const to = await page
-    .locator(`[data-class-name="${targetName}"] .react-flow__handle[data-handleid="in"]`)
+    .locator(`[data-class-name="${targetName}"] .react-flow__handle[data-handleid="target-left"]`)
     .boundingBox();
   if (!from || !to) throw new Error('cannot locate connection handles');
 

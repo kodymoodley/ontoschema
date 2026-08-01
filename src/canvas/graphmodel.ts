@@ -7,7 +7,16 @@ import type {
   OntologyClass,
   PropertyUsage,
 } from '../ontologymodel';
-import { layoutTaxonomyModule } from './layout';
+import {
+  CLASS_NODE_WIDTH,
+  chooseHierarchySides,
+  chooseSides,
+  estimateClassHeight,
+  layoutTaxonomyModule,
+  sourceHandleId,
+  targetHandleId,
+} from './layout';
+import type { Box } from './layout';
 
 /**
  * Derives the React Flow graph from the ontology.
@@ -94,6 +103,15 @@ export function schemaNodes(ontology: Ontology): Node[] {
       id: entity.id,
       type: NODE_TYPE.ontologyClass,
       position: entity.position,
+      /*
+       * React Flow hides a node until it knows how big it is, and every edit rebuilds this
+       * array from scratch. Without a size to fall back on, each edit blanks the whole canvas
+       * until the resize observer catches up — a frame in Chrome, visibly longer in Firefox.
+       * These are the same estimates the edge router uses; the real measurement supersedes
+       * them as soon as it arrives.
+       */
+      initialWidth: CLASS_NODE_WIDTH,
+      initialHeight: estimateClassHeight(attributes.length, entity.superClassIds.length > 0),
       data: {
         entity,
         attributes,
@@ -108,6 +126,22 @@ export function schemaNodes(ontology: Ontology): Node[] {
 export function schemaEdges(ontology: Ontology): Edge[] {
   const index = indexOntology(ontology);
 
+  /** Where each class sits and roughly how big it is, so edges can pick facing sides. */
+  const boxes = new Map<string, Box>(
+    ontology.classes.map((entity) => [
+      entity.id,
+      {
+        x: entity.position.x,
+        y: entity.position.y,
+        width: CLASS_NODE_WIDTH,
+        height: estimateClassHeight(
+          (index.attributeUsagesByClass.get(entity.id) ?? []).length,
+          entity.superClassIds.length > 0,
+        ),
+      },
+    ]),
+  );
+
   const relations: Edge[] = [];
   for (const usage of ontology.usages) {
     const property = index.objectPropertyById.get(usage.propertyId);
@@ -115,14 +149,19 @@ export function schemaEdges(ontology: Ontology): Edge[] {
     if (!index.classById.has(usage.subjectClassId) || !index.classById.has(usage.objectClassId)) {
       continue;
     }
+    const from = boxes.get(usage.subjectClassId);
+    const to = boxes.get(usage.objectClassId);
+    const sides =
+      from && to ? chooseSides(from, to) : { source: 'right' as const, target: 'left' as const };
+
     relations.push({
       // The edge is the usage, not the property: one property can be drawn many times.
       id: usage.id,
       type: EDGE_TYPE.relation,
       source: usage.subjectClassId,
       target: usage.objectClassId,
-      sourceHandle: 'out',
-      targetHandle: 'in',
+      sourceHandle: sourceHandleId(sides.source),
+      targetHandle: targetHandleId(sides.target),
       data: {
         usage,
         property,
@@ -132,19 +171,27 @@ export function schemaEdges(ontology: Ontology): Edge[] {
   }
 
   // Subclass links also show on the schema canvas, in the taxonomy's own visual language,
-  // so the two views never disagree about what the model contains. They attach to the
-  // dedicated vertical handles so the hierarchy reads upward and does not tangle with the
-  // horizontal relation edges.
-  const hierarchy: Edge[] = subClassEdges(ontology).map(({ childId, parentId }) => ({
-    id: `subclass:${childId}:${parentId}`,
-    type: EDGE_TYPE.subClassOf,
-    source: childId,
-    target: parentId,
-    sourceHandle: 'subOut',
-    targetHandle: 'subIn',
-    selectable: false,
-    data: {},
-  }));
+  // so the two views never disagree about what the model contains. They stay vertical
+  // whatever the layout, which is what keeps hierarchy legible next to the relations.
+  const hierarchy: Edge[] = subClassEdges(ontology).map(({ childId, parentId }) => {
+    const child = boxes.get(childId);
+    const parent = boxes.get(parentId);
+    const sides =
+      child && parent
+        ? chooseHierarchySides(child, parent)
+        : { source: 'top' as const, target: 'bottom' as const };
+
+    return {
+      id: `subclass:${childId}:${parentId}`,
+      type: EDGE_TYPE.subClassOf,
+      source: childId,
+      target: parentId,
+      sourceHandle: sourceHandleId(sides.source),
+      targetHandle: targetHandleId(sides.target),
+      selectable: false,
+      data: {},
+    };
+  });
 
   return [...relations, ...hierarchy];
 }

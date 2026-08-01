@@ -96,11 +96,16 @@ list shows it used `2×`, and the export drops its `rdfs:domain` while gaining a
 
 | Gesture                                             | What it does                                                       |
 | --------------------------------------------------- | ------------------------------------------------------------------ |
-| Drag from a class's right edge to another class     | Draws a relation, then asks which object property it is            |
+| Drag from any edge of a class to another class      | Draws a relation, then asks which object property it is            |
 | **Double-click (or double-tap) a class**            | Brings it into focus: centred, filling about a third of the canvas |
+| **Double-click (or double-tap) empty canvas**       | Frames the whole schema again — the way back out of a focus        |
 | Double-click a class **header**                     | Renames it in place                                                |
 | Drag a datatype property from the pool onto a class | Reuses that property there                                         |
 | Delete / Backspace                                  | Removes the selection, unless a dialog is open or you are typing   |
+
+Relations attach to whichever pair of sides the two classes actually face, so moving a class
+re-routes its edges rather than leaving them looping back on themselves. Subclass links stay
+vertical whichever way round the two sit, since the hierarchy has to stay readable.
 
 ### Scripts
 
