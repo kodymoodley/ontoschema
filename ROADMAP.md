@@ -122,8 +122,24 @@ precisely the case the tool cannot afford to be brittle about.
 Deliberately **not SKOS**: it belongs to a different job. SKOS models how existing terms are
 organised and aligned — a meta level of labels and concept schemes — whereas an OWL/RDFS schema
 models the domain itself, the things the instances are. Reusing SKOS _terms_ in a domain schema
-invites exactly that confusion. (This is about SKOS as a modelling vocabulary. Its documentation
-properties are a separate question — see the note under _Modelling power_.)
+invites exactly that confusion.
+
+> **The SKOS annotation properties stay, and this is not an inconsistency.** The exclusion above is
+> about SKOS as a _modelling_ vocabulary: `skos:Concept`, `skos:broader`, `skos:inScheme`. None of
+> those appear anywhere in the codebase and none ever should — classes are `owl:Class` and
+> hierarchy is `rdfs:subClassOf`.
+>
+> What the annotation panel offers is the eight SKOS _documentation_ properties: `prefLabel`,
+> `altLabel`, `hiddenLabel`, `definition`, `scopeNote`, `note`, `example`, `editorialNote`. Those
+> are annotation properties, which in OWL 2 are semantics-free by construction — a reasoner ignores
+> them, so `skos:definition` on an `owl:Class` makes no claim about that class and certainly does
+> not make it a concept. SKOS declares no `rdfs:domain` on them precisely so they can be used this
+> way, and FIBO annotates its own OWL classes with `skos:definition` throughout.
+>
+> They also earn their place here. `rdfs:comment` alone would have to carry definition, scope note,
+> example and editorial note at once, and a scope note saying when a class does and does not apply
+> is exactly what an inclusion or exclusion criterion needs. `altLabel` and `hiddenLabel` are where
+> lexical variants live, which is what lets a retrieval layer match a user's phrasing to a class.
 
 The set as a whole is chosen to cover what a business domain schema actually reaches for: people
 and organisations (`foaf`, `org`, `vCard`), general-purpose types (`schema.org`), dataset and
