@@ -65,18 +65,23 @@ judgement call is not covered by it, decide the way that leaves fewer edges in t
 One commit is **one cohesive change**. Not two small ones that happened to be in flight together,
 and not a refactor riding along with a fix.
 
-| Guide                              | Target    |
-| ---------------------------------- | --------- |
-| Files touched                      | 2–3       |
-| Lines of code changed              | under 50  |
-| Distinct changes in one commit     | exactly 1 |
-| Distinct features in one branch/PR | exactly 1 |
+| Guide                              | Target                               |
+| ---------------------------------- | ------------------------------------ |
+| Files touched                      | 2–3                                  |
+| Lines changed                      | around 50, **not counting comments** |
+| Distinct changes in one commit     | exactly 1                            |
+| Distinct features in one branch/PR | exactly 1                            |
 
-The file and line numbers are a smell test, not a rule to game — a rename that touches nine files
-is still one change, and prose or generated files are not code. But if a diff is over the guide
-because it is doing two things, it is two commits. Split it.
+The first two are guidelines and there is room to be flexible within reason. Comments do not
+count towards the line budget — this codebase explains itself at length on purpose, and a change
+should not be split to make room for its own reasoning. Prose and generated files do not count
+either, and a rename touching nine files is still one change.
 
-The one that never bends is the last two rows. A branch is one feature; a pull request is one
+What the numbers are really asking is: **is this one thing, and is it a small amount of
+complicated logic?** A diff that is over the guide because it is doing two things is two commits.
+A diff that is over because one honest change happens to be that size is fine.
+
+The last two rows are the ones that do not bend. A branch is one feature; a pull request is one
 feature. If reviewing it means holding two unrelated ideas at once, it should have been two.
 
 Write the message to explain **why**, in the imperative, with the reasoning below a blank line.
