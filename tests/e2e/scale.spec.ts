@@ -21,8 +21,12 @@ import {
  * come down, it says so, and the commit that brings it down tightens it.
  *
  * Measured on this machine at 200 classes: around 300ms to open, a steady 16.7ms frame through
- * pan and zoom, 50ms of main thread lost to one keystroke, and one batched write of 194kB per
+ * pan and zoom, 13–40ms of main thread lost per keystroke, and one batched write of ~200kB per
  * burst of typing rather than one per character.
+ *
+ * Editing costs nothing measurable at 25, 50 or 100 classes — not a single missed frame — and
+ * deriving the whole graph from a 200-class ontology takes 0.29ms. So the cost at 200 is not
+ * the derive; it is re-rendering every node when one of them changed.
  */
 
 const CLASS_COUNT = 200;
@@ -100,7 +104,7 @@ test('stays responsive while zooming', async ({ page }) => {
   expect(report.p95).toBeLessThan(60);
 });
 
-test('a single edit does not stall the main thread', async ({ page }) => {
+test('editing does not stall the main thread', async ({ page }) => {
   await openApp(page);
   await expect(page.locator('[data-class-node-id]')).toHaveCount(CLASS_COUNT);
   await selectClass(page, 'Class0');
@@ -108,21 +112,29 @@ test('a single edit does not stall the main thread', async ({ page }) => {
   const name = page.getByLabel('Class local name');
   await name.click();
 
+  // Ten keystrokes rather than one. A single worst-frame reading is one sample and swings by
+  // tens of milliseconds between runs; ten spaced-out edits give the aggregate something to
+  // average over, and the total blocked time is what a typist actually experiences.
+  const KEYSTROKES = 10;
   await startRecordingFrames(page);
-  await name.press('X');
-  await page.waitForTimeout(400);
+  for (let stroke = 0; stroke < KEYSTROKES; stroke += 1) {
+    await name.press('X');
+    await page.waitForTimeout(120);
+  }
   const report = await stopRecordingFrames(page);
 
-  console.log(`one keystroke: worst frame gap ${report.worst.toFixed(1)}ms`);
-  await expect(page.locator('[data-class-name="Class0X"]')).toBeVisible();
+  console.log(
+    `${KEYSTROKES} keystrokes: ${report.blockedMs.toFixed(0)}ms blocked in total, ` +
+      `${(report.blockedMs / KEYSTROKES).toFixed(1)}ms each, worst frame ${report.worst.toFixed(1)}ms`,
+  );
+  await expect(page.locator(`[data-class-name="Class0${'X'.repeat(KEYSTROKES)}"]`)).toBeVisible();
 
   /*
-   * Was 67ms before writes were batched, and is 50ms now — better, but still three frames for
-   * one character, so the ceiling still records a cost rather than blessing it. The remaining
-   * time is the derive and re-render, not storage; lower this again when the ontology index
-   * stops being rebuilt three times per change.
+   * The bar is one frame per keystroke. This is 13–40ms depending on the run, so the bar is
+   * not met and the ceiling records that rather than blessing it. Bring it down to one frame
+   * when editing stops re-rendering every node on the canvas.
    */
-  expect(report.worst).toBeLessThan(150);
+  expect(report.blockedMs / KEYSTROKES).toBeLessThan(60);
 });
 
 test('batches storage writes instead of one per keystroke', async ({ page }) => {
