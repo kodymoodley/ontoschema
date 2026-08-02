@@ -4,6 +4,13 @@ const PORT = 5174;
 
 export default defineConfig({
   testDir: './tests/e2e',
+  /*
+   * The timing suite is excluded here and run on its own by `playwright.perf.config.ts`.
+   * These specs run eight at a time across three engines, which is the right way to check
+   * behaviour and hopeless for checking milliseconds: measured under that load, a keystroke
+   * that costs nothing on a quiet machine reads as 171ms.
+   */
+  testIgnore: '**/scale.spec.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
