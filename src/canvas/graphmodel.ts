@@ -123,6 +123,63 @@ export function schemaNodes(ontology: Ontology): Node[] {
   });
 }
 
+/**
+ * Whether two class nodes describe the same thing, so the older object can be kept.
+ *
+ * Deriving is cheap — the whole graph of a 200-class ontology takes well under a millisecond —
+ * but every derived node is a new object, and React Flow re-renders a node whose object
+ * changed. Handing back the previous object for the classes that did not change is what stops
+ * one rename repainting the entire canvas.
+ *
+ * The mutation API replaces only the entity it touches, so comparing entities by identity is
+ * both correct and as cheap as it looks.
+ */
+export function sameClassNode(left: Node, right: Node): boolean {
+  const before = left.data as ClassNodeData | undefined;
+  const after = right.data as ClassNodeData | undefined;
+  if (!before || !after) return false;
+
+  return (
+    before.entity === after.entity &&
+    sameAttributes(before.attributes, after.attributes) &&
+    sameNames(before.superClassNames, after.superClassNames)
+  );
+}
+
+function sameAttributes(before: AttributeRow[], after: AttributeRow[]): boolean {
+  return (
+    before.length === after.length &&
+    before.every((row, index) => {
+      const other = after[index];
+      return (
+        other !== undefined &&
+        row.usageId === other.usageId &&
+        row.property === other.property &&
+        row.shared === other.shared
+      );
+    })
+  );
+}
+
+/** The same question for a relation edge: has anything about this line changed? */
+export function sameRelationEdge(left: Edge, right: Edge): boolean {
+  const before = left.data as RelationEdgeData | undefined;
+  const after = right.data as RelationEdgeData | undefined;
+  if (!before || !after) return false;
+
+  return (
+    left.sourceHandle === right.sourceHandle &&
+    left.targetHandle === right.targetHandle &&
+    before.usage === after.usage &&
+    before.property === after.property &&
+    before.shared === after.shared
+  );
+}
+
+function sameNames(before: string[], after: string[]): boolean {
+  return before.length === after.length && before.every((name, index) => name === after[index]);
+}
+
 export function schemaEdges(ontology: Ontology): Edge[] {
   const index = indexOntology(ontology);
 

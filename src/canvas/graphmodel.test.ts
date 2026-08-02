@@ -6,9 +6,17 @@ import {
   addSubClassOf,
   createEmptyOntology,
   moveClass,
+  renameClass,
 } from '../ontologymodel';
 import type { Ontology } from '../ontologymodel';
-import { EDGE_TYPE, NODE_TYPE, schemaEdges, schemaNodes } from './graphmodel';
+import {
+  EDGE_TYPE,
+  NODE_TYPE,
+  sameClassNode,
+  sameRelationEdge,
+  schemaEdges,
+  schemaNodes,
+} from './graphmodel';
 import { CLASS_NODE_WIDTH } from './layout';
 
 /**
@@ -121,5 +129,99 @@ describe('schemaEdges', () => {
 
     expect(sideTaken(relate(ontology))).toBe('source-bottom');
     expect(sideTaken(relate(withAttributes(ontology, source, 8)))).toBe('source-right');
+  });
+});
+
+/**
+ * Which derived objects may be kept between renders. React Flow re-renders anything whose
+ * object changed, so a rename that produced 200 fresh nodes and 199 fresh edges repainted the
+ * whole canvas. What matters here is the negative case: everything the edit did not touch has
+ * to compare equal, or nothing is saved.
+ */
+describe('what survives a re-derive', () => {
+  /** A small schema with a hierarchy, attributes and relations — one of each thing that varies. */
+  function schema() {
+    const { ontology, source, target } = twoClasses({ x: 0, y: 0 }, { x: 600, y: 0 });
+    const third = addClass(ontology, { position: { x: 0, y: 600 } });
+    const withChild = addSubClassOf(third.ontology, third.id, source);
+    const withAttribute = withAttributes(withChild, source, 2);
+    const { ontology: related } = addRelationBetween(withAttribute, {
+      subjectClassId: source,
+      objectClassId: target,
+    });
+    return { ontology: related, source, target, child: third.id };
+  }
+
+  const nodeFor = (nodes: ReturnType<typeof schemaNodes>, id: string) =>
+    nodes.find((node) => node.id === id);
+
+  it('keeps every node and edge when nothing changed', () => {
+    const { ontology } = schema();
+    const before = schemaNodes(ontology);
+    const after = schemaNodes(ontology);
+
+    expect(before.every((node, index) => sameClassNode(node, after[index]!))).toBe(true);
+
+    const edgesBefore = schemaEdges(ontology);
+    const edgesAfter = schemaEdges(ontology);
+    expect(edgesBefore.every((edge, index) => sameRelationEdge(edge, edgesAfter[index]!))).toBe(
+      true,
+    );
+  });
+
+  it('changes only the renamed class', () => {
+    const { ontology, source, target } = schema();
+    const before = schemaNodes(ontology);
+    const after = schemaNodes(renameClass(ontology, source, 'Renamed'));
+
+    expect(sameClassNode(nodeFor(before, source)!, nodeFor(after, source)!)).toBe(false);
+    expect(sameClassNode(nodeFor(before, target)!, nodeFor(after, target)!)).toBe(true);
+  });
+
+  it('changes a child when its parent is renamed, because the child shows the name', () => {
+    const { ontology, source, child, target } = schema();
+    const before = schemaNodes(ontology);
+    const after = schemaNodes(renameClass(ontology, source, 'Renamed'));
+
+    expect(sameClassNode(nodeFor(before, child)!, nodeFor(after, child)!)).toBe(false);
+    expect(sameClassNode(nodeFor(before, target)!, nodeFor(after, target)!)).toBe(true);
+  });
+
+  it('changes only the class that gained an attribute', () => {
+    const { ontology, source, target } = schema();
+    const before = schemaNodes(ontology);
+    const after = schemaNodes(withAttributes(ontology, target, 1));
+
+    expect(sameClassNode(nodeFor(before, target)!, nodeFor(after, target)!)).toBe(false);
+    expect(sameClassNode(nodeFor(before, source)!, nodeFor(after, source)!)).toBe(true);
+  });
+
+  it('changes a moved class, since where it sits is part of what is drawn', () => {
+    const { ontology, target } = schema();
+    const before = schemaNodes(ontology);
+    const after = schemaNodes(moveClass(ontology, target, { x: 40, y: 40 }));
+
+    expect(sameClassNode(nodeFor(before, target)!, nodeFor(after, target)!)).toBe(false);
+  });
+
+  it('changes an edge whose class moved round to another side', () => {
+    const { ontology, target } = schema();
+    const [before] = schemaEdges(ontology).filter((edge) => edge.type === EDGE_TYPE.relation);
+    const [after] = schemaEdges(moveClass(ontology, target, { x: 0, y: 900 })).filter(
+      (edge) => edge.type === EDGE_TYPE.relation,
+    );
+
+    expect(sameRelationEdge(before!, after!)).toBe(false);
+  });
+
+  it('refuses to compare anything without derived data', () => {
+    const [node] = schemaNodes(schema().ontology);
+    expect(sameClassNode(node!, { ...node!, data: undefined as never })).toBe(false);
+    expect(
+      sameRelationEdge(
+        { id: 'a', source: 'x', target: 'y' },
+        { id: 'a', source: 'x', target: 'y' },
+      ),
+    ).toBe(false);
   });
 });
