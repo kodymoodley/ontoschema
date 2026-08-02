@@ -21,12 +21,13 @@ import {
  * come down, it says so, and the commit that brings it down tightens it.
  *
  * Measured on this machine at 200 classes: around 300ms to open, a steady 16.7ms frame through
- * pan and zoom, 13–40ms of main thread lost per keystroke, and one batched write of ~200kB per
- * burst of typing rather than one per character.
+ * pan and zoom, no missed frame at all while typing on a typical run, and one batched write of
+ * ~200kB per burst of typing rather than one per character.
  *
- * Editing costs nothing measurable at 25, 50 or 100 classes — not a single missed frame — and
- * deriving the whole graph from a 200-class ontology takes 0.29ms. So the cost at 200 is not
- * the derive; it is re-rendering every node when one of them changed.
+ * Deriving the whole graph from a 200-class ontology takes 0.29ms, so the cost of an edit was
+ * never the derive — it was handing React Flow 200 new nodes and 199 new edges when one class
+ * had changed. Keeping the objects that did not change took a typical keystroke from 13–40ms
+ * of lost main thread to none.
  */
 
 const CLASS_COUNT = 200;
@@ -130,11 +131,11 @@ test('editing does not stall the main thread', async ({ page }) => {
   await expect(page.locator(`[data-class-name="Class0${'X'.repeat(KEYSTROKES)}"]`)).toBeVisible();
 
   /*
-   * The bar is one frame per keystroke. This is 13–40ms depending on the run, so the bar is
-   * not met and the ceiling records that rather than blessing it. Bring it down to one frame
-   * when editing stops re-rendering every node on the canvas.
+   * A typical run now misses no frame at all. An occasional one shows a single slow frame,
+   * which is the machine rather than the app, so the ceiling keeps room for that while still
+   * failing well below where this sat before — 13 to 40ms per keystroke.
    */
-  expect(report.blockedMs / KEYSTROKES).toBeLessThan(60);
+  expect(report.blockedMs / KEYSTROKES).toBeLessThan(30);
 });
 
 test('batches storage writes instead of one per keystroke', async ({ page }) => {
