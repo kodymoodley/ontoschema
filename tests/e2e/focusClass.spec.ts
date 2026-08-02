@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { addAttribute, doubleClickClass, openApp, selectClass } from './ontoschema';
+import {
+  addAttribute,
+  doubleClickClass,
+  openApp,
+  selectClass,
+  settledViewport,
+} from './ontoschema';
 
 /**
  * Double-clicking a class brings it into focus. The measurements here are taken from the
@@ -9,7 +15,7 @@ import { addAttribute, doubleClickClass, openApp, selectClass } from './ontosche
 
 /** Waits for the zoom animation to settle, then measures. */
 async function measure(page: Page, className: string) {
-  await page.waitForTimeout(700);
+  await settledViewport(page);
   const node = await page.locator(`[data-class-name="${className}"]`).boundingBox();
   const canvas = await page.getByTestId('schema-canvas').boundingBox();
   if (!node || !canvas) throw new Error('could not measure');
@@ -34,7 +40,7 @@ async function schemaWithTwoClasses(page: Page) {
   await page.getByText('Music library', { exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.locator('.react-flow__controls-fitview').click();
-  await page.waitForTimeout(400);
+  await settledViewport(page);
 }
 
 test('fills 30–40% of the canvas and centres the class', async ({ page }) => {
@@ -56,7 +62,7 @@ test('works for a small class and a large one alike', async ({ page }) => {
   // Genre carries two attributes; Track carries six, so the boxes differ in height.
   for (const className of ['Genre', 'Track']) {
     await page.locator('.react-flow__controls-fitview').click();
-    await page.waitForTimeout(400);
+    await settledViewport(page);
     await doubleClickClass(page, className);
     const after = await measure(page, className);
 
@@ -77,9 +83,8 @@ test('moves the viewport rather than the class', async ({ page }) => {
   const before = await transform(page);
 
   await doubleClickClass(page, 'Playlist');
-  await page.waitForTimeout(700);
 
-  expect(await transform(page)).not.toBe(before);
+  expect(await settledViewport(page)).not.toBe(before);
   // Focusing is a view change; nothing about the schema may alter.
   await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
   const turtle = await page.evaluate(() => document.title);
@@ -98,7 +103,7 @@ test('focusing a second class moves on to it', async ({ page }) => {
    * the view back the way a user would before picking the next one.
    */
   await page.locator('.react-flow__controls-fitview').click();
-  await page.waitForTimeout(500);
+  await settledViewport(page);
 
   await doubleClickClass(page, 'Concert');
   const second = await measure(page, 'Concert');
@@ -111,9 +116,9 @@ test('the same class can be focused twice in a row', async ({ page }) => {
   await schemaWithTwoClasses(page);
 
   await doubleClickClass(page, 'Genre');
-  await page.waitForTimeout(700);
+  await settledViewport(page);
   await page.locator('.react-flow__controls-fitview').click();
-  await page.waitForTimeout(500);
+  await settledViewport(page);
 
   // The request is cleared once acted on, so the second gesture must work like the first.
   await doubleClickClass(page, 'Genre');

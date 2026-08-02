@@ -21,30 +21,12 @@ import {
 } from '../projectstore';
 import styles from './canvas.module.css';
 import { NODE_TYPE, schemaEdges, schemaNodes } from './graphmodel';
+import { DOUBLE_TAP_MS, OWNS_DOUBLE_CLICK, TAP_SLOP_PX, tapDistance } from './gestures';
 import { focusZoom, nextFreePosition } from './layout';
 
 /** How far the viewport may be pushed, including by a focus request. */
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
-
-/**
- * Parts of the canvas that answer a double-click themselves: a class focuses, a relation
- * label opens for editing, and the overlay widgets have their own buttons. Anywhere else
- * counts as bare canvas.
- *
- * The edge *line* is deliberately absent. React Flow gives it an invisible 20px-wide grab
- * stroke, so excluding it would silently swallow the gesture over a wide band of what looks
- * like empty canvas.
- */
-const OWNS_DOUBLE_CLICK =
-  '.react-flow__node, .react-flow__edgelabel-renderer, .react-flow__controls, .react-flow__minimap, .react-flow__panel';
-
-/** How forgiving the double-tap is: the platform interval, and a fingertip's worth of drift. */
-const DOUBLE_TAP_MS = 320;
-const TAP_SLOP_PX = 24;
-
-const distance = (a: { clientX: number; clientY: number }, b: { x: number; y: number }) =>
-  Math.hypot(a.clientX - b.x, a.clientY - b.y);
 
 /**
  * The free-form schema surface: classes carrying their attributes, and relations drawn
@@ -252,7 +234,7 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
         !touch ||
         !start ||
         event.touches.length > 0 ||
-        distance(touch, start) > TAP_SLOP_PX ||
+        tapDistance(touch, start) > TAP_SLOP_PX ||
         (event.target as HTMLElement).closest(OWNS_DOUBLE_CLICK) !== null;
       if (cancelled) {
         tap.current = null;
@@ -264,7 +246,7 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
       const isSecondTap =
         previous !== null &&
         now - previous.at <= DOUBLE_TAP_MS &&
-        distance(touch, previous) <= TAP_SLOP_PX;
+        tapDistance(touch, previous) <= TAP_SLOP_PX;
 
       tap.current = isSecondTap ? null : { x: touch.clientX, y: touch.clientY, at: now };
       if (isSecondTap) frameEverything();

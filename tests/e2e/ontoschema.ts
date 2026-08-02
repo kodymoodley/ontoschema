@@ -108,10 +108,28 @@ export async function freePointOnClass(page: Page, className: string) {
   return found.point;
 }
 
-/** Double-clicks a class where the gesture lands on the class itself, bringing it into focus. */
+/**
+ * Double-clicks a class where the gesture lands on the class itself, bringing it into focus,
+ * and returns once the viewport has actually begun to move.
+ *
+ * Waiting for the motion to start is what makes the settle check that follows deterministic.
+ * Otherwise "has not started yet" and "has finished" look identical: two readings taken
+ * before a slow machine got round to the first frame are equal, and the pre-gesture transform
+ * gets reported as the settled one. Every measurement downstream is then taken of a viewport
+ * that has not moved.
+ */
 export async function doubleClickClass(page: Page, className: string) {
+  const viewport = page.locator('.react-flow__viewport');
+  const before = await viewport.getAttribute('style');
+
   const { x, y } = await freePointOnClass(page, className);
   await page.mouse.dblclick(x, y);
+
+  await expect
+    .poll(() => viewport.getAttribute('style'), {
+      message: `focusing ${className} did not move the viewport`,
+    })
+    .not.toBe(before);
 }
 
 export async function selectClass(page: Page, localName: string) {
@@ -231,4 +249,46 @@ export async function readDownload(download: Download): Promise<string> {
   const path = await download.path();
   if (!path) throw new Error('download produced no file');
   return readFile(path, 'utf8');
+}
+
+/** Long enough for a gesture to reach the viewport, and the gap between settle readings. */
+const ANIMATION_START_MS = 150;
+const ANIMATION_SAMPLE_MS = 100;
+
+/**
+ * The canvas viewport transform, once it has stopped moving.
+ *
+ * Focusing and fitting both animate for 400ms. Sleeping for a fixed period long enough to
+ * cover that on an idle machine is not long enough on a loaded one, and a transform read
+ * mid-animation looks like the gesture half worked. Two identical readings a poll apart mean
+ * it has settled.
+ */
+export async function settledViewport(page: Page): Promise<string | null> {
+  const read = () => page.locator('.react-flow__viewport').getAttribute('style');
+
+  // A gesture takes a moment to reach the viewport at all. Without this pause the first two
+  // readings are taken before anything has moved, and the pre-animation transform is reported
+  // as the settled one.
+  await page.waitForTimeout(ANIMATION_START_MS);
+
+  /*
+   * Seeded with `undefined`, which no reading can equal, so the first comparison always fails
+   * and two readings are guaranteed to be a full interval apart. `expect.poll` runs its
+   * predicate once immediately, so seeding this with a real reading would compare two values
+   * taken within the same frame and call a moving viewport settled.
+   */
+  let previous: string | null | undefined;
+  await expect
+    .poll(
+      async () => {
+        const current = await read();
+        const settled = current === previous;
+        previous = current;
+        return settled;
+      },
+      { intervals: Array.from({ length: 12 }, () => ANIMATION_SAMPLE_MS) },
+    )
+    .toBe(true);
+
+  return read();
 }

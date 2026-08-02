@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { doubleClickClass, dragFromPalette, freePointOnClass, openApp, relate } from './ontoschema';
+import {
+  doubleClickClass,
+  dragFromPalette,
+  freePointOnClass,
+  openApp,
+  relate,
+  settledViewport,
+} from './ontoschema';
+import { OWNS_DOUBLE_CLICK } from '../../src/canvas/gestures';
 
 /**
  * Edges attach to whichever side of a class actually faces the other, and double-clicking
@@ -87,24 +95,28 @@ async function onScreen(page: Page) {
 }
 
 /**
- * A point on the canvas with nothing on it. Found rather than assumed: once the view has
- * been zoomed into a class, any fixed corner may well have that class sitting on it, and the
- * gesture is deliberately declined there.
+ * A point on the canvas where the app will accept a double-click. Found rather than assumed:
+ * once the view has been zoomed into a class, any fixed corner may well have that class
+ * sitting on it, and the gesture is deliberately declined there.
+ *
+ * The exclusion list is the app's own, imported rather than restated. A copy here drifted
+ * from it once already, and a helper that offers a point the app refuses does not read as a
+ * broken helper — it reads as a broken feature.
  */
 async function barePoint(page: Page) {
-  const point = await page.evaluate(() => {
+  const point = await page.evaluate((ownsGesture) => {
     const pane = document.querySelector('.react-flow')?.getBoundingClientRect();
     if (!pane) return null;
     for (let y = pane.top + 12; y < pane.bottom - 12; y += 24) {
       for (let x = pane.left + 12; x < pane.right - 12; x += 24) {
         const element = document.elementFromPoint(x, y);
-        if (element?.closest('.react-flow__node, .react-flow__edgelabel-renderer')) continue;
+        if (element?.closest(ownsGesture)) continue;
         if (!element?.closest('.react-flow')) continue;
         return { x, y };
       }
     }
     return null;
-  });
+  }, OWNS_DOUBLE_CLICK);
   if (!point) throw new Error('no bare canvas to double-click');
   return point;
 }
@@ -238,14 +250,14 @@ test('double-clicking bare canvas frames the whole schema again', async ({ page 
 
   // Zoom right into one class, so most of the schema falls off screen.
   await doubleClickClass(page, 'Artist');
-  await page.waitForTimeout(700);
-  expect(await onScreen(page)).toBeLessThan(13);
+  await expect.poll(() => onScreen(page)).toBeLessThan(13);
 
   const bare = await barePoint(page);
   await page.mouse.dblclick(bare.x, bare.y);
-  await page.waitForTimeout(700);
 
-  expect(await onScreen(page)).toBe(13);
+  // Polled rather than slept on: the viewport animates for 400ms, and a fixed wait long
+  // enough on an idle machine is not long enough on a busy one.
+  await expect.poll(() => onScreen(page)).toBe(13);
 });
 
 test.describe('on a touch device', () => {
@@ -266,14 +278,11 @@ test.describe('on a touch device', () => {
     // Double-tap a class to zoom into it — the same gesture, on the other target.
     const spot = await freePointOnClass(page, 'Artist');
     await doubleTap(page, spot.x, spot.y);
-    await page.waitForTimeout(700);
-    expect(await onScreen(page)).toBeLessThan(13);
+    await expect.poll(() => onScreen(page)).toBeLessThan(13);
 
     const bare = await barePoint(page);
     await doubleTap(page, bare.x, bare.y);
-    await page.waitForTimeout(700);
-
-    expect(await onScreen(page)).toBe(13);
+    await expect.poll(() => onScreen(page)).toBe(13);
   });
 
   test('leaves the view alone for taps that are not a double-tap', async ({ page }) => {
@@ -284,8 +293,7 @@ test.describe('on a touch device', () => {
 
     const spot = await freePointOnClass(page, 'Artist');
     await doubleTap(page, spot.x, spot.y);
-    await page.waitForTimeout(700);
-    const zoomedIn = await page.locator('.react-flow__viewport').getAttribute('style');
+    const zoomedIn = await settledViewport(page);
 
     const bare = await barePoint(page);
     const unchanged = async (what: string) =>
@@ -317,10 +325,10 @@ test('double-clicking a class still focuses it rather than fitting the view', as
   await page.getByTestId('open-examples').click();
   await page.locator('[data-example="music"]').click();
   await page.locator('.react-flow__controls-fitview').click();
-  await page.waitForTimeout(400);
+  await settledViewport(page);
 
   await doubleClickClass(page, 'Artist');
-  await page.waitForTimeout(700);
+  await settledViewport(page);
 
   const node = await page.locator('[data-class-name="Artist"]').boundingBox();
   const canvas = await page.getByTestId('schema-canvas').boundingBox();
@@ -338,8 +346,7 @@ test('double-clicking the line of a relation still fits, since only its label is
   await newClass(page, 'Dealership', 520, 240);
   await relate(page, 'Car', 'Dealership', 'offeredBy');
   await doubleClickClass(page, 'Car');
-  await page.waitForTimeout(700);
-  const zoomedIn = await page.locator('.react-flow__viewport').getAttribute('style');
+  const zoomedIn = await settledViewport(page);
 
   // A point on the line but well clear of the label in the middle of it.
   const ends = await relationEdge(page, 'offeredBy');
@@ -354,9 +361,8 @@ test('double-clicking the line of a relation still fits, since only its label is
   if (!screenPoint) throw new Error('could not project the edge onto the screen');
 
   await page.mouse.dblclick(screenPoint.x, screenPoint.y);
-  await page.waitForTimeout(700);
 
-  expect(await page.locator('.react-flow__viewport').getAttribute('style')).not.toBe(zoomedIn);
+  expect(await settledViewport(page)).not.toBe(zoomedIn);
 });
 
 test('double-clicking an edge label still opens it rather than fitting the view', async ({
