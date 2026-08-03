@@ -169,8 +169,14 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
     clearFocus();
     if (!node || !canvas) return;
 
-    const width = node.measured?.width ?? node.width ?? 0;
-    const height = node.measured?.height ?? node.height ?? 0;
+    /*
+     * The estimate is the last resort rather than no answer at all. The request is cleared
+     * above whether or not it can be served, so giving up here drops the gesture on the
+     * floor — and a node has no measured size until the resize observer has run, which on a
+     * slow machine is not yet when a class is double-tapped just after a project opens.
+     */
+    const width = node.measured?.width ?? node.width ?? node.initialWidth ?? 0;
+    const height = node.measured?.height ?? node.height ?? node.initialHeight ?? 0;
     if (width <= 0 || height <= 0) return;
 
     void setCenter(node.position.x + width / 2, node.position.y + height / 2, {

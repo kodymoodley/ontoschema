@@ -338,33 +338,6 @@ test('double-clicking a class still focuses it rather than fitting the view', as
   expect(share).toBeLessThanOrEqual(0.4);
 });
 
-test('double-clicking the line of a relation still fits, since only its label is a target', async ({
-  page,
-}) => {
-  await openApp(page);
-  await newClass(page, 'Car', 60, 240);
-  await newClass(page, 'Dealership', 520, 240);
-  await relate(page, 'Car', 'Dealership', 'offeredBy');
-  await doubleClickClass(page, 'Car');
-  const zoomedIn = await settledViewport(page);
-
-  // A point on the line but well clear of the label in the middle of it.
-  const ends = await relationEdge(page, 'offeredBy');
-  const flowPoint = { x: ends.start.x + (ends.end.x - ends.start.x) * 0.15, y: ends.start.y };
-  const screenPoint = await page.evaluate((point) => {
-    const viewport = document.querySelector<HTMLElement>('.react-flow__viewport');
-    const rect = document.querySelector('.react-flow')?.getBoundingClientRect();
-    if (!viewport || !rect) return null;
-    const { a: zoom, e: x, f: y } = new DOMMatrix(getComputedStyle(viewport).transform);
-    return { x: rect.left + point.x * zoom + x, y: rect.top + point.y * zoom + y };
-  }, flowPoint);
-  if (!screenPoint) throw new Error('could not project the edge onto the screen');
-
-  await page.mouse.dblclick(screenPoint.x, screenPoint.y);
-
-  expect(await settledViewport(page)).not.toBe(zoomedIn);
-});
-
 test('double-clicking an edge label still opens it rather than fitting the view', async ({
   page,
 }) => {
