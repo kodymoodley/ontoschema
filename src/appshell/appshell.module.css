@@ -1,4 +1,5 @@
 .shell {
+  position: relative;
   display: grid;
   grid-template-rows: var(--header-height) 1fr;
   height: 100%;
@@ -12,6 +13,24 @@
   padding: 0 var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--surface-base);
+}
+
+/* The header must never wrap or force the page to scroll sideways. */
+@media (max-width: 1024px) {
+  .header {
+    gap: var(--space-2);
+    overflow-x: auto;
+  }
+
+  .brand {
+    border-right: none;
+    padding-right: 0;
+  }
+
+  .brandName,
+  .viewHint {
+    display: none;
+  }
 }
 
 .brand {
@@ -46,6 +65,82 @@
   display: grid;
   grid-template-columns: var(--panel-width) 1fr var(--inspector-width);
   min-height: 0;
+}
+
+/*
+ * The drawer toggles only exist below the three-column breakpoint. They stay in the DOM at
+ * all widths so the markup — and the keyboard path — is the same everywhere.
+ */
+.drawerToggle {
+  display: none;
+}
+
+/* Laptops: keep all three columns, but stop the canvas being squeezed to a sliver. */
+@media (max-width: 1280px) {
+  .body {
+    grid-template-columns: 240px 1fr 300px;
+  }
+}
+
+/*
+ * Narrow: one column. The side panels become overlay drawers so the canvas — the thing the
+ * app is for — keeps the full width.
+ */
+@media (max-width: 1024px) {
+  .drawerToggle {
+    display: inline-flex;
+  }
+
+  /*
+   * A closed drawer sits translated fully off-screen, which would otherwise extend the
+   * scrollable area and let the whole page slide sideways. Clipping at the shell keeps it
+   * out of the way; dialogs are portalled to the body and so are unaffected.
+   */
+  .shell {
+    overflow: hidden;
+  }
+
+  .body {
+    grid-template-columns: 1fr;
+  }
+
+  .left,
+  .right {
+    position: absolute;
+    z-index: 20;
+    top: var(--header-height);
+    bottom: 0;
+    width: min(320px, 85vw);
+    box-shadow: var(--shadow-lg);
+    /* Kept in the DOM but out of the layout and out of the tab order while closed. */
+    visibility: hidden;
+    transform: translateX(-100%);
+    transition:
+      transform 180ms ease,
+      visibility 180ms;
+  }
+
+  .left {
+    left: 0;
+  }
+
+  .right {
+    right: 0;
+    transform: translateX(100%);
+  }
+
+  .shell[data-drawer='entities'] .left,
+  .shell[data-drawer='inspector'] .right {
+    visibility: visible;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .left,
+  .right {
+    transition: none;
+  }
 }
 
 .left,

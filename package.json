@@ -19,8 +19,9 @@
     "test:integration": "vitest run --project integration",
     "test:node": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install --with-deps chromium",
-    "verify": "npm run typecheck && npm run lint && npm run format:check && npm run test:node && npm run test:e2e",
+    "test:e2e:install": "playwright install --with-deps chromium firefox webkit",
+    "size": "npm run build && node scripts/checkBundleSize.mjs",
+    "verify": "npm run typecheck && npm run lint && npm run format:check && npm run test:node && npm run size && npm run test:e2e",
     "prepare": "husky"
   },
   "dependencies": {
@@ -43,6 +44,7 @@
     "@types/react-dom": "^19.2.1",
     "@vitejs/plugin-react": "^5.1.0",
     "@vitest/coverage-v8": "^4.1.10",
+    "axe-core": "^4.12.1",
     "eslint": "^9.39.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "^16.5.0",

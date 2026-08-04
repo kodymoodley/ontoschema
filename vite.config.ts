@@ -11,7 +11,37 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: { port: 5173 },
-  build: { outDir: 'dist', sourcemap: true },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    // Anything above this is a mistake worth being told about; `npm run size` enforces the
+    // real budget against the gzipped output.
+    chunkSizeWarningLimit: 400,
+    rollupOptions: {
+      output: {
+        /*
+         * Split the third-party code out of the app bundle. The vendors change on their own
+         * release schedule, so keeping them in separate chunks means an app-only change does
+         * not invalidate a returning visitor's cache of React and the canvas engine.
+         */
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          const path = id.replace(/\\/g, '/');
+          // Checked before `react`, because the canvas engine is `@xyflow/react`.
+          if (path.includes('@xyflow') || path.includes('dagre')) return 'canvas';
+          if (path.includes('/n3/')) return 'rdf';
+          /*
+           * `scheduler` belongs with React rather than in a catch-all vendor chunk. Splitting
+           * them produces a cycle — vendor depends on React, React depends on scheduler in
+           * vendor — and Rollup emits a bundle that fails to boot. Everything else is small
+           * and stays with the app.
+           */
+          if (/\/(react|react-dom|scheduler)\//.test(path)) return 'react';
+          return undefined;
+        },
+      },
+    },
+  },
   test: {
     projects: [
       {

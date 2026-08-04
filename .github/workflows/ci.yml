@@ -34,8 +34,8 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Build
-        run: npm run build
+      - name: Build and check the bundle budget
+        run: npm run size
 
       - name: Unit, component and integration tests, with coverage thresholds
         run: npm run test:node -- --coverage
@@ -47,10 +47,11 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
 
-      # Playwright serves the production build, so this exercises what actually ships.
+      # Playwright serves the production build, so this exercises what actually ships, on
+      # all three engines.
       - name: End-to-end tests against the production build
         run: npm run test:e2e
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Palette, SchemaCanvas, TaxonomyCanvas, usePaletteCreate } from '../canvas';
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
@@ -36,6 +36,8 @@ export function App() {
   const createObjectProperty = useProjectStore((state) => state.createObjectProperty);
   const { create, canCreateAttribute } = usePaletteCreate();
   const { theme, toggleTheme } = useThemePreference();
+  // Which side panel is showing when the viewport is too narrow for three columns.
+  const [drawer, setDrawer] = useState<'none' | 'entities' | 'inspector'>('none');
 
   useGlobalShortcuts({ undo, redo, deleteSelection });
 
@@ -43,7 +45,7 @@ export function App() {
   const relationCount = ontology.objectProperties.length;
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-drawer={drawer}>
       <RelationMarkers />
       <LanguageTagSuggestions />
       <ConnectionPicker />
@@ -55,10 +57,36 @@ export function App() {
           </span>
           <span className={styles.brandName}>OntoSchema</span>
         </div>
+
+        {/*
+          Below the three-column breakpoint the side panels become drawers. The toggles are
+          always in the DOM and always operable — CSS only decides whether they are shown —
+          so the narrow layout needs no separate keyboard story.
+        */}
+        <Button
+          size="small"
+          variant="subtle"
+          className={styles.drawerToggle}
+          aria-expanded={drawer === 'entities'}
+          aria-controls="ontoschema-entities"
+          onClick={() => setDrawer((current) => (current === 'entities' ? 'none' : 'entities'))}
+        >
+          Entities
+        </Button>
         <ProjectNameField />
         <Spacer />
         <ProjectSwitcher />
         <Divider />
+        <Button
+          size="small"
+          variant="subtle"
+          className={styles.drawerToggle}
+          aria-expanded={drawer === 'inspector'}
+          aria-controls="ontoschema-inspector"
+          onClick={() => setDrawer((current) => (current === 'inspector' ? 'none' : 'inspector'))}
+        >
+          Inspector
+        </Button>
         <Button
           size="small"
           variant="subtle"
@@ -71,12 +99,22 @@ export function App() {
       </header>
 
       <div className={styles.body}>
-        <aside className={styles.left} aria-label="Palette and hierarchy">
+        <aside id="ontoschema-entities" className={styles.left} aria-label="Palette and hierarchy">
           <h2 className={styles.sectionTitle}>Palette</h2>
           <div className={styles.sectionBody}>
+            {/*
+              Creating from the palette closes the drawer, because on a narrow viewport the
+              drawer covers the canvas the new shape has just landed on.
+            */}
             <Palette
-              onCreate={create}
-              onCreateObjectProperty={() => createObjectProperty()}
+              onCreate={(kind) => {
+                create(kind);
+                setDrawer('none');
+              }}
+              onCreateObjectProperty={() => {
+                createObjectProperty();
+                setDrawer('none');
+              }}
               canCreateAttribute={canCreateAttribute}
             />
           </div>

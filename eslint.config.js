@@ -159,4 +159,11 @@ export default tseslint.config(
     files: ['tests/**/*.ts', '**/*.test.ts', '**/*.test.tsx'],
     rules: { 'no-restricted-imports': 'off', 'no-console': 'off' },
   },
+
+  // Build scripts are Node programs, not browser or app code.
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node } },
+    rules: { 'no-console': 'off' },
+  },
 );

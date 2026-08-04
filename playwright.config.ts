@@ -20,7 +20,17 @@ export default defineConfig({
     acceptDownloads: true,
   },
 
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  /*
+   * Three engines, because the app leans on things they disagree about: HTML5 drag and
+   * drop, pointer capture during a connection drag, blob downloads, and `:has()`/`color-mix`
+   * in the design tokens. Chromium runs everything; Firefox and WebKit run the same suite so
+   * a divergence shows up here rather than in someone's browser.
+   */
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
 
   /*
    * Serves the built output, not the dev server. Testing the dev server would leave
