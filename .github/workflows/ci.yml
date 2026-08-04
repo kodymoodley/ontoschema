@@ -37,8 +37,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Unit and integration tests
-        run: npm run test:unit-and-integration
+      - name: Unit, component and integration tests, with coverage thresholds
+        run: npm run test:node -- --coverage
 
       - name: Cache Playwright browsers
         id: playwright-cache
@@ -50,7 +50,8 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: End-to-end tests
+      # Playwright serves the production build, so this exercises what actually ships.
+      - name: End-to-end tests against the production build
         run: npm run test:e2e
 
       - name: Upload Playwright report on failure

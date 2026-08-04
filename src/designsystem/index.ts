@@ -7,6 +7,7 @@ export {
   EmptyState,
   Field,
   Modal,
+  NameInput,
   Panel,
   Select,
   Spacer,

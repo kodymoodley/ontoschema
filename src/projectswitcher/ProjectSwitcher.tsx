@@ -112,6 +112,7 @@ export function ProjectSwitcher() {
         <Field label="Project name">
           <TextInput
             value={newName}
+            data-autofocus
             placeholder="Automotive Schema"
             aria-label="New project name"
             onChange={(event) => setNewName(event.target.value)}

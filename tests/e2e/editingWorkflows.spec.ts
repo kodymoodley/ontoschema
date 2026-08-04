@@ -4,11 +4,11 @@ import { Parser } from 'n3';
 import {
   addAnnotation,
   addAttribute,
-  connectClasses,
   dragFromPalette,
   downloadExport,
   openApp,
   openInspectorTab,
+  relate,
   renameClassOnCanvas,
   selectClass,
 } from './ontoschema';
@@ -107,11 +107,11 @@ test('deleting a class removes its attributes and relations from the export', as
   await selectClass(page, 'Car');
   await addAttribute(page, 'make', 'string');
   await addAttribute(page, 'price', 'decimal');
-  await connectClasses(page, 'Car', 'Dealership');
+  await relate(page, 'Car', 'Dealership', 'offeredBy');
   await expect(page.locator('[data-relation-name]')).toHaveCount(1);
 
   const before = await downloadExport(page, 'ttl');
-  expect(before).toContain(':Car');
+  expect(before).toContain(':Car ');
   expect(before).toContain(':make');
 
   await selectClass(page, 'Car');
@@ -122,12 +122,41 @@ test('deleting a class removes its attributes and relations from the export', as
   await expect(page.locator('[data-relation-name]')).toHaveCount(0);
 
   const after = await downloadExport(page, 'ttl');
-  expect(after).not.toContain(':Car');
-  expect(after).not.toContain(':make');
-  expect(after).not.toContain(':price');
+  expect(after).not.toContain(':Car ');
+  expect(after).not.toContain('CarShape');
   expect(after).toContain(':Dealership');
+  // The properties survive in the pool; only their uses went with the class.
+  expect(after).toContain(':make a owl:DatatypeProperty');
+  expect(after).toContain(':offeredBy a owl:ObjectProperty');
   // Still a well-formed document after the cascade.
   expect(() => new Parser({ format: 'text/turtle' }).parse(after)).not.toThrow();
+});
+
+test('a name field can be cleared and retyped, and flags itself while empty', async ({ page }) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.getByLabel('Class name').fill('Car');
+  await page.getByLabel('Class name').press('Enter');
+  await selectClass(page, 'Car');
+
+  const field = page.getByLabel('Class local name');
+
+  // Clearing it must actually clear it rather than snapping the old name back.
+  await field.fill('');
+  await expect(field).toHaveValue('');
+  await expect(field).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByText('A class needs a name.')).toBeVisible();
+  // Nothing invalid reaches the model.
+  await expect(page.locator('[data-class-name="Car"]')).toBeVisible();
+
+  // Typing a fresh name from empty works and clears the invalid state.
+  await field.fill('Automobile');
+  await expect(field).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(page.locator('[data-class-name="Automobile"]')).toBeVisible();
+
+  const turtle = await downloadExport(page, 'ttl');
+  expect(turtle).toContain(':Automobile a owl:Class');
 });
 
 test('renaming a class carries every reference with it', async ({ page }) => {
@@ -135,7 +164,7 @@ test('renaming a class carries every reference with it', async ({ page }) => {
   await twoClasses(page, 'Car', 'Dealership');
   await selectClass(page, 'Car');
   await addAttribute(page, 'make', 'string');
-  await connectClasses(page, 'Car', 'Dealership');
+  await relate(page, 'Car', 'Dealership', 'offeredBy');
 
   await renameClassOnCanvas(page, 'Car', 'Automobile');
 
@@ -143,6 +172,9 @@ test('renaming a class carries every reference with it', async ({ page }) => {
   expect(turtle).toContain(':Automobile a owl:Class');
   expect(turtle).not.toMatch(/:Car\b/);
   expect(turtle).toMatch(/rdfs:domain \w*:Automobile/);
+  // The derived shapes follow the rename too.
+  expect(turtle).toContain(':AutomobileShape');
+  expect(turtle).not.toContain(':CarShape');
 });
 
 test('a name with characters illegal in an IRI is corrected rather than exported broken', async ({

@@ -1,7 +1,7 @@
 import type { EdgeTypes, NodeTypes } from '@xyflow/react';
 import { EDGE_TYPE, NODE_TYPE, TaxonomyClassNode, TaxonomyModuleNode } from '../canvas';
-import { ClassNode, FloatingAttributeNode } from '../classeditor';
-import { GenericPropertyNode, RelationEdge, SubClassEdge } from '../relationeditor';
+import { ClassNode } from '../classeditor';
+import { RelationEdge, SubClassEdge } from '../relationeditor';
 
 /**
  * The one place that knows both the canvas's node-type names and the editors that render
@@ -11,8 +11,6 @@ import { GenericPropertyNode, RelationEdge, SubClassEdge } from '../relationedit
 
 export const schemaNodeTypes: NodeTypes = {
   [NODE_TYPE.ontologyClass]: ClassNode,
-  [NODE_TYPE.genericProperty]: GenericPropertyNode,
-  [NODE_TYPE.floatingAttribute]: FloatingAttributeNode,
 };
 
 export const schemaEdgeTypes: EdgeTypes = {

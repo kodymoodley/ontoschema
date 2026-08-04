@@ -1,4 +1,4 @@
-import type { ObjectProperty, Ontology, OntologyClass } from './types';
+import type { DatatypeProperty, ObjectProperty, Ontology, OntologyClass } from './types';
 
 /**
  * Taxonomy queries over class and object-property hierarchies.
@@ -103,6 +103,16 @@ export function classForest(ontology: Ontology): TaxonomyNode<OntologyClass>[] {
 
 export function objectPropertyForest(ontology: Ontology): TaxonomyNode<ObjectProperty>[] {
   return buildForest(ontology.objectProperties, (entity) => entity.superPropertyIds);
+}
+
+/**
+ * Datatype properties are presented as a flat, alphabetical pool rather than a hierarchy.
+ * They are the attributes a class can carry, and arranging attributes into a taxonomy is
+ * rarely meaningful — the useful question is only "which ones exist, and where are they
+ * used".
+ */
+export function datatypePropertyList(ontology: Ontology): DatatypeProperty[] {
+  return [...ontology.datatypeProperties].sort((a, b) => a.localName.localeCompare(b.localName));
 }
 
 /** Root classes, in model order — each becomes its own module box in the taxonomy view. */

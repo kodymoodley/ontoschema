@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAutoOntology } from '../../tests/fixtures/autoOntology';
+import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/autoOntology';
 import {
   canonicalize,
   hasBlankNodes,
@@ -241,6 +241,58 @@ describe('awkward but legal input', () => {
     const jsonld = canonicalize(await parseJsonLd(serializeJsonLd(annotated)));
     expect(rdfxml).toEqual(turtle);
     expect(jsonld).toEqual(turtle);
+  });
+});
+
+describe('SHACL shapes travel inside the same documents', () => {
+  const { ontology: reused } = buildReusedOntology();
+
+  it('writes shapes as ordinary RDF in Turtle', () => {
+    const turtle = serializeTurtle(reused);
+    expect(turtle).toContain('@prefix sh: <http://www.w3.org/ns/shacl#>');
+    expect(turtle).toContain('auto:CarShape a sh:NodeShape');
+    expect(turtle).toMatch(/sh:targetClass auto:Car/);
+  });
+
+  it('round-trips the shapes through every serialization identically', async () => {
+    const turtle = canonicalize(parseTurtle(serialize(reused, 'turtle').content));
+    const rdfxml = canonicalize(await parseRdfXml(serialize(reused, 'rdfxml').content));
+    const jsonld = canonicalize(await parseJsonLd(serialize(reused, 'jsonld').content));
+
+    expect(rdfxml).toEqual(turtle);
+    expect(jsonld).toEqual(turtle);
+    expect(turtle.some((line) => line.includes('shacl#targetClass'))).toBe(true);
+  });
+
+  it('contains no blank nodes, so nothing depends on collection support', async () => {
+    expect(hasBlankNodes(parseTurtle(serializeTurtle(reused)))).toBe(false);
+    expect(hasBlankNodes(await parseRdfXml(serializeRdfXml(reused)))).toBe(false);
+    expect(hasBlankNodes(await parseJsonLd(serializeJsonLd(reused)))).toBe(false);
+  });
+
+  it('drops the shapes but keeps the axioms when asked for axioms only', () => {
+    const turtle = serializeTurtle(reused, { includeShapes: false });
+    expect(turtle).not.toContain('sh:NodeShape');
+    expect(turtle).toContain('a owl:Class');
+  });
+
+  it('drops the axioms but keeps the shapes when asked for shapes only', () => {
+    const turtle = serializeTurtle(reused, { includeAxioms: false });
+    expect(turtle).toContain('sh:NodeShape');
+    expect(turtle).not.toContain('a owl:Class');
+    // The ontology header is always written, whichever layers are selected.
+    expect(turtle).toContain('a owl:Ontology');
+  });
+
+  it('still writes the ontology header and its metadata with both layers off', () => {
+    // Ontology-level metadata belongs to neither layer, so it always survives.
+    const quads = parseTurtle(
+      serializeTurtle(reused, { includeAxioms: false, includeShapes: false }),
+    );
+    expect(quads.every((quad) => quad.subject.value === 'https://example.org/auto')).toBe(true);
+    expect(quads.some((quad) => quad.predicate.value === 'http://purl.org/dc/terms/title')).toBe(
+      true,
+    );
   });
 });
 

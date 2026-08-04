@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeCurie } from '../annotationvocabulary';
+import { toClassLocalName } from '../ontologymodel';
 import type { DatatypeProperty, OntologyClass } from '../ontologymodel';
 import { useProjectStore } from '../projectstore';
 import styles from './classeditor.module.css';
@@ -13,9 +14,15 @@ import styles from './classeditor.module.css';
  * Double-clicking the header renames in place; the full editing surface is the inspector.
  */
 
+interface AttributeRow {
+  usageId: string;
+  property: DatatypeProperty;
+  shared: boolean;
+}
+
 interface ClassNodeData {
   entity: OntologyClass;
-  attributes: DatatypeProperty[];
+  attributes: AttributeRow[];
   superClassNames: string[];
 }
 
@@ -32,12 +39,15 @@ export function ClassNode({ data, selected }: NodeProps) {
     if (editing) inputRef.current?.select();
   }, [editing]);
 
-  const commit = () => {
-    setEditing(false);
-    if (draft.trim() && draft !== entity.localName) renameClass(entity.id, draft);
-  };
+  // An empty or unusable name is shown as invalid rather than silently reverted, so the
+  // field can be cleared and retyped.
+  const draftValid = toClassLocalName(draft) !== '';
 
-  const annotationCount = entity.annotations.length;
+  const commit = () => {
+    if (!draftValid) return;
+    setEditing(false);
+    if (draft !== entity.localName) renameClass(entity.id, draft);
+  };
 
   return (
     <div
@@ -81,11 +91,12 @@ export function ClassNode({ data, selected }: NodeProps) {
         {editing ? (
           <input
             ref={inputRef}
-            className={styles.nameInput}
+            className={`${styles.nameInput} ${draftValid ? '' : styles.nameInputInvalid}`}
             value={draft}
             aria-label="Class name"
+            aria-invalid={draftValid ? undefined : true}
             onChange={(event) => setDraft(event.target.value)}
-            onBlur={commit}
+            onBlur={() => (draftValid ? commit() : setEditing(false))}
             onKeyDown={(event) => {
               if (event.key === 'Enter') commit();
               if (event.key === 'Escape') setEditing(false);
@@ -108,20 +119,31 @@ export function ClassNode({ data, selected }: NodeProps) {
             Drop a datatype property here to add an attribute.
           </p>
         ) : (
-          attributes.map((attribute) => (
+          attributes.map((row) => (
             <button
-              key={attribute.id}
+              key={row.usageId}
               type="button"
               className={styles.attribute}
-              data-attribute-name={attribute.localName}
+              data-attribute-name={row.property.localName}
+              data-usage-id={row.usageId}
+              title={
+                row.shared
+                  ? `${row.property.localName} is also used on other classes`
+                  : row.property.localName
+              }
               onClick={(event) => {
                 event.stopPropagation();
-                select({ kind: 'datatypeProperty', id: attribute.id });
+                select({ kind: 'datatypeProperty', id: row.property.id });
               }}
             >
               <span className={styles.attributeMarker} aria-hidden="true" />
-              <span className={styles.attributeName}>{attribute.localName}</span>
-              <span className={styles.attributeRange}>{xsdDatatypeCurie(attribute.range)}</span>
+              <span className={styles.attributeName}>{row.property.localName}</span>
+              {row.shared ? (
+                <span className={styles.sharedMark} aria-label="shared">
+                  ↗
+                </span>
+              ) : null}
+              <span className={styles.attributeRange}>{xsdDatatypeCurie(row.property.range)}</span>
             </button>
           ))
         )}
@@ -131,8 +153,8 @@ export function ClassNode({ data, selected }: NodeProps) {
         <span>
           {attributes.length} {attributes.length === 1 ? 'attribute' : 'attributes'}
         </span>
-        {annotationCount > 0 ? (
-          <span className={styles.annotationCount}>{annotationCount} annotations</span>
+        {entity.annotations.length > 0 ? (
+          <span className={styles.annotationCount}>{entity.annotations.length} annotations</span>
         ) : null}
       </footer>
     </div>

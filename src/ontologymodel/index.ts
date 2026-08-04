@@ -5,19 +5,19 @@ export type {
   EntityKind,
   EntityRef,
   ObjectProperty,
-  ObjectPropertyKind,
   Ontology,
   OntologyClass,
   Position,
   Project,
+  PropertyUsage,
+  ResolvedUsage,
 } from './types';
 
 export {
   DEFAULT_NAMESPACE_IRI,
   DEFAULT_PREFIX,
-  attributesOfClass,
+  attributeUsagesOfClass,
   classLocalNames,
-  connectedRelations,
   createAnnotation,
   createEmptyOntology,
   createId,
@@ -25,13 +25,22 @@ export {
   findClass,
   findDatatypeProperty,
   findObjectProperty,
+  findUsage,
+  hasUnambiguousDomain,
+  indexOntology,
   isOntologyEmpty,
-  allLocalNames,
   propertyLocalNames,
-  relationsTouchingClass,
+  relationUsages,
+  relationUsagesOfClass,
+  relationUsagesTouchingClass,
+  resolveUsage,
+  usageCount,
+  usagesOfProperty,
 } from './ontology';
+export type { OntologyIndex } from './ontology';
 
 export {
+  ABSOLUTE_IRI_VALUE,
   entityIri,
   normalizeNamespaceIri,
   ontologyIri,
@@ -50,6 +59,7 @@ export {
   canSubproperty,
   classForest,
   classWithDescendants,
+  datatypePropertyList,
   objectPropertyForest,
   rootClasses,
   subClassEdges,
@@ -59,30 +69,30 @@ export type { TaxonomyNode } from './taxonomy';
 
 export {
   addAnnotation,
+  addAttributeToClass,
   addClass,
   addDatatypeProperty,
   addObjectProperty,
+  addRelationBetween,
   addSubClassOf,
+  attachProperty,
   deleteClass,
   deleteDatatypeProperty,
   deleteObjectProperty,
+  detachUsage,
   moveClass,
-  moveDatatypeProperty,
-  moveObjectProperty,
   removeAnnotation,
-  removeSubClassOf,
   renameClass,
   renameDatatypeProperty,
   renameObjectProperty,
-  setDatatypePropertyDomain,
   setDatatypePropertyRange,
-  setObjectPropertyEndpoints,
   setOntologyIri,
   setOntologyPrefix,
   setSuperClass,
   setSuperObjectProperty,
+  setUsageEndpoints,
   updateAnnotation,
 } from './mutations';
 
 export { ontologyToTriples, iri, literal } from './triples';
-export type { Triple, TripleObject } from './triples';
+export type { Triple, TripleObject, SerializationOptions } from './triples';

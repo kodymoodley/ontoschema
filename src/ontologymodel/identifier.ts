@@ -84,6 +84,14 @@ export function toPropertyLocalName(raw: string): string {
   );
 }
 
+/**
+ * An absolute IRI: a scheme followed by characters legal in an IRI. Anything containing a
+ * space, quote or angle bracket is not an IRI and must be written as a literal instead —
+ * emitting it as an IRI would produce a document no parser can read.
+ */
+export const ABSOLUTE_IRI_VALUE = /^[A-Za-z][A-Za-z0-9+.-]*:[^\s<>"{}|\\^`]*$/;
+
+/** A namespace IRI additionally needs an authority, so `mailto:x` is not accepted. */
 const ABSOLUTE_IRI = /^[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s<>"{}|\\^`]+$/;
 
 export function validateNamespaceIri(iri: string): ValidationResult {

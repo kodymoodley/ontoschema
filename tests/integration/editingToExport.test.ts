@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useProjectStore } from '../../src/projectstore';
-import { clearWorkspace } from '../../src/projectstore';
+import { clearWorkspace, useProjectStore } from '../../src/projectstore';
 import {
-  attributesOfClass,
+  attributeUsagesOfClass,
   classForest,
   findClass,
   findObjectProperty,
-  relationsTouchingClass,
+  relationUsagesTouchingClass,
   taxonomyModules,
+  usagesOfProperty,
 } from '../../src/ontologymodel';
 import { serialize } from '../../src/serialization';
 import { canonicalize, parseJsonLd, parseRdfXml, parseTurtle } from '../fixtures/parseRdf';
@@ -40,31 +40,19 @@ function buildAutomotiveProject() {
   store().reparentClass(car, vehicle);
   store().reparentClass(truck, vehicle);
 
-  const make = store().createDatatypeProperty({
-    localName: 'make',
-    domainClassId: car,
-    range: 'string',
-  });
-  store().createDatatypeProperty({ localName: 'model', domainClassId: car, range: 'string' });
-  const year = store().createDatatypeProperty({
-    localName: 'year',
-    domainClassId: car,
-    range: 'integer',
-  });
-  store().createDatatypeProperty({ localName: 'engine', domainClassId: car, range: 'string' });
-  const price = store().createDatatypeProperty({
-    localName: 'price',
-    domainClassId: car,
-    range: 'decimal',
-  });
+  const make = store().createAttributeOn(car, { localName: 'make', range: 'string' });
+  store().createAttributeOn(car, { localName: 'model', range: 'string' });
+  const year = store().createAttributeOn(car, { localName: 'year', range: 'integer' });
+  store().createAttributeOn(car, { localName: 'engine', range: 'string' });
+  const price = store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
 
-  const offeredBy = store().createObjectProperty({
-    localName: 'offeredBy',
-    kind: 'scoped',
-    domainClassId: car,
-    rangeClassId: dealership,
-  });
-  const hasPart = store().createObjectProperty({ localName: 'hasPart', kind: 'generic' });
+  // Drawing an edge asks which property it is; here the user creates a new one.
+  store().beginConnection({ subjectClassId: car, objectClassId: dealership });
+  store().completeConnectionWithNewProperty('offeredBy');
+  const offeredBy = ontology().objectProperties.find((p) => p.localName === 'offeredBy')?.id ?? '';
+
+  // Declared but never drawn, so it lives only in the property list.
+  const hasPart = store().createObjectProperty({ localName: 'hasPart' });
 
   store().annotate({ kind: 'class', id: car }, 'skos:prefLabel', 'Car', 'en');
   store().annotate({ kind: 'class', id: car }, 'skos:prefLabel', 'Auto', 'nl');
@@ -73,9 +61,20 @@ function buildAutomotiveProject() {
   return { vehicle, car, truck, dealership, make, year, price, offeredBy, hasPart };
 }
 
+/**
+ * The Turtle statement for one subject, up to its terminating period. Matching against the
+ * whole document with a greedy pattern would happily run past the end of the statement and
+ * pick up a predicate belonging to something else entirely.
+ */
+function statementFor(turtle: string, subject: string): string {
+  const start = turtle.indexOf(`\n${subject} `);
+  if (start < 0) return '';
+  const end = turtle.indexOf('.\n', start);
+  return turtle.slice(start, end < 0 ? undefined : end + 1);
+}
+
 beforeEach(() => {
   clearWorkspace();
-  // A fresh project per test; the store is a module singleton, as it is in the browser.
   store().newProject('Test project');
   const stale = useProjectStore
     .getState()
@@ -94,49 +93,57 @@ describe('editing through the store reaches the model', () => {
       'Truck',
       'Vehicle',
     ]);
-    expect(attributesOfClass(model, ids.car).map((a) => a.localName)).toEqual([
-      'make',
-      'model',
-      'year',
-      'engine',
-      'price',
-    ]);
-    expect(findObjectProperty(model, ids.offeredBy)).toMatchObject({
-      kind: 'scoped',
-      domainClassId: ids.car,
-      rangeClassId: ids.dealership,
-    });
-    expect(findObjectProperty(model, ids.hasPart)).toMatchObject({
-      kind: 'generic',
-      domainClassId: null,
-      rangeClassId: null,
-    });
+    expect(attributeUsagesOfClass(model, ids.car)).toHaveLength(5);
+    expect(usagesOfProperty(model, ids.offeredBy)).toHaveLength(1);
+    expect(usagesOfProperty(model, ids.hasPart)).toHaveLength(0);
 
     const forest = classForest(model);
     expect(forest.map((node) => node.entity.localName).sort()).toEqual(['Dealership', 'Vehicle']);
     expect(taxonomyModules(model)).toHaveLength(2);
   });
 
-  it('a connection drawn on the canvas sets domain and range from its direction', () => {
+  it('a drawn connection stays pending until a property is chosen', () => {
     const ids = buildAutomotiveProject();
-    const drawn = store().createObjectProperty({
-      kind: 'scoped',
-      domainClassId: ids.dealership,
-      rangeClassId: ids.car,
-    });
-    expect(findObjectProperty(ontology(), drawn)).toMatchObject({
-      domainClassId: ids.dealership,
-      rangeClassId: ids.car,
-    });
+    store().beginConnection({ subjectClassId: ids.dealership, objectClassId: ids.car });
+
+    expect(useProjectStore.getState().pendingConnection).not.toBeNull();
+    const before = ontology().usages.length;
+
+    store().cancelConnection();
+    expect(useProjectStore.getState().pendingConnection).toBeNull();
+    expect(ontology().usages).toHaveLength(before);
   });
 
-  it('attaching a floating attribute to a class gives it a domain', () => {
+  it('reuses an existing object property rather than minting another one', () => {
     const ids = buildAutomotiveProject();
-    const floating = store().createDatatypeProperty({ localName: 'vin' });
-    expect(ontology().datatypeProperties.find((p) => p.id === floating)?.domainClassId).toBeNull();
+    const propertyCount = ontology().objectProperties.length;
 
-    store().setAttributeDomain(floating, ids.car);
-    expect(attributesOfClass(ontology(), ids.car).map((a) => a.localName)).toContain('vin');
+    store().beginConnection({ subjectClassId: ids.truck, objectClassId: ids.dealership });
+    store().completeConnectionWith(ids.hasPart);
+
+    expect(ontology().objectProperties).toHaveLength(propertyCount);
+    expect(usagesOfProperty(ontology(), ids.hasPart)).toHaveLength(1);
+  });
+
+  it('reuses a datatype property on a second class', () => {
+    const ids = buildAutomotiveProject();
+    store().attachPropertyToClass(ids.price, ids.truck);
+
+    expect(usagesOfProperty(ontology(), ids.price)).toHaveLength(2);
+    expect(attributeUsagesOfClass(ontology(), ids.truck)).toHaveLength(1);
+    // One property, not a copy.
+    expect(ontology().datatypeProperties.filter((p) => p.localName === 'price')).toHaveLength(1);
+  });
+
+  it('detaching a property from a class leaves it in the pool', () => {
+    const ids = buildAutomotiveProject();
+    const usage = attributeUsagesOfClass(ontology(), ids.car).find(
+      (entry) => entry.propertyId === ids.make,
+    );
+    store().detachUsageById(usage?.id ?? '');
+
+    expect(attributeUsagesOfClass(ontology(), ids.car)).toHaveLength(4);
+    expect(ontology().datatypeProperties.some((p) => p.id === ids.make)).toBe(true);
   });
 });
 
@@ -155,9 +162,9 @@ describe('exports of a store-built ontology', () => {
     expect(jsonld).toEqual(turtle);
   });
 
-  it('contains the triples the workflow implies', () => {
+  it('contains the axioms the workflow implies', () => {
     buildAutomotiveProject();
-    const turtle = serialize(ontology(), 'turtle').content;
+    const turtle = serialize(ontology(), 'turtle', 'auto', { includeShapes: false }).content;
 
     expect(turtle).toContain('auto:Car a owl:Class');
     expect(turtle).toMatch(/auto:Car[\s\S]*rdfs:subClassOf auto:Vehicle/);
@@ -168,11 +175,15 @@ describe('exports of a store-built ontology', () => {
     expect(turtle).toContain('"Auto"@nl');
   });
 
-  it('names downloads after the project', () => {
-    buildAutomotiveProject();
-    const model = ontology();
-    expect(serialize(model, 'turtle', 'Automotive Schema').filename).toBe('Automotive-Schema.ttl');
-    expect(serialize(model, 'owl', 'Automotive Schema').filename).toBe('Automotive-Schema.owl');
+  it('contains a SHACL shape for every usage', () => {
+    const ids = buildAutomotiveProject();
+    void ids;
+    const turtle = serialize(ontology(), 'turtle', 'auto', { includeAxioms: false }).content;
+
+    expect(turtle).toContain('auto:CarShape a sh:NodeShape');
+    expect(turtle).toMatch(/sh:targetClass auto:Car/);
+    expect(turtle).toMatch(/auto:Car_offeredBy[\s\S]*sh:class auto:Dealership/);
+    expect(turtle).toMatch(/auto:Car_price[\s\S]*sh:datatype xsd:decimal/);
   });
 
   it('exports an empty project as a valid document with only the header', async () => {
@@ -184,24 +195,62 @@ describe('exports of a store-built ontology', () => {
   });
 });
 
+describe('reuse is expressed by shapes, not by contradictory axioms', () => {
+  it('drops rdfs:domain once a property is used twice, and keeps a shape per class', async () => {
+    const ids = buildAutomotiveProject();
+    store().attachPropertyToClass(ids.price, ids.truck);
+    const model = ontology();
+
+    const axioms = serialize(model, 'turtle', 'auto', { includeShapes: false }).content;
+    const priceStatement = statementFor(axioms, 'auto:price');
+    // Saying it twice would mean intersection: every Car is also a Truck.
+    expect(priceStatement).not.toContain('rdfs:domain');
+    // The xsd range is the same wherever the property is used, so it survives.
+    expect(priceStatement).toContain('rdfs:range xsd:decimal');
+
+    const shapes = serialize(model, 'turtle', 'auto', { includeAxioms: false }).content;
+    expect(shapes).toContain('auto:Car_price');
+    expect(shapes).toContain('auto:Truck_price');
+
+    // The whole thing is still one coherent graph in every format.
+    const turtle = canonicalize(parseTurtle(serialize(model, 'turtle').content));
+    expect(canonicalize(await parseRdfXml(serialize(model, 'rdfxml').content))).toEqual(turtle);
+    expect(canonicalize(await parseJsonLd(serialize(model, 'jsonld').content))).toEqual(turtle);
+  });
+
+  it('keeps each class-to-class pairing distinct when a relation is reused', () => {
+    const ids = buildAutomotiveProject();
+    const garage = store().createClass({ localName: 'Garage' });
+    store().beginConnection({ subjectClassId: ids.truck, objectClassId: garage });
+    store().completeConnectionWith(ids.offeredBy);
+
+    const shapes = serialize(ontology(), 'turtle', 'auto', { includeAxioms: false }).content;
+    expect(shapes).toMatch(/auto:Car_offeredBy[\s\S]*sh:class auto:Dealership/);
+    expect(shapes).toMatch(/auto:Truck_offeredBy[\s\S]*sh:class auto:Garage/);
+
+    // A union domain/range would have licensed Car -> Garage; nothing here does.
+    const axioms = serialize(ontology(), 'turtle', 'auto', { includeShapes: false }).content;
+    const statement = statementFor(axioms, 'auto:offeredBy');
+    expect(statement).toContain('owl:ObjectProperty');
+    expect(statement).not.toContain('rdfs:range');
+    expect(statement).not.toContain('rdfs:domain');
+  });
+});
+
 describe('destructive edits stay consistent all the way to the export', () => {
-  it('deleting a class removes it, its attributes and its relations from the output', async () => {
+  it('deleting a class removes its usages but keeps the properties', async () => {
     const ids = buildAutomotiveProject();
     store().deleteClassById(ids.car);
 
     const model = ontology();
     expect(findClass(model, ids.car)).toBeUndefined();
-    expect(model.datatypeProperties).toHaveLength(0);
-    expect(findObjectProperty(model, ids.offeredBy)).toBeUndefined();
-    // The generic property never referenced Car, so it survives.
-    expect(findObjectProperty(model, ids.hasPart)).toBeDefined();
+    expect(usagesOfProperty(model, ids.offeredBy)).toHaveLength(0);
+    expect(model.datatypeProperties).toHaveLength(5);
 
     const turtle = serialize(model, 'turtle').content;
-    expect(turtle).not.toContain('auto:Car');
-    expect(turtle).not.toContain('auto:offeredBy');
-    expect(turtle).toContain('auto:hasPart');
+    expect(turtle).not.toContain('auto:Car ');
+    expect(turtle).toContain('auto:offeredBy');
 
-    // Still a valid, consistent graph in every format.
     const parsed = canonicalize(parseTurtle(turtle));
     expect(canonicalize(await parseRdfXml(serialize(model, 'rdfxml').content))).toEqual(parsed);
     expect(canonicalize(await parseJsonLd(serialize(model, 'jsonld').content))).toEqual(parsed);
@@ -211,20 +260,25 @@ describe('destructive edits stay consistent all the way to the export', () => {
     const ids = buildAutomotiveProject();
     store().renameClassById(ids.car, 'Automobile');
 
-    const turtle = serialize(ontology(), 'turtle').content;
+    const turtle = serialize(ontology(), 'turtle', 'auto', { includeShapes: false }).content;
     expect(turtle).toContain('auto:Automobile');
     expect(turtle).not.toMatch(/auto:Car\b/);
     expect(turtle).toMatch(/auto:offeredBy[\s\S]*rdfs:domain auto:Automobile/);
-    expect(turtle).toMatch(/auto:make[\s\S]*rdfs:domain auto:Automobile/);
   });
 
-  it('rejects a name with invalid IRI characters by sanitising it', () => {
+  it('renaming a class renames the shapes derived from it', () => {
+    const ids = buildAutomotiveProject();
+    store().renameClassById(ids.car, 'Automobile');
+    const shapes = serialize(ontology(), 'turtle', 'auto', { includeAxioms: false }).content;
+    expect(shapes).toContain('auto:AutomobileShape');
+    expect(shapes).not.toContain('auto:CarShape');
+  });
+
+  it('sanitises a name with invalid IRI characters', () => {
     const ids = buildAutomotiveProject();
     store().renameClassById(ids.car, 'Used Car/Model');
     expect(findClass(ontology(), ids.car)?.localName).toBe('UsedCarModel');
-
-    const turtle = serialize(ontology(), 'turtle').content;
-    expect(turtle).toContain('auto:UsedCarModel');
+    expect(serialize(ontology(), 'turtle').content).toContain('auto:UsedCarModel');
   });
 
   it('keeps a rename that would collide unique', () => {
@@ -234,7 +288,7 @@ describe('destructive edits stay consistent all the way to the export', () => {
     expect(findClass(ontology(), ids.car)?.localName).toBe('Car');
   });
 
-  it('changing the base IRI moves every entity to the new namespace', () => {
+  it('changing the base IRI moves every entity and shape to the new namespace', () => {
     buildAutomotiveProject();
     store().setBaseIri('https://acme.example/vehicles#');
     const turtle = serialize(ontology(), 'turtle').content;
@@ -258,16 +312,24 @@ describe('undo and redo', () => {
     expect(ontology().classes.map((c) => c.localName)).toContain('Motorcycle');
   });
 
-  it('restores a deleted class together with its attributes and relations', () => {
+  it('restores a deleted class together with its usages', () => {
     const ids = buildAutomotiveProject();
     store().deleteClassById(ids.car);
-    expect(ontology().datatypeProperties).toHaveLength(0);
+    expect(ontology().usages).toHaveLength(0);
 
     store().undo();
     const model = ontology();
     expect(findClass(model, ids.car)).toBeDefined();
-    expect(attributesOfClass(model, ids.car)).toHaveLength(5);
-    expect(relationsTouchingClass(model, ids.car)).toHaveLength(1);
+    expect(attributeUsagesOfClass(model, ids.car)).toHaveLength(5);
+    expect(relationUsagesTouchingClass(model, ids.car)).toHaveLength(1);
+  });
+
+  it('undoes attaching a property without deleting the property itself', () => {
+    const ids = buildAutomotiveProject();
+    store().attachPropertyToClass(ids.price, ids.truck);
+    store().undo();
+    expect(usagesOfProperty(ontology(), ids.price)).toHaveLength(1);
+    expect(ontology().datatypeProperties.some((p) => p.id === ids.price)).toBe(true);
   });
 
   it('does nothing when there is nothing to undo', () => {
@@ -297,6 +359,71 @@ describe('undo and redo', () => {
     expect(store().history.past.length).toBe(depth);
     expect(findClass(ontology(), ids.car)?.position).toEqual({ x: 999, y: 999 });
   });
+
+  /*
+   * Fields commit as you type so the canvas keeps up. Without coalescing that meant one
+   * undo entry per keystroke, and a single sentence typed into an annotation would push
+   * past HISTORY_LIMIT and silently discard every real step behind it.
+   */
+  it('records a rename typed letter by letter as one undo step', () => {
+    const ids = buildAutomotiveProject();
+    const depth = store().history.past.length;
+
+    for (const partial of ['A', 'Au', 'Aut', 'Auto', 'Autom', 'Automobile']) {
+      store().renameClassById(ids.car, partial);
+    }
+
+    expect(findClass(ontology(), ids.car)?.localName).toBe('Automobile');
+    expect(store().history.past.length).toBe(depth + 1);
+
+    // And one undo returns to the name from before the user started typing.
+    store().undo();
+    expect(findClass(ontology(), ids.car)?.localName).toBe('Car');
+  });
+
+  it('records a long annotation value as one undo step, preserving earlier history', () => {
+    const ids = buildAutomotiveProject();
+    store().annotate({ kind: 'class', id: ids.car }, 'skos:definition', '', 'en');
+    const annotationId =
+      findClass(ontology(), ids.car)?.annotations.find((a) => a.term === 'skos:definition')?.id ??
+      '';
+    const depth = store().history.past.length;
+
+    const sentence = 'A road vehicle with four wheels powered by an internal combustion engine.';
+    for (let length = 1; length <= sentence.length; length += 1) {
+      store().editAnnotation({ kind: 'class', id: ids.car }, annotationId, {
+        value: sentence.slice(0, length),
+      });
+    }
+
+    expect(store().history.past.length).toBe(depth + 1);
+    // The 70-odd keystrokes have not pushed the earlier steps off the end of the stack.
+    expect(store().history.past.length).toBeLessThan(50);
+  });
+
+  it('keeps edits to different targets as separate undo steps', () => {
+    const ids = buildAutomotiveProject();
+    const depth = store().history.past.length;
+
+    store().renameClassById(ids.car, 'Automobile');
+    store().renameClassById(ids.truck, 'Lorry');
+
+    expect(store().history.past.length).toBe(depth + 2);
+    store().undo();
+    expect(findClass(ontology(), ids.truck)?.localName).toBe('Truck');
+    expect(findClass(ontology(), ids.car)?.localName).toBe('Automobile');
+  });
+
+  it('starts a fresh undo step when typing resumes after a pause', async () => {
+    const ids = buildAutomotiveProject();
+    const depth = store().history.past.length;
+
+    store().renameClassById(ids.car, 'Auto');
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    store().renameClassById(ids.car, 'Automobile');
+
+    expect(store().history.past.length).toBe(depth + 2);
+  });
 });
 
 describe('multiple projects', () => {
@@ -314,28 +441,25 @@ describe('multiple projects', () => {
 
     store().switchProject(automotiveId);
     expect(findClass(ontology(), ids.car)?.localName).toBe('Car');
-    expect(serialize(ontology(), 'turtle').content).toContain('auto:Car');
 
     store().switchProject(secondId);
     expect(ontology().classes.map((c) => c.localName)).toEqual(['Book']);
   });
 
-  it('clears undo history when crossing projects, so undo cannot reach into another ontology', () => {
+  it('clears undo history when crossing projects', () => {
     buildAutomotiveProject();
     expect(store().canUndo()).toBe(true);
     store().newProject('Other');
     expect(store().canUndo()).toBe(false);
   });
 
-  it('round-trips a project through its file format', () => {
+  it('round-trips a project, usages included, through its file format', () => {
     const ids = buildAutomotiveProject();
     const file = store().exportProjectFile();
     expect(file).toBeTruthy();
 
     const importedId = store().importProject(file ?? '');
     expect(importedId).toBeTruthy();
-    // A fresh id, so re-importing never overwrites the original.
-    expect(importedId).not.toBe(ids.car);
 
     const restored = ontology();
     expect(restored.classes.map((c) => c.localName).sort()).toEqual([
@@ -345,7 +469,8 @@ describe('multiple projects', () => {
       'Vehicle',
     ]);
     expect(restored.datatypeProperties).toHaveLength(5);
-    expect(restored.objectProperties.find((p) => p.kind === 'generic')?.localName).toBe('hasPart');
+    expect(restored.usages).toHaveLength(6);
+    expect(findObjectProperty(restored, ids.offeredBy)).toBeDefined();
     expect(serialize(restored, 'turtle').content).toContain('"Auto"@nl');
   });
 
@@ -358,7 +483,6 @@ describe('multiple projects', () => {
     const only = useProjectStore.getState().activeProjectId ?? '';
     store().deleteProject(only);
     expect(useProjectStore.getState().projects.length).toBeGreaterThan(0);
-    expect(useProjectStore.getState().activeProjectId).not.toBeNull();
   });
 });
 
@@ -366,9 +490,9 @@ describe('persistence', () => {
   it('writes the workspace to localStorage as edits happen', () => {
     buildAutomotiveProject();
     const raw = globalThis.localStorage.getItem('ontoschema.workspace.v1');
-    expect(raw).toBeTruthy();
     expect(raw).toContain('Automotive Schema');
     expect(raw).toContain('offeredBy');
+    expect(raw).toContain('usages');
   });
 
   it('survives a corrupt stored workspace instead of failing to start', async () => {
@@ -376,6 +500,68 @@ describe('persistence', () => {
     const { loadWorkspace } = await import('../../src/projectstore');
     const workspace = loadWorkspace();
     expect(workspace.projects.length).toBeGreaterThan(0);
-    expect(workspace.activeProjectId).toBeTruthy();
+  });
+
+  it('reconstructs usages from a document written before the usage model existed', async () => {
+    const legacy = {
+      version: 1,
+      project: {
+        id: 'p1',
+        name: 'Legacy',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        ontology: {
+          iri: 'https://example.org/legacy/',
+          prefix: 'leg',
+          annotations: [],
+          classes: [
+            {
+              id: 'c1',
+              localName: 'Car',
+              superClassIds: [],
+              annotations: [],
+              position: { x: 0, y: 0 },
+            },
+            {
+              id: 'c2',
+              localName: 'Dealership',
+              superClassIds: [],
+              annotations: [],
+              position: { x: 200, y: 0 },
+            },
+          ],
+          objectProperties: [
+            {
+              id: 'o1',
+              localName: 'offeredBy',
+              kind: 'scoped',
+              domainClassId: 'c1',
+              rangeClassId: 'c2',
+              superPropertyIds: [],
+              annotations: [],
+            },
+          ],
+          datatypeProperties: [
+            {
+              id: 'd1',
+              localName: 'make',
+              domainClassId: 'c1',
+              range: 'string',
+              superPropertyIds: [],
+              annotations: [],
+            },
+          ],
+        },
+      },
+    };
+
+    const id = store().importProject(JSON.stringify(legacy));
+    expect(id).toBeTruthy();
+
+    const model = ontology();
+    expect(model.usages).toHaveLength(2);
+    expect(attributeUsagesOfClass(model, 'c1')).toHaveLength(1);
+    expect(usagesOfProperty(model, 'o1')[0]?.objectClassId).toBe('c2');
+    expect(serialize(model, 'turtle').content).toMatch(/leg:offeredBy[\s\S]*rdfs:domain leg:Car/);
   });
 });

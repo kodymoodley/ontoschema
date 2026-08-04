@@ -1,6 +1,6 @@
 import { RDF_TYPE } from '../annotationvocabulary';
 import { ontologyToTriples } from '../ontologymodel';
-import type { Ontology, Triple } from '../ontologymodel';
+import type { Ontology, SerializationOptions, Triple } from '../ontologymodel';
 import { localNameOf, namespaceOf, prefixesFor } from './prefixes';
 import type { PrefixTable } from './prefixes';
 
@@ -16,8 +16,8 @@ import type { PrefixTable } from './prefixes';
 
 const RDF_NS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
 
-export function serializeRdfXml(ontology: Ontology): string {
-  const triples = ontologyToTriples(ontology);
+export function serializeRdfXml(ontology: Ontology, options: SerializationOptions = {}): string {
+  const triples = ontologyToTriples(ontology, options);
   const prefixes = { ...prefixesFor(ontology, triples) };
   ensurePrefixesForPredicates(triples, prefixes);
 

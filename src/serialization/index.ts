@@ -1,4 +1,4 @@
-import type { Ontology } from '../ontologymodel';
+import type { Ontology, SerializationOptions } from '../ontologymodel';
 import { serializeTurtle } from './turtle';
 import { serializeRdfXml } from './rdfxml';
 import { serializeJsonLd } from './jsonld';
@@ -67,14 +67,15 @@ export function serialize(
   ontology: Ontology,
   format: SerializationFormat,
   baseFilename = 'ontology',
+  options: SerializationOptions = {},
 ): SerializedOntology {
   const descriptor = describeFormat(format);
   const content =
     format === 'turtle'
-      ? serializeTurtle(ontology)
+      ? serializeTurtle(ontology, options)
       : format === 'jsonld'
-        ? serializeJsonLd(ontology)
-        : serializeRdfXml(ontology);
+        ? serializeJsonLd(ontology, options)
+        : serializeRdfXml(ontology, options);
 
   return {
     format,
@@ -96,5 +97,5 @@ export function sanitizeFilename(name: string): string {
 export { serializeTurtle } from './turtle';
 export { serializeRdfXml } from './rdfxml';
 export { serializeJsonLd } from './jsonld';
-export { prefixesFor, toCurie, namespaceOf, localNameOf } from './prefixes';
-export type { PrefixTable } from './prefixes';
+export { prefixesFor } from './prefixes';
+export type { SerializationOptions } from '../ontologymodel';

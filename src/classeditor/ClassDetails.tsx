@@ -2,20 +2,22 @@ import { useState } from 'react';
 import { XSD_DATATYPES, xsdDatatypeCurie } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import {
-  attributesOfClass,
+  attributeUsagesOfClass,
   canSubclass,
   entityIri,
   findClass,
-  relationsTouchingClass,
-  validateLocalName,
+  findDatatypeProperty,
+  findObjectProperty,
+  relationUsagesTouchingClass,
+  toClassLocalName,
 } from '../ontologymodel';
 import { useOntology, useProjectStore } from '../projectstore';
-import { Button, Field, Select, TextInput } from '../designsystem';
+import { Button, Field, NameInput, Select } from '../designsystem';
 import styles from './details.module.css';
 
 /**
- * Inspector section for a selected class: identity, superclass, its attributes and the
- * relations that touch it. Annotations are handled separately by the annotation panel.
+ * Inspector section for a selected class: identity, superclass, the attributes it carries
+ * and the relations that touch it. Annotations are handled by the annotation panel.
  */
 export function ClassDetails({ classId }: { classId: string }) {
   const ontology = useOntology();
@@ -24,7 +26,8 @@ export function ClassDetails({ classId }: { classId: string }) {
   const renameClass = useProjectStore((state) => state.renameClassById);
   const reparentClass = useProjectStore((state) => state.reparentClass);
   const deleteClass = useProjectStore((state) => state.deleteClassById);
-  const createAttribute = useProjectStore((state) => state.createDatatypeProperty);
+  const createAttributeOn = useProjectStore((state) => state.createAttributeOn);
+  const detachUsage = useProjectStore((state) => state.detachUsageById);
   const select = useProjectStore((state) => state.select);
 
   const [attributeName, setAttributeName] = useState('');
@@ -32,28 +35,27 @@ export function ClassDetails({ classId }: { classId: string }) {
 
   if (!entity) return null;
 
-  const attributes = attributesOfClass(ontology, classId);
-  const relations = relationsTouchingClass(ontology, classId);
-  const nameCheck = validateLocalName(entity.localName);
+  const attributeUsages = attributeUsagesOfClass(ontology, classId);
+  const relationUsages = relationUsagesTouchingClass(ontology, classId);
   const superClassId = entity.superClassIds[0] ?? '';
 
   const addAttribute = () => {
     const name = attributeName.trim();
     if (!name) return;
-    createAttribute({ localName: name, domainClassId: classId, range: attributeRange });
-    // Adding from here is usually one of several in a row, so keep the class selected
-    // rather than following the new attribute into its own inspector.
-    select({ kind: 'class', id: classId });
+    createAttributeOn(classId, { localName: name, range: attributeRange });
     setAttributeName('');
   };
 
   return (
     <div className={styles.section}>
-      <Field label="Local name" error={nameCheck.valid ? undefined : nameCheck.message}>
-        <TextInput
+      <Field label="Local name">
+        <NameInput
           value={entity.localName}
           aria-label="Class local name"
-          onChange={(event) => renameClass(classId, event.target.value)}
+          onCommit={(value) => renameClass(classId, value)}
+          validate={(value) =>
+            toClassLocalName(value) === '' ? 'A class needs a name.' : undefined
+          }
         />
       </Field>
 
@@ -84,25 +86,39 @@ export function ClassDetails({ classId }: { classId: string }) {
         </Select>
       </Field>
 
-      <Field label={`Attributes (${attributes.length})`}>
-        {attributes.length > 0 ? (
+      <Field label={`Attributes (${attributeUsages.length})`}>
+        {attributeUsages.length > 0 ? (
           <ul className={styles.list}>
-            {attributes.map((attribute) => (
-              <li key={attribute.id} className={styles.row}>
-                <button
-                  type="button"
-                  className={styles.linkButton}
-                  onClick={() => select({ kind: 'datatypeProperty', id: attribute.id })}
-                >
-                  {attribute.localName}
-                </button>
-                <span className={styles.rowMeta}>{xsdDatatypeCurie(attribute.range)}</span>
-              </li>
-            ))}
+            {attributeUsages.map((usage) => {
+              const property = findDatatypeProperty(ontology, usage.propertyId);
+              if (!property) return null;
+              return (
+                <li key={usage.id} className={styles.row}>
+                  <button
+                    type="button"
+                    className={styles.linkButton}
+                    onClick={() => select({ kind: 'datatypeProperty', id: property.id })}
+                  >
+                    {property.localName}
+                  </button>
+                  <span className={styles.rowMeta}>{xsdDatatypeCurie(property.range)}</span>
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    aria-label={`Remove ${property.localName} from ${entity.localName}`}
+                    title="Remove from this class — the property stays in the list"
+                    onClick={() => detachUsage(usage.id)}
+                  >
+                    ×
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         ) : null}
         <div className={styles.inlineAdd}>
-          <TextInput
+          <input
+            className={styles.addInput}
             value={attributeName}
             placeholder="new attribute"
             aria-label="New attribute name"
@@ -128,26 +144,36 @@ export function ClassDetails({ classId }: { classId: string }) {
         </div>
       </Field>
 
-      {relations.length > 0 ? (
-        <Field label={`Relations (${relations.length})`}>
+      {relationUsages.length > 0 ? (
+        <Field label={`Relations (${relationUsages.length})`}>
           <ul className={styles.list}>
-            {relations.map((relation) => {
-              const other =
-                relation.domainClassId === classId ? relation.rangeClassId : relation.domainClassId;
-              const otherName = other ? findClass(ontology, other)?.localName : undefined;
-              const outgoing = relation.domainClassId === classId;
+            {relationUsages.map((usage) => {
+              const property = findObjectProperty(ontology, usage.propertyId);
+              if (!property) return null;
+              const outgoing = usage.subjectClassId === classId;
+              const otherId = outgoing ? usage.objectClassId : usage.subjectClassId;
+              const otherName = otherId ? findClass(ontology, otherId)?.localName : undefined;
               return (
-                <li key={relation.id} className={styles.row}>
+                <li key={usage.id} className={styles.row}>
                   <button
                     type="button"
                     className={styles.linkButton}
-                    onClick={() => select({ kind: 'objectProperty', id: relation.id })}
+                    onClick={() => select({ kind: 'objectProperty', id: property.id })}
                   >
-                    {relation.localName}
+                    {property.localName}
                   </button>
                   <span className={styles.rowMeta}>
                     {outgoing ? '→' : '←'} {otherName ?? '—'}
                   </span>
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    aria-label={`Remove the ${property.localName} relation`}
+                    title="Remove this relation — the property stays in the list"
+                    onClick={() => detachUsage(usage.id)}
+                  >
+                    ×
+                  </button>
                 </li>
               );
             })}
@@ -159,7 +185,7 @@ export function ClassDetails({ classId }: { classId: string }) {
         <Button
           variant="danger"
           onClick={() => deleteClass(classId)}
-          title="Deletes this class, its attributes and any relation that touches it"
+          title="Deletes this class and every attribute row and relation attached to it"
         >
           Delete class
         </Button>
