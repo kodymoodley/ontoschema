@@ -3,7 +3,8 @@
     "allow": [
       "PowerShell(node --version)",
       "PowerShell(npm --version)",
-      "PowerShell(npm install --no-audit --no-fund 2>&1)"
+      "PowerShell(npm install --no-audit --no-fund 2>&1)",
+      "PowerShell(npm install -D --no-audit --no-fund \"@testing-library/react@^16\" \"@testing-library/user-event@^14\" \"@testing-library/jest-dom@^6\" 2>&1)"
     ]
   }
 }

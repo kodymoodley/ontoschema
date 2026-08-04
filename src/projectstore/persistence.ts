@@ -2,6 +2,8 @@ import { createEmptyOntology, createId, createProject } from '../ontologymodel';
 import type { Annotation, Ontology, Project, PropertyUsage } from '../ontologymodel';
 import { isXsdDatatype } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
+import { emptyWorkspace } from './workspace';
+import type { Workspace } from './workspace';
 
 /**
  * Browser-local persistence. Deliberately the only place that knows about localStorage, so
@@ -9,16 +11,6 @@ import type { XsdDatatype } from '../annotationvocabulary';
  */
 
 const STORAGE_KEY = 'ontoschema.workspace.v1';
-
-export interface Workspace {
-  projects: Project[];
-  activeProjectId: string | null;
-}
-
-export function emptyWorkspace(): Workspace {
-  const project = createProject('Untitled ontology');
-  return { projects: [project], activeProjectId: project.id };
-}
 
 function storage(): Storage | null {
   try {

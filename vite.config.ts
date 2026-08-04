@@ -54,12 +54,13 @@ export default defineConfig({
        * very little. The pure layers are held far higher, where there is no such excuse.
        */
       thresholds: {
-        lines: 65,
-        functions: 67,
-        branches: 54,
-        statements: 63,
+        lines: 66,
+        functions: 69,
+        branches: 55,
+        statements: 64,
         'src/ontologymodel/**': { lines: 92, functions: 88, branches: 76, statements: 88 },
         'src/serialization/**': { lines: 88, functions: 88, branches: 78, statements: 86 },
+        'src/projectstore/**': { lines: 83, functions: 88, branches: 62, statements: 78 },
       },
     },
   },
