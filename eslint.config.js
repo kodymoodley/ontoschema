@@ -122,6 +122,16 @@ export default tseslint.config(
     },
   },
 
+  // The example schemas are data built through the model, and nothing more.
+  {
+    files: ['src/examplelibrary/**/*.ts'],
+    rules: {
+      'no-restricted-imports': pureLayerRule(
+        'examplelibrary/ builds ontologies; it must not reach into UI or app state.',
+      ),
+    },
+  },
+
   {
     files: ['src/serialization/**/*.ts'],
     rules: {

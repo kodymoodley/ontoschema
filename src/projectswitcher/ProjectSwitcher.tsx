@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useActiveProject, useProjectStore, useProjects } from '../projectstore';
+import { EXAMPLES, exampleSize } from '../examplelibrary';
 import { Button, Field, Modal, TextInput } from '../designsystem';
 import styles from './projectswitcher.module.css';
 
@@ -17,11 +18,13 @@ export function ProjectSwitcher() {
 
   const switchProject = useProjectStore((state) => state.switchProject);
   const newProject = useProjectStore((state) => state.newProject);
+  const openExample = useProjectStore((state) => state.openExample);
   const deleteProject = useProjectStore((state) => state.deleteProject);
   const importProject = useProjectStore((state) => state.importProject);
   const exportProjectFile = useProjectStore((state) => state.exportProjectFile);
 
   const [creating, setCreating] = useState(false);
+  const [browsingExamples, setBrowsingExamples] = useState(false);
   const [newName, setNewName] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -63,6 +66,9 @@ export function ProjectSwitcher() {
 
       <Button size="small" onClick={() => setCreating(true)} data-testid="new-project">
         New
+      </Button>
+      <Button size="small" onClick={() => setBrowsingExamples(true)} data-testid="open-examples">
+        Examples
       </Button>
       <Button size="small" onClick={saveToFile} title="Save this project as a file">
         Save
@@ -121,6 +127,46 @@ export function ProjectSwitcher() {
             }}
           />
         </Field>
+      </Modal>
+
+      <Modal
+        title="Open an example"
+        open={browsingExamples}
+        onClose={() => setBrowsingExamples(false)}
+        footer={
+          <Button variant="subtle" onClick={() => setBrowsingExamples(false)}>
+            Close
+          </Button>
+        }
+      >
+        <p className={styles.confirmText}>
+          Each opens as a new project, so anything you are already working on is left alone.
+        </p>
+        <ul className={styles.exampleList}>
+          {EXAMPLES.map((example) => {
+            const size = exampleSize(example);
+            return (
+              <li key={example.key}>
+                <button
+                  type="button"
+                  className={styles.exampleItem}
+                  data-example={example.key}
+                  onClick={() => {
+                    openExample(example.title, example.build());
+                    setBrowsingExamples(false);
+                  }}
+                >
+                  <span className={styles.exampleTitle}>{example.title}</span>
+                  <span className={styles.exampleSummary}>{example.summary}</span>
+                  <span className={styles.exampleCounts}>
+                    {size.classes} classes · {size.objectProperties} object properties ·{' '}
+                    {size.datatypeProperties} datatype properties
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </Modal>
 
       <Modal

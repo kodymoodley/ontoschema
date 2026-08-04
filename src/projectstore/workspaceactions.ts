@@ -1,5 +1,5 @@
 import { createProject } from '../ontologymodel';
-import type { Project } from '../ontologymodel';
+import type { Ontology, Project } from '../ontologymodel';
 import { EMPTY_HISTORY, redoStep, undoStep } from './history';
 import { projectFromFile, projectToFile, saveWorkspace } from './persistence';
 import {
@@ -26,6 +26,8 @@ export interface WorkspaceActions {
   canRedo(): boolean;
 
   newProject(name?: string): string;
+  /** Opens a ready-made schema as a new project, leaving any existing work alone. */
+  openExample(name: string, ontology: Ontology): string;
   switchProject(id: string): void;
   renameProject(id: string, name: string): void;
   deleteProject(id: string): void;
@@ -83,6 +85,11 @@ export function createWorkspaceActions(
         saveWorkspace(next);
         return { ...state, ...next, ...freshSession, view: 'schema' };
       });
+      return project.id;
+    },
+    openExample(name, ontology) {
+      const project = { ...createProject(name), ontology };
+      openWorkspace(addProject(get(), project));
       return project.id;
     },
     switchProject(id) {
