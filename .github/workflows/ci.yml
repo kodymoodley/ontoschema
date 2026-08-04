@@ -55,6 +55,11 @@ jobs:
       - name: End-to-end tests against the production build
         run: npm run test:e2e
 
+      # `npm run test:perf` is deliberately absent, and so is `npm run verify`, which would
+      # pull it in. The timing suite asserts milliseconds against budgets calibrated on an idle
+      # developer machine; a shared two-core runner would breach them at random, and a suite
+      # that fails at random is one people learn to ignore. It is a local gate, not a CI gate.
+
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4

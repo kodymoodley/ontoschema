@@ -4,7 +4,14 @@ import type { EntityRef, Ontology, Project } from '../ontologymodel';
 
 export { useProjectStore, activeOntology } from './store';
 export type { ProjectStoreState, CanvasView, PendingConnection } from './store';
-export { clearWorkspace, loadWorkspace, projectFromFile, projectToFile } from './persistence';
+export {
+  STORAGE_KEY,
+  clearWorkspace,
+  flushWorkspace,
+  loadWorkspace,
+  projectFromFile,
+  projectToFile,
+} from './persistence';
 export type { Workspace } from './workspace';
 export { DRAG_MIME, encodeDragPayload, decodeDragPayload } from './dragpayload';
 export type { DragPayload } from './dragpayload';

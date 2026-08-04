@@ -4,3 +4,9 @@
 # Integration and end-to-end suites are left to CI, so committing stays fast.
 npx lint-staged || exit 1
 npx vitest related --run --project unit $(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx)$' | tr '\n' ' ') || exit 1
+
+# Typecheck the whole project, not only what is staged. Types cross files, so a commit can
+# leave the tree broken while each of its own files looks fine: six consecutive commits once
+# went in against an API that was being changed underneath them, reaching fifty-three type
+# errors before the tree compiled again. A few seconds here makes that impossible.
+npx tsc --noEmit || exit 1

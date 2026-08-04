@@ -2,6 +2,7 @@ import { createEmptyOntology, createId, createProject } from '../ontologymodel';
 import type { Annotation, Ontology, Project, PropertyUsage } from '../ontologymodel';
 import { isXsdDatatype } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
+import { createSaveQueue } from './savequeue';
 import { emptyWorkspace } from './workspace';
 import type { Workspace } from './workspace';
 
@@ -10,7 +11,11 @@ import type { Workspace } from './workspace';
  * swapping in a real backend later means replacing this file and nothing else.
  */
 
-const STORAGE_KEY = 'ontoschema.workspace.v1';
+/**
+ * Exported so that tests seeding or inspecting a stored workspace name it through the module
+ * that owns it, rather than repeating the literal and drifting from it.
+ */
+export const STORAGE_KEY = 'ontoschema.workspace.v1';
 
 function storage(): Storage | null {
   try {
@@ -35,7 +40,7 @@ export function loadWorkspace(): Workspace {
   }
 }
 
-export function saveWorkspace(workspace: Workspace): void {
+function writeWorkspace(workspace: Workspace): void {
   const store = storage();
   if (!store) return;
   try {
@@ -43,6 +48,36 @@ export function saveWorkspace(workspace: Workspace): void {
   } catch {
     // Quota exceeded: the session continues, it just will not be restored.
   }
+}
+
+/*
+ * Durability is this module's job, so when to write belongs here too, next to where. Writes
+ * are batched — see `savequeue` for why — and flushed when the page is going away, which is
+ * the one moment a pending write would otherwise be lost.
+ */
+const queue = createSaveQueue(writeWorkspace);
+
+if (typeof window !== 'undefined') {
+  // `pagehide` covers navigation and closing; `visibilitychange` covers a phone being locked
+  // or the tab being switched away from, which on mobile may be the last event we ever get.
+  window.addEventListener('pagehide', () => queue.flush());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') queue.flush();
+  });
+}
+
+/**
+ * Persists the workspace. The write is batched unless `immediate`, which is for the moments a
+ * user would read as a commit point — creating, switching or deleting a project.
+ */
+export function saveWorkspace(workspace: Workspace, options: { immediate?: boolean } = {}): void {
+  queue.save(workspace);
+  if (options.immediate) queue.flush();
+}
+
+/** Writes any batched workspace out now. */
+export function flushWorkspace(): void {
+  queue.flush();
 }
 
 export function clearWorkspace(): void {

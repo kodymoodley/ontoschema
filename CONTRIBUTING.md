@@ -8,8 +8,14 @@ npm run test:e2e:install   # once, to fetch the Playwright browser
 npm run dev
 ```
 
-`npm run verify` is the gate: typecheck, lint, format check, all three vitest projects, and
-Playwright against the production build. CI runs exactly this.
+`npm run verify` is the gate: typecheck, lint, format check, all three vitest projects,
+Playwright against the production build, and the timing suite.
+
+CI runs all of it **except the timing suite**, deliberately. `npm run test:perf` asserts
+milliseconds — how long a keystroke blocks the main thread on a 200-class schema — and those
+budgets were calibrated on a developer machine with nothing else running. A shared two-core
+runner would breach them at random, and a suite that fails at random is a suite people learn
+to ignore. Run it locally before anything that touches the canvas, the store or persistence.
 
 ## The architectural rules are enforced, not suggested
 

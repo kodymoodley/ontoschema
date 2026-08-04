@@ -20,8 +20,8 @@ import {
   useSelection,
 } from '../projectstore';
 import styles from './canvas.module.css';
-import { NODE_TYPE, schemaEdges, schemaNodes } from './graphmodel';
 import { DOUBLE_TAP_MS, OWNS_DOUBLE_CLICK, TAP_SLOP_PX, tapDistance } from './gestures';
+import { NODE_TYPE, sameClassNode, sameRelationEdge, schemaEdges, schemaNodes } from './graphmodel';
 import { focusZoom, nextFreePosition } from './layout';
 
 /** How far the viewport may be pushed, including by a focus request. */
@@ -77,17 +77,43 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   if (adopted.nodes !== derivedNodes || adopted.edges !== derivedEdges) {
     setAdopted({ nodes: derivedNodes, edges: derivedEdges });
     setNodes((current) => {
-      // Carry the size React Flow has already measured across to the new node objects. It is
-      // what the handles and the minimap are positioned from, so dropping it makes a node
-      // fall back to its estimate for a frame on every edit.
-      const measured = new Map(current.map((node) => [node.id, node.measured]));
-      return derivedNodes.map((node) => ({
-        ...node,
-        selected: node.id === selectedId,
-        ...(measured.get(node.id) ? { measured: measured.get(node.id) } : {}),
-      }));
+      const existing = new Map(current.map((node) => [node.id, node]));
+      return derivedNodes.map((node) => {
+        const selected = node.id === selectedId;
+        const previous = existing.get(node.id);
+
+        /*
+         * A class that did not change keeps the exact object React Flow already holds, which
+         * is what stops one rename re-rendering all of them. It also carries the measured
+         * size across: that is what the handles and the minimap are positioned from, so
+         * dropping it would make the node fall back to its estimate for a frame.
+         */
+        if (previous && Boolean(previous.selected) === selected && sameClassNode(previous, node)) {
+          return previous;
+        }
+
+        return {
+          ...node,
+          selected,
+          ...(previous?.measured ? { measured: previous.measured } : {}),
+        };
+      });
     });
-    setEdges(derivedEdges.map((edge) => ({ ...edge, selected: isEdgeSelected(edge, selectedId) })));
+    setEdges((current) => {
+      const existing = new Map(current.map((edge) => [edge.id, edge]));
+      return derivedEdges.map((edge) => {
+        const selected = isEdgeSelected(edge, selectedId);
+        const previous = existing.get(edge.id);
+        if (
+          previous &&
+          Boolean(previous.selected) === selected &&
+          sameRelationEdge(previous, edge)
+        ) {
+          return previous;
+        }
+        return { ...edge, selected };
+      });
+    });
   } else if (selectedId !== null && needsNodeSelectionSync(nodes, selectedId)) {
     // Something outside the canvas changed the selection — the hierarchy tree, say. Only
     // corrected when the canvas actually disagrees, so it never fights a click; and only
