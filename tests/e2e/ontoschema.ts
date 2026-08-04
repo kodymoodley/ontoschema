@@ -80,6 +80,58 @@ export async function renameClassOnCanvas(page: Page, from: string, to: string) 
   await expect(page.locator(`[data-class-name="${to}"]`)).toBeVisible();
 }
 
+/**
+ * A point on a class that a gesture will actually reach: below the header, which renames
+ * rather than focuses, and clear of any relation label parked over the node. Labels sit above
+ * the nodes so that they stay clickable, so where they land depends on the whole layout.
+ */
+export async function freePointOnClass(page: Page, className: string) {
+  const found = await page.evaluate((name) => {
+    const node = document.querySelector<HTMLElement>(`[data-class-name="${name}"]`);
+    if (!node) return { point: null, covering: 'not on the canvas' };
+    const box = node.getBoundingClientRect();
+    const header = node.querySelector('header')?.getBoundingClientRect();
+    const from = (header?.bottom ?? box.top) + 4;
+
+    let covering = 'nothing scanned';
+    for (let y = from; y < box.bottom - 2; y += 4) {
+      for (let x = box.left + 6; x < box.right - 6; x += 8) {
+        const top = document.elementFromPoint(x, y);
+        if (node.contains(top)) return { point: { x, y }, covering: '' };
+        covering = `${top?.tagName}.${top?.getAttribute('class') ?? ''}`;
+      }
+    }
+    return { point: null, covering };
+  }, className);
+
+  if (!found.point) throw new Error(`cannot reach ${className}: ${found.covering}`);
+  return found.point;
+}
+
+/**
+ * Double-clicks a class where the gesture lands on the class itself, bringing it into focus,
+ * and returns once the viewport has actually begun to move.
+ *
+ * Waiting for the motion to start is what makes the settle check that follows deterministic.
+ * Otherwise "has not started yet" and "has finished" look identical: two readings taken
+ * before a slow machine got round to the first frame are equal, and the pre-gesture transform
+ * gets reported as the settled one. Every measurement downstream is then taken of a viewport
+ * that has not moved.
+ */
+export async function doubleClickClass(page: Page, className: string) {
+  const viewport = page.locator('.react-flow__viewport');
+  const before = await viewport.getAttribute('style');
+
+  const { x, y } = await freePointOnClass(page, className);
+  await page.mouse.dblclick(x, y);
+
+  await expect
+    .poll(() => viewport.getAttribute('style'), {
+      message: `focusing ${className} did not move the viewport`,
+    })
+    .not.toBe(before);
+}
+
 export async function selectClass(page: Page, localName: string) {
   await page.locator(`[data-class-name="${localName}"] header`).click();
   await expect(page.getByLabel('Class local name')).toHaveValue(localName);
@@ -96,11 +148,12 @@ export async function connectClasses(page: Page, sourceName: string, targetName:
   // Drag from the source class's right-hand dot to the target class's left-hand dot. The
   // drop must land on the target handle: React Flow only connects within a small radius of
   // one, so releasing over the middle of the node would do nothing.
-  // `out` and `in` are the relation handles; classes also carry hidden vertical handles
-  // that subclass edges attach to, so the sides must be addressed by id.
-  const from = await source.locator('.react-flow__handle[data-handleid="out"]').boundingBox();
+  // Each side carries a source and a target handle, so they are addressed by id.
+  const from = await source
+    .locator('.react-flow__handle[data-handleid="source-right"]')
+    .boundingBox();
   const to = await page
-    .locator(`[data-class-name="${targetName}"] .react-flow__handle[data-handleid="in"]`)
+    .locator(`[data-class-name="${targetName}"] .react-flow__handle[data-handleid="target-left"]`)
     .boundingBox();
   if (!from || !to) throw new Error('cannot locate connection handles');
 
@@ -196,4 +249,46 @@ export async function readDownload(download: Download): Promise<string> {
   const path = await download.path();
   if (!path) throw new Error('download produced no file');
   return readFile(path, 'utf8');
+}
+
+/** Long enough for a gesture to reach the viewport, and the gap between settle readings. */
+const ANIMATION_START_MS = 150;
+const ANIMATION_SAMPLE_MS = 100;
+
+/**
+ * The canvas viewport transform, once it has stopped moving.
+ *
+ * Focusing and fitting both animate for 400ms. Sleeping for a fixed period long enough to
+ * cover that on an idle machine is not long enough on a loaded one, and a transform read
+ * mid-animation looks like the gesture half worked. Two identical readings a poll apart mean
+ * it has settled.
+ */
+export async function settledViewport(page: Page): Promise<string | null> {
+  const read = () => page.locator('.react-flow__viewport').getAttribute('style');
+
+  // A gesture takes a moment to reach the viewport at all. Without this pause the first two
+  // readings are taken before anything has moved, and the pre-animation transform is reported
+  // as the settled one.
+  await page.waitForTimeout(ANIMATION_START_MS);
+
+  /*
+   * Seeded with `undefined`, which no reading can equal, so the first comparison always fails
+   * and two readings are guaranteed to be a full interval apart. `expect.poll` runs its
+   * predicate once immediately, so seeding this with a real reading would compare two values
+   * taken within the same frame and call a moving viewport settled.
+   */
+  let previous: string | null | undefined;
+  await expect
+    .poll(
+      async () => {
+        const current = await read();
+        const settled = current === previous;
+        previous = current;
+        return settled;
+      },
+      { intervals: Array.from({ length: 12 }, () => ANIMATION_SAMPLE_MS) },
+    )
+    .toBe(true);
+
+  return read();
 }

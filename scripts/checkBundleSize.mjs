@@ -23,7 +23,9 @@ const ASSETS = fileURLToPath(new URL('../dist/assets/', import.meta.url));
  * visitor's cache of React, the canvas engine and the RDF writer.
  */
 const BUDGETS = {
-  'index.js': 35, // our own application code
+  // Our own application code. Raised from 35 for the canvas focus and fit-view gestures,
+  // which brought their own touch handling.
+  'index.js': 36,
   'react.js': 65,
   'canvas.js': 80, // @xyflow/react and dagre
   'rdf.js': 55, // n3

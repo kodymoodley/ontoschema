@@ -79,6 +79,112 @@ export function layoutTaxonomyModule(
   };
 }
 
+/** How much of the canvas a class should fill when it is brought into focus. */
+export const FOCUS_AREA_FRACTION = 0.35;
+
+/** Fixed by the class node's stylesheet. */
+export const CLASS_NODE_WIDTH = 224;
+
+/**
+ * Roughly how tall a class box will render, from what it contains.
+ *
+ * Edge routing has to choose a side before React Flow has measured anything, and an
+ * approximation is enough: the choice only depends on which way the other class lies, so a
+ * few pixels either way never changes the answer.
+ */
+export function estimateClassHeight(attributeCount: number, hasSuperclass: boolean): number {
+  const header = 37;
+  const footer = 25;
+  const superclassLine = hasSuperclass ? 21 : 0;
+  const body = attributeCount > 0 ? attributeCount * 23 : 38;
+  return header + superclassLine + body + footer;
+}
+
+export type Side = 'left' | 'right' | 'top' | 'bottom';
+
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const centreOf = (box: Box) => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+
+/**
+ * Which sides an edge should leave from and arrive at.
+ *
+ * Forcing every relation out of the right edge and into the left made edges loop back on
+ * themselves whenever the target sat above, below or behind the source. Picking the facing
+ * sides instead keeps the line short and straight.
+ *
+ * The comparison is scaled by the boxes' own dimensions, so a pair of wide, short classes
+ * side by side is judged horizontal even when the vertical gap is numerically larger.
+ */
+export function chooseSides(source: Box, target: Box): { source: Side; target: Side } {
+  const from = centreOf(source);
+  const to = centreOf(target);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+
+  const horizontalReach = (source.width + target.width) / 2 || 1;
+  const verticalReach = (source.height + target.height) / 2 || 1;
+
+  if (Math.abs(dx) / horizontalReach >= Math.abs(dy) / verticalReach) {
+    return dx >= 0 ? { source: 'right', target: 'left' } : { source: 'left', target: 'right' };
+  }
+  return dy >= 0 ? { source: 'bottom', target: 'top' } : { source: 'top', target: 'bottom' };
+}
+
+/**
+ * Subclass links stay vertical whatever the layout, because a hierarchy that reads upward is
+ * the whole point of drawing them differently — but they flip end for end so a child placed
+ * above its parent does not loop all the way around.
+ */
+export function chooseHierarchySides(child: Box, parent: Box): { source: Side; target: Side } {
+  return centreOf(child).y >= centreOf(parent).y
+    ? { source: 'top', target: 'bottom' }
+    : { source: 'bottom', target: 'top' };
+}
+
+export const sourceHandleId = (side: Side) => `source-${side}`;
+export const targetHandleId = (side: Side) => `target-${side}`;
+
+export interface FocusZoomInput {
+  node: { width: number; height: number };
+  canvas: { width: number; height: number };
+  minZoom: number;
+  maxZoom: number;
+  /** Share of the canvas *area* the node should occupy, 0–1. */
+  areaFraction?: number;
+}
+
+/**
+ * The zoom at which a node fills the requested share of the canvas.
+ *
+ * Area rather than width, because a class box grows downwards as attributes are added: a
+ * tall class and a short one both need to end up feeling the same size on screen, and
+ * matching widths would leave the tall one overflowing.
+ *
+ * Scaling by `z` multiplies area by `z²`, so `z = √(fraction × canvasArea / nodeArea)`.
+ */
+export function focusZoom({
+  node,
+  canvas,
+  minZoom,
+  maxZoom,
+  areaFraction = FOCUS_AREA_FRACTION,
+}: FocusZoomInput): number {
+  const nodeArea = node.width * node.height;
+  const canvasArea = canvas.width * canvas.height;
+  // Before the first measurement a node can report zero size; leaving the zoom alone beats
+  // dividing by zero and flinging the viewport to infinity.
+  if (nodeArea <= 0 || canvasArea <= 0) return 1;
+
+  const ideal = Math.sqrt((areaFraction * canvasArea) / nodeArea);
+  return Math.min(Math.max(ideal, minZoom), maxZoom);
+}
+
 /**
  * Grid placement for newly created schema nodes, so dropping several classes in a row does
  * not stack them on top of one another when no drop position is known.

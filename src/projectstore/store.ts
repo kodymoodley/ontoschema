@@ -31,6 +31,8 @@ interface SessionState extends Workspace {
   view: CanvasView;
   history: History;
   pendingConnection: PendingConnection | null;
+  /** A class the canvas has been asked to bring into focus, if any. */
+  focusRequest: string | null;
 }
 
 export type ProjectStoreState = SessionState &
@@ -54,6 +56,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
     view: 'schema',
     history: EMPTY_HISTORY,
     pendingConnection: null,
+    focusRequest: null,
 
     ...createOntologyActions(editor, set, get),
     ...createInteractionActions(editor, set, get),

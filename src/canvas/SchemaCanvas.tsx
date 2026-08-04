@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -21,7 +21,12 @@ import {
 } from '../projectstore';
 import styles from './canvas.module.css';
 import { NODE_TYPE, schemaEdges, schemaNodes } from './graphmodel';
-import { nextFreePosition } from './layout';
+import { DOUBLE_TAP_MS, OWNS_DOUBLE_CLICK, TAP_SLOP_PX, tapDistance } from './gestures';
+import { focusZoom, nextFreePosition } from './layout';
+
+/** How far the viewport may be pushed, including by a focus request. */
+const MIN_ZOOM = 0.2;
+const MAX_ZOOM = 4;
 
 /**
  * The free-form schema surface: classes carrying their attributes, and relations drawn
@@ -39,7 +44,9 @@ interface SchemaCanvasProps {
 function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const ontology = useOntology();
   const selection = useSelection();
-  const { screenToFlowPosition, getIntersectingNodes } = useReactFlow();
+  const { screenToFlowPosition, getIntersectingNodes, getNode, setCenter, fitView } =
+    useReactFlow();
+  const surface = useRef<HTMLDivElement>(null);
 
   const select = useProjectStore((state) => state.select);
   const createClass = useProjectStore((state) => state.createClass);
@@ -69,7 +76,17 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   // frame with a stale graph.
   if (adopted.nodes !== derivedNodes || adopted.edges !== derivedEdges) {
     setAdopted({ nodes: derivedNodes, edges: derivedEdges });
-    setNodes(derivedNodes.map((node) => ({ ...node, selected: node.id === selectedId })));
+    setNodes((current) => {
+      // Carry the size React Flow has already measured across to the new node objects. It is
+      // what the handles and the minimap are positioned from, so dropping it makes a node
+      // fall back to its estimate for a frame on every edit.
+      const measured = new Map(current.map((node) => [node.id, node.measured]));
+      return derivedNodes.map((node) => ({
+        ...node,
+        selected: node.id === selectedId,
+        ...(measured.get(node.id) ? { measured: measured.get(node.id) } : {}),
+      }));
+    });
     setEdges(derivedEdges.map((edge) => ({ ...edge, selected: isEdgeSelected(edge, selectedId) })));
   } else if (selectedId !== null && needsNodeSelectionSync(nodes, selectedId)) {
     // Something outside the canvas changed the selection — the hierarchy tree, say. Only
@@ -138,6 +155,123 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
     [beginConnection],
   );
 
+  /*
+   * A class node has asked to be brought into focus. It is answered here rather than in the
+   * node because moving the viewport is the canvas's business, and the two modules may not
+   * import one another.
+   */
+  const focusRequest = useProjectStore((state) => state.focusRequest);
+  const clearFocus = useProjectStore((state) => state.clearFocus);
+  useEffect(() => {
+    if (!focusRequest) return;
+    const node = getNode(focusRequest);
+    const canvas = surface.current?.getBoundingClientRect();
+    clearFocus();
+    if (!node || !canvas) return;
+
+    /*
+     * The estimate is the last resort rather than no answer at all. The request is cleared
+     * above whether or not it can be served, so giving up here drops the gesture on the
+     * floor — and a node has no measured size until the resize observer has run, which on a
+     * slow machine is not yet when a class is double-tapped just after a project opens.
+     */
+    const width = node.measured?.width ?? node.width ?? node.initialWidth ?? 0;
+    const height = node.measured?.height ?? node.height ?? node.initialHeight ?? 0;
+    if (width <= 0 || height <= 0) return;
+
+    void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
+      zoom: focusZoom({
+        node: { width, height },
+        canvas: { width: canvas.width, height: canvas.height },
+        minZoom: MIN_ZOOM,
+        maxZoom: MAX_ZOOM,
+      }),
+      duration: 400,
+    });
+  }, [focusRequest, clearFocus, getNode, setCenter]);
+
+  /**
+   * Double-clicking, or double-tapping, bare canvas frames the whole schema again — the way
+   * back out from having focused a single class, without reaching for the controls.
+   *
+   * Everything that owns the gesture for itself is excluded rather than the pane being named
+   * directly: the double-click on a node bubbles up here too, and the dotted background is
+   * its own element sitting over the pane.
+   */
+  const frameEverything = useCallback(() => {
+    void fitView({ padding: 0.2, maxZoom: 1, duration: 400 });
+  }, [fitView]);
+
+  const onSurfaceDoubleClick = useCallback(
+    (event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest(OWNS_DOUBLE_CLICK)) return;
+      frameEverything();
+    },
+    [frameEverything],
+  );
+
+  /*
+   * Touch is recognised separately, and from a capture-phase listener on the wrapper.
+   * React Flow's pan-and-zoom layer swallows the pane's touch events whole — it both
+   * preventDefaults them, so the browser never synthesizes the double-click the mouse path
+   * relies on, and stops their propagation, so a React handler further up never runs. Only
+   * capture gets in ahead of it. A tap that has not moved, following another in the same
+   * spot, is a double-tap.
+   */
+  const tap = useRef<{ x: number; y: number; at: number } | null>(null);
+  const tapStart = useRef<{ x: number; y: number } | null>(null);
+
+  const onSurfaceTouchStart = useCallback((event: TouchEvent) => {
+    const touch = event.touches[0];
+    tapStart.current =
+      event.touches.length === 1 && touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }, []);
+
+  const onSurfaceTouchEnd = useCallback(
+    (event: TouchEvent) => {
+      const touch = event.changedTouches[0];
+      const start = tapStart.current;
+      tapStart.current = null;
+
+      // Only a single finger lifting cleanly off bare canvas counts. A pinch, a pan, or a
+      // tap on something that owns the gesture all cancel any tap in progress.
+      const cancelled =
+        !touch ||
+        !start ||
+        event.touches.length > 0 ||
+        tapDistance(touch, start) > TAP_SLOP_PX ||
+        (event.target as HTMLElement).closest(OWNS_DOUBLE_CLICK) !== null;
+      if (cancelled) {
+        tap.current = null;
+        return;
+      }
+
+      const previous = tap.current;
+      const now = Date.now();
+      const isSecondTap =
+        previous !== null &&
+        now - previous.at <= DOUBLE_TAP_MS &&
+        tapDistance(touch, previous) <= TAP_SLOP_PX;
+
+      tap.current = isSecondTap ? null : { x: touch.clientX, y: touch.clientY, at: now };
+      if (isSecondTap) frameEverything();
+    },
+    [frameEverything],
+  );
+
+  useEffect(() => {
+    const element = surface.current;
+    if (!element) return;
+    const options = { capture: true, passive: true } as const;
+    element.addEventListener('touchstart', onSurfaceTouchStart, options);
+    element.addEventListener('touchend', onSurfaceTouchEnd, options);
+    return () => {
+      element.removeEventListener('touchstart', onSurfaceTouchStart, options);
+      element.removeEventListener('touchend', onSurfaceTouchEnd, options);
+    };
+  }, [onSurfaceTouchStart, onSurfaceTouchEnd]);
+
   const isEmpty = nodes.length === 0;
 
   // Fit only when opening a project that already has content. Auto-fitting as nodes appear
@@ -146,7 +280,12 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const [fitOnOpen] = useState(() => derivedNodes.length > 0);
 
   return (
-    <div className={styles.canvas} data-testid="schema-canvas">
+    <div
+      className={styles.canvas}
+      data-testid="schema-canvas"
+      ref={surface}
+      onDoubleClick={onSurfaceDoubleClick}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -165,8 +304,8 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
           if (node.type === NODE_TYPE.ontologyClass) select({ kind: 'class', id: node.id });
         }}
         onPaneClick={() => select(null)}
-        minZoom={0.2}
-        maxZoom={2.5}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
         fitView={fitOnOpen}
         fitViewOptions={{ padding: 0.25, maxZoom: 1 }}
         defaultViewport={{ x: 24, y: 24, zoom: 1 }}

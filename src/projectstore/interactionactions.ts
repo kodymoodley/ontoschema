@@ -25,6 +25,10 @@ export interface InteractionActions {
   deleteSelection(): void;
   setView(view: CanvasView): void;
 
+  /** Ask the canvas to bring a class into focus. Cleared once it has. */
+  focusClass(classId: string): void;
+  clearFocus(): void;
+
   beginConnection(connection: PendingConnection): void;
   cancelConnection(): void;
   completeConnectionWith(propertyId: string): void;
@@ -50,6 +54,22 @@ export function createInteractionActions(
     },
     setView(view) {
       set((state) => ({ ...state, view }));
+    },
+
+    /*
+     * The class node asks; the canvas answers. Routing it through the store is what lets a
+     * node request a viewport change without classeditor/ knowing the canvas exists.
+     * Selecting as well, so the inspector follows what the eye is now looking at.
+     */
+    focusClass(classId) {
+      set((state) => ({
+        ...state,
+        focusRequest: classId,
+        selection: { kind: 'class', id: classId },
+      }));
+    },
+    clearFocus() {
+      set((state) => (state.focusRequest === null ? state : { ...state, focusRequest: null }));
     },
 
     /*
