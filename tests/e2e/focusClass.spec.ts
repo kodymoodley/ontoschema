@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import {
   addAttribute,
   doubleClickClass,
+  dragFromPalette,
   openApp,
   selectClass,
   settledViewport,
@@ -135,6 +136,34 @@ test('double-clicking the header still renames instead of zooming', async ({ pag
   await expect(page.getByLabel('Class name')).toBeVisible();
   await page.waitForTimeout(500);
   expect(await transform(page)).toBe(before);
+});
+
+test('a class can be focused the instant it is drawn, with nothing in it yet', async ({ page }) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 200, y: 200 });
+  await expect(page.locator('[data-class-node-id]')).toHaveCount(1);
+
+  /*
+   * No pause, no attribute, no rename. React Flow needs a frame or two to adopt a new node
+   * and measure it, and a class dropped and immediately double-clicked lands inside that
+   * window — where the gesture used to be answered with nothing at all.
+   */
+  await doubleClickClass(page, 'NewClass');
+
+  /*
+   * That the gesture is answered at all is what this test is here for, so it asserts the view
+   * moved and the class genuinely filled a good part of it.
+   *
+   * The 30–40% band and the centring are asserted by every other test in this file and
+   * deliberately not here. An empty class is measured at about 100px, then its placeholder
+   * text reflows and it settles at 131px, so the zoom and the centre are both computed from a
+   * node smaller than the one that ends up on screen — landing near 46% and a little high.
+   * Classes carrying attributes measure once and hold the band. Recorded on the roadmap; it
+   * is a separate defect from the one this branch fixes, and pretending otherwise here would
+   * hide it.
+   */
+  const after = await measure(page, 'NewClass');
+  expect(after.areaShare).toBeGreaterThanOrEqual(0.3);
 });
 
 test('a freshly drawn class can be focused too', async ({ page }) => {
