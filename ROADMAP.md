@@ -322,3 +322,12 @@ constraint authoring belongs in this tool at all. See the note under
 | Schema diffing             | S   | L   | Two ontologies loaded, a rename-tolerant diff, a category map.  |
 | Undo across project switch | S   | M   | Re-keys `history.ts` and needs a rule for deleted projects.     |
 | Cross-tab safety           | M   | S   | Detect and warn is small. Merging is large, and probably never. |
+
+## Features todo
+
+Kody's notes, kept as written.
+
+1. Add more language tags to dropdowns for rdfs:label (add all ISO 639-1 language codes to the dropdown)
+2. "Draw a relation by dragging from..." -> move to tooltip to make space in interface
+3. Make palette and taxonomy view subtabs of left hand panel
+4. Make Mini Map half size
