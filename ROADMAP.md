@@ -21,9 +21,11 @@ this app is a linked data engineering workflow for building semantic layers for 
 schema editing that is fast, stable and predictable at real sizes — and the bar for that is
 written down in [Hardening the core](#hardening-the-core). Feature work resumes after it.
 
-1. Hardening the core, to the definition of done below
-2. Multiple superclasses through the UI — the one modelling gap that is a defect, not an addition
-3. Mermaid export
+1. **Rename an attribute in place on the canvas** — the gesture is already taken and currently
+   does the wrong thing
+2. Hardening the core, to the definition of done below
+3. Multiple superclasses through the UI — the one modelling gap that is a defect, not an addition
+4. Mermaid export
 
 The reasoning is in [Proposed running order](#proposed-running-order) at the foot of the file.
 
@@ -55,6 +57,12 @@ in `npm run verify`:
 | **Keyboard equivalents for the mouse-only gestures** — re-parenting in the hierarchy tree and dropping a datatype property onto a class are both drag-only. A tool used all day needs both, and a gesture with no keyboard path is also a gesture with no cheap test.                                                                                                                                                                                                                                                                                                     | M    |
 | **Find the WebKit flake in the end-to-end suite** — run the whole suite in parallel and roughly one in three goes fails on WebKit, on a different spec each time: `carDealership`, `examples`, `editingWorkflows`, `stressWorkflows`. Run serially it is clean, and CI runs serially, so nothing is blocked today — which is exactly why it will rot if left. Every instance so far has been an actionability timeout waiting for an element to be _stable_, so the first question is what is still moving. Chase it as one piece of work rather than one spec at a time. | M    |
 | **Recover rather than reload after a crash** — `ErrorBoundary` offers `window.location.reload()`. That is honest but lossy; the workspace is in `localStorage` and could be restored to the last good state instead.                                                                                                                                                                                                                                                                                                                                                      | S    |
+
+## Editing on the canvas
+
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Size |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Rename an attribute in place** — double-click a datatype property row inside a class node and edit its name there, the way a class header already works. Today the row is a button that selects the property and sends you to the inspector, and a double-click on it **bubbles to the node and zooms the canvas** — so the gesture is not merely missing, it is taken and doing the wrong thing. Needs `stopPropagation` on the row, the same invalid-name treatment the class header uses, and a decision about shared properties: a datatype property may sit on several classes, and renaming it from one renames it everywhere. | S    |
 
 ## Modelling power
 
