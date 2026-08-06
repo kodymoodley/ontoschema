@@ -92,24 +92,39 @@ export async function freePointOnClass(page: Page, className: string) {
   const found = await page.evaluate((name) => {
     const node = document.querySelector<HTMLElement>(`[data-class-name="${name}"]`);
     if (!node) return { point: null, covering: 'not on the canvas' };
+
+    /** True when a double-click here would reach the class rather than something on top of it. */
+    const reachesTheClass = (x: number, y: number) => {
+      const top = document.elementFromPoint(x, y);
+      return node.contains(top) && top?.closest('[data-usage-id]') === null;
+    };
+
+    /*
+     * The middle of a part that owns no gesture of its own, rather than a point on a grid.
+     * A grid lands on the boundary between two attribute rows sooner or later, and which of
+     * them the browser reports there comes down to sub-pixel rounding — Chromium and WebKit
+     * disagreed, and the scan picked a row that then opened its rename instead of focusing.
+     */
+    for (const part of node.querySelectorAll('footer, p')) {
+      const rect = part.getBoundingClientRect();
+      if (rect.width < 4 || rect.height < 4) continue;
+
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      if (reachesTheClass(x, y)) return { point: { x, y }, covering: '' };
+    }
+
+    // Every part was covered, most likely by a relation label. Fall back to hunting for a gap.
     const box = node.getBoundingClientRect();
     const header = node.querySelector('header')?.getBoundingClientRect();
-    const from = (header?.bottom ?? box.top) + 4;
-
     let covering = 'nothing scanned';
-    for (let y = from; y < box.bottom - 2; y += 4) {
+    for (let y = (header?.bottom ?? box.top) + 4; y < box.bottom - 2; y += 4) {
       for (let x = box.left + 6; x < box.right - 6; x += 8) {
+        if (reachesTheClass(x, y)) return { point: { x, y }, covering: '' };
         const top = document.elementFromPoint(x, y);
-        if (!node.contains(top)) {
-          covering = `${top?.tagName}.${top?.getAttribute('class') ?? ''}`;
-          continue;
-        }
-        // An attribute row keeps the double-click for renaming that property.
-        if (top?.closest('[data-usage-id]')) {
-          covering = 'an attribute row';
-          continue;
-        }
-        return { point: { x, y }, covering: '' };
+        covering = node.contains(top)
+          ? 'an attribute row'
+          : `${top?.tagName}.${top?.getAttribute('class') ?? ''}`;
       }
     }
     return { point: null, covering };
