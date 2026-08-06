@@ -226,7 +226,7 @@ describe('renaming an attribute in place', () => {
     renderNode(car);
 
     await openRename(user, 'make');
-    expect(screen.queryByText(/other class/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/more/)).not.toBeInTheDocument();
   });
 
   it('warns how far the rename reaches when the property is shared', async () => {
@@ -240,10 +240,10 @@ describe('renaming an attribute in place', () => {
     renderNode(car);
 
     await openRename(user, 'make');
-    expect(screen.getByText('also on 2 other classes')).toBeInTheDocument();
+    expect(screen.getByText('↗ 2 more')).toBeInTheDocument();
   });
 
-  it('counts one other class in the singular', async () => {
+  it('names one other class the same way, since the marker carries the count', async () => {
     const user = userEvent.setup();
     const car = seed();
     const van = store().createClass({ localName: 'Van' });
@@ -251,6 +251,6 @@ describe('renaming an attribute in place', () => {
     renderNode(car);
 
     await openRename(user, 'make');
-    expect(screen.getByText('also on 1 other class')).toBeInTheDocument();
+    expect(screen.getByText('↗ 1 more')).toBeInTheDocument();
   });
 });

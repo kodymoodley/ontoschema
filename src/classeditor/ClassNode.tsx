@@ -4,6 +4,7 @@ import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeCurie } from '../annotationvocabulary';
 import { toClassLocalName, toPropertyLocalName } from '../ontologymodel';
 import type { DatatypeProperty, OntologyClass } from '../ontologymodel';
+import { useDoubleTap } from '../designsystem';
 import { useProjectStore } from '../projectstore';
 import { InlineName } from './InlineName';
 import styles from './classeditor.module.css';
@@ -96,6 +97,7 @@ export function ClassNode({ data, selected }: NodeProps) {
           onCommit={(draft) => renameClass(entity.id, draft)}
           label="Class name"
           textClassName={styles.name}
+          inputClassName={styles.nameInput}
           editing={editingName}
           onEditingChange={setEditingName}
         />
@@ -155,6 +157,14 @@ function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
   const select = useProjectStore((state) => state.select);
   const renameProperty = useProjectStore((state) => state.renameDatatypePropertyById);
 
+  /*
+   * A double-tap has to be recognised by hand. A node is draggable, so React Flow calls
+   * preventDefault on its touch events, and only Chromium still synthesises a double-click
+   * from two taps. Firefox and WebKit do not, which would leave this gesture working with a
+   * mouse and silently doing nothing on a phone.
+   */
+  const doubleTap = useDoubleTap(() => onEditingChange(true));
+
   const elsewhere = row.usedOnOtherClasses;
   const shared = elsewhere > 0;
   const range = (
@@ -175,13 +185,17 @@ function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
           onCommit={(draft) => renameProperty(row.property.id, draft)}
           label="Attribute name"
           textClassName={styles.attributeName}
-          {...(shared
-            ? { hint: `also on ${elsewhere} other ${elsewhere === 1 ? 'class' : 'classes'}` }
-            : {})}
+          inputClassName={styles.attributeNameInput}
+          {...(shared ? { hint: `↗ ${elsewhere} more` } : {})}
           editing
           onEditingChange={onEditingChange}
         />
-        {range}
+        {/*
+          The range takes the trailing slot when idle and the warning takes it while editing.
+          Showing both would squeeze the field in a box only 224px wide, and which class a
+          property points at matters less mid-rename than how many classes the rename reaches.
+        */}
+        {shared ? null : range}
       </div>
     );
   }
@@ -204,6 +218,7 @@ function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
         event.stopPropagation();
         onEditingChange(true);
       }}
+      ref={doubleTap}
       onKeyDown={(event) => {
         // F2 renames in place, the same convention as a file manager, so the gesture is not
         // reachable only with a mouse.

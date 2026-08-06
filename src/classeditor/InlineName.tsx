@@ -21,6 +21,8 @@ interface InlineNameProps {
   label: string;
   /** Applied to the text when it is not being edited, so each caller keeps its own type. */
   textClassName: string | undefined;
+  /** Applied to the field, so it matches the text it replaces rather than jumping in size. */
+  inputClassName: string | undefined;
   /** Shown beside the field while editing, to say how far a rename will reach. */
   hint?: string;
   editing: boolean;
@@ -47,7 +49,15 @@ export function InlineName({ value, textClassName, editing, ...editable }: Inlin
 
 type NameFieldProps = Omit<InlineNameProps, 'textClassName' | 'editing'>;
 
-function NameField({ value, isValid, onCommit, label, hint, onEditingChange }: NameFieldProps) {
+function NameField({
+  value,
+  isValid,
+  onCommit,
+  label,
+  hint,
+  inputClassName,
+  onEditingChange,
+}: NameFieldProps) {
   const [draft, setDraft] = useState(value);
   const input = useRef<HTMLInputElement>(null);
 
@@ -67,7 +77,7 @@ function NameField({ value, isValid, onCommit, label, hint, onEditingChange }: N
     <>
       <input
         ref={input}
-        className={`${styles.nameInput} ${valid ? '' : styles.nameInputInvalid}`}
+        className={`${inputClassName} ${valid ? '' : styles.nameInputInvalid}`}
         value={draft}
         aria-label={label}
         aria-invalid={valid ? undefined : true}

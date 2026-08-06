@@ -229,3 +229,18 @@
   white-space: nowrap;
   color: var(--text-tertiary);
 }
+
+/* Matches the attribute label it stands in for, so the row does not jump when editing opens. */
+.attributeNameInput {
+  flex: 1;
+  min-width: 0;
+  /* Sized so the row keeps its height: the label's line box plus the row's own padding. */
+  height: 16px;
+  padding: 0 2px;
+  border: 1px solid var(--accent-attribute);
+  border-radius: var(--radius-sm);
+  background: var(--surface-base);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
