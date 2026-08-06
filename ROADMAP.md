@@ -332,3 +332,5 @@ Kody's notes, kept as written.
 3. Make palette and taxonomy view subtabs of left hand panel
 4. Make Mini Map half size
 5. Class node header height increase to have more space to double-click to zoom
+6. Revamp responsive / mobile design. Shrink width or menu items to fit screen. Include canvas zoom controls in view, right now it is hidden. Sliding drawers for palette and taxonomy tree view.
+7. Clicking to add new class node should create new class at center of canvas. Not next to last created class.
