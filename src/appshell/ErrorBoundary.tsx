@@ -1,12 +1,14 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
+import { flushWorkspace } from '../projectstore';
 
 /**
  * Keeps a render error from blanking the whole app.
  *
- * The ontology itself is safe — it is persisted on every edit — so the useful thing to do
- * is say so plainly and offer a reload, rather than leaving the user staring at a white
- * page wondering whether they have lost their work.
+ * Storage writes are batched, so at the moment of a crash the last few seconds of edits may
+ * still be sitting in the queue. They are written out here before anything else: the panel
+ * tells the user their work is safe, and that has to be true when it says it rather than a
+ * second later.
  */
 interface ErrorBoundaryState {
   error: Error | null;
@@ -20,6 +22,9 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
+    // Before logging, before rendering: a second crash while reporting the first must not be
+    // what loses the work.
+    flushWorkspace();
     console.error('OntoSchema crashed while rendering', error, info.componentStack);
   }
 
