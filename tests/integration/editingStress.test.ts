@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearWorkspace, useProjectStore } from '../../src/projectstore';
+import { COALESCE_WINDOW_MS, HISTORY_LIMIT } from '../../src/projectstore/history';
 import {
   classForest,
   entityIri,
@@ -351,5 +352,117 @@ describe('destructive storms', () => {
 
     const shapes = serialize(ontology(), 'turtle', 'x', { includeAxioms: false }).content;
     expect((shapes.match(/sh:path/g) ?? []).length).toBe(14);
+  });
+});
+
+/**
+ * Typing commits on every keystroke, so the history merges a burst of them into one entry
+ * rather than filling itself with a step per character. That merging is the subtlest part of
+ * the undo stack: it has to leave one entry that restores the name as it was *before* the
+ * burst, not as it was one character ago, and it must stop merging once the burst ends or a
+ * different thing is renamed.
+ */
+describe('undo across a burst of typing', () => {
+  const nameOf = (classId: string) =>
+    ontology().classes.find((entity) => entity.id === classId)?.localName;
+
+  it('takes one undo to reverse a name typed one character at a time', () => {
+    const car = store().createClass({ localName: 'Car' });
+    const before = store().canUndo();
+    expect(before).toBe(true);
+
+    for (const name of ['A', 'Au', 'Aut', 'Auto', 'Autom', 'Automo']) {
+      store().renameClassById(car, name);
+    }
+    expect(nameOf(car)).toBe('Automo');
+
+    store().undo();
+    // Back to the name it had before the burst, not to 'Autom'.
+    expect(nameOf(car)).toBe('Car');
+  });
+
+  it('keeps the bursts apart when two classes are renamed in turn', () => {
+    const car = store().createClass({ localName: 'Car' });
+    const van = store().createClass({ localName: 'Van' });
+
+    for (const name of ['A', 'Au', 'Aut']) store().renameClassById(car, name);
+    for (const name of ['B', 'Bu', 'Bus']) store().renameClassById(van, name);
+    expect([nameOf(car), nameOf(van)]).toEqual(['Aut', 'Bus']);
+
+    store().undo();
+    expect([nameOf(car), nameOf(van)]).toEqual(['Aut', 'Van']);
+
+    store().undo();
+    expect([nameOf(car), nameOf(van)]).toEqual(['Car', 'Van']);
+  });
+
+  it('starts a new entry once the burst has stopped', () => {
+    vi.useFakeTimers();
+    try {
+      const car = store().createClass({ localName: 'Car' });
+      for (const name of ['A', 'Au', 'Aut']) store().renameClassById(car, name);
+
+      // Long enough that the next keystroke reads as a fresh edit rather than the same one.
+      vi.advanceTimersByTime(COALESCE_WINDOW_MS + 50);
+      for (const name of ['Auto', 'Autom']) store().renameClassById(car, name);
+
+      store().undo();
+      expect(nameOf(car)).toBe('Aut');
+      store().undo();
+      expect(nameOf(car)).toBe('Car');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rewinds a fuzzed session that includes bursts, all the way to the start', () => {
+    const random = seededRandom(4242);
+    const initial = serialize(ontology(), 'turtle').content;
+
+    // Short enough to stay inside the history limit, so "all the way back" is reachable at all.
+    for (let step = 0; step < 20; step += 1) {
+      applyRandomEdit(random, step);
+      // Every so often, type into whatever is there, the way a person renaming something does.
+      const target = pick(random, ontology().classes);
+      if (target && random() < 0.3) {
+        for (const suffix of ['T', 'Ty', 'Typ', 'Type']) {
+          store().renameClassById(target.id, `Step${step}${suffix}`);
+        }
+      }
+    }
+    const built = serialize(ontology(), 'turtle').content;
+    expect(built).not.toBe(initial);
+
+    let guard = 0;
+    while (store().canUndo() && guard < 800) {
+      store().undo();
+      guard += 1;
+      assertConsistent(ontology(), `burst undo ${guard}`);
+    }
+    expect(serialize(ontology(), 'turtle').content).toBe(initial);
+  });
+
+  it('keeps the most recent edits once the history is full, and stays consistent', () => {
+    const random = seededRandom(555);
+    for (let step = 0; step < HISTORY_LIMIT * 2; step += 1) applyRandomEdit(random, step);
+
+    /*
+     * Undo is bounded. Past the limit the oldest entries are dropped, so rewinding lands on
+     * whatever the schema looked like `HISTORY_LIMIT` edits ago rather than on an empty
+     * project — worth stating, because a test that only ever ran short sessions would leave
+     * the impression that undo reaches the beginning of time.
+     */
+    let steps = 0;
+    while (store().canUndo() && steps < HISTORY_LIMIT * 4) {
+      store().undo();
+      steps += 1;
+      assertConsistent(ontology(), `bounded undo ${steps}`);
+    }
+
+    expect(steps).toBe(HISTORY_LIMIT);
+    expect(
+      ontology().classes.length,
+      'rewound past the limit into an empty project',
+    ).toBeGreaterThan(0);
   });
 });
