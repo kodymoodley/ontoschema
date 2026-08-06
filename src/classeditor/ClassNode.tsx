@@ -1,10 +1,11 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeCurie } from '../annotationvocabulary';
 import { toClassLocalName } from '../ontologymodel';
 import type { DatatypeProperty, OntologyClass } from '../ontologymodel';
 import { useProjectStore } from '../projectstore';
+import { InlineName } from './InlineName';
 import styles from './classeditor.module.css';
 
 /**
@@ -40,23 +41,7 @@ export function ClassNode({ data, selected }: NodeProps) {
   const select = useProjectStore((state) => state.select);
   const focusClass = useProjectStore((state) => state.focusClass);
 
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(entity.localName);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing) inputRef.current?.select();
-  }, [editing]);
-
-  // An empty or unusable name is shown as invalid rather than silently reverted, so the
-  // field can be cleared and retyped.
-  const draftValid = toClassLocalName(draft) !== '';
-
-  const commit = () => {
-    if (!draftValid) return;
-    setEditing(false);
-    if (draft !== entity.localName) renameClass(entity.id, draft);
-  };
+  const [editingName, setEditingName] = useState(false);
 
   return (
     <div
@@ -100,30 +85,19 @@ export function ClassNode({ data, selected }: NodeProps) {
         className={styles.header}
         onDoubleClick={(event) => {
           event.stopPropagation();
-          setDraft(entity.localName);
-          setEditing(true);
+          setEditingName(true);
         }}
       >
         <span className={styles.marker} aria-hidden="true" />
-        {editing ? (
-          <input
-            ref={inputRef}
-            className={`${styles.nameInput} ${draftValid ? '' : styles.nameInputInvalid}`}
-            value={draft}
-            aria-label="Class name"
-            aria-invalid={draftValid ? undefined : true}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={() => (draftValid ? commit() : setEditing(false))}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') commit();
-              if (event.key === 'Escape') setEditing(false);
-            }}
-          />
-        ) : (
-          <span className={styles.name} title={entity.localName}>
-            {entity.localName}
-          </span>
-        )}
+        <InlineName
+          value={entity.localName}
+          isValid={(draft) => toClassLocalName(draft) !== ''}
+          onCommit={(draft) => renameClass(entity.id, draft)}
+          label="Class name"
+          textClassName={styles.name}
+          editing={editingName}
+          onEditingChange={setEditingName}
+        />
       </header>
 
       {superClassNames.length > 0 ? (
