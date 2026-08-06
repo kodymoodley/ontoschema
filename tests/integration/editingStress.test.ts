@@ -8,6 +8,7 @@ import {
   validateLocalName,
 } from '../../src/ontologymodel';
 import type { Ontology } from '../../src/ontologymodel';
+import { findAnnotationTerm, isXsdDatatype } from '../../src/annotationvocabulary';
 import { serialize } from '../../src/serialization';
 import { canonicalize, parseJsonLd, parseRdfXml, parseTurtle } from '../fixtures/parseRdf';
 import { pick, seededRandom } from '../fixtures/scenarios';
@@ -71,7 +72,67 @@ function assertConsistent(model: Ontology, context: string): void {
   // The forest terminates and covers every class exactly once at the top level.
   expect(() => JSON.stringify(classForest(model))).not.toThrow();
   expect(classForest(model)).toHaveLength(rootClasses(model).length);
+
+  /*
+   * Every class appears in the forest, exactly once. Counting only the roots misses the
+   * corruption that matters: two classes made parents of each other are neither roots nor
+   * anyone's descendant, so they vanish from the tree while both counts still agree.
+   */
+  const seen: string[] = [];
+  const walk = (nodes: { entity: { id: string }; children: unknown[] }[]) => {
+    for (const node of nodes) {
+      seen.push(node.entity.id);
+      walk(node.children as { entity: { id: string }; children: unknown[] }[]);
+    }
+  };
+  walk(classForest(model) as { entity: { id: string }; children: unknown[] }[]);
+  expect(new Set(seen).size, `${context}: a class appears twice in the hierarchy`).toBe(
+    seen.length,
+  );
+  expect(seen.length, `${context}: a class is missing from the hierarchy`).toBe(
+    model.classes.length,
+  );
+
+  // A range the model does not recognise would export as a broken datatype IRI.
+  for (const property of model.datatypeProperties) {
+    expect(isXsdDatatype(property.range), `${context}: unknown range "${property.range}"`).toBe(
+      true,
+    );
+  }
+
+  // Annotations are addressed by term, so an unknown one has nowhere to go on export.
+  const annotated = [
+    ...model.classes,
+    ...model.objectProperties,
+    ...model.datatypeProperties,
+    { annotations: model.annotations },
+  ];
+  for (const entity of annotated) {
+    for (const annotation of entity.annotations) {
+      expect(
+        findAnnotationTerm(annotation.term),
+        `${context}: unknown annotation term "${annotation.term}"`,
+      ).toBeDefined();
+    }
+  }
 }
+
+/*
+ * The values an edit can reach for. Terms from three vocabularies with three shapes between
+ * them — plain text, a date, an IRI — because the writers treat those differently and a fuzz
+ * run that only ever wrote plain text would never find out.
+ */
+const XSD_RANGES = [
+  'string',
+  'integer',
+  'decimal',
+  'date',
+  'dateTime',
+  'boolean',
+  'anyURI',
+] as const;
+const ANNOTATION_TERMS = ['rdfs:label', 'skos:definition', 'dcterms:created', 'rdfs:seeAlso'];
+const LANGUAGES = [undefined, 'en', 'nl', 'pt-BR'];
 
 /** One random, always-legal editing action. */
 function applyRandomEdit(random: () => number, step: number): void {
@@ -100,13 +161,34 @@ function applyRandomEdit(random: () => number, step: number): void {
     const parent = pick(random, classes);
     // Re-parenting refuses a cycle rather than creating one; either outcome is legal.
     if (child && parent) store().reparentClass(child.id, parent.id);
-  } else if (roll < 0.8) {
+  } else if (roll < 0.76) {
     const target = pick(random, classes);
     if (target) store().renameClassById(target.id, `Renamed${step}`);
-  } else if (roll < 0.88) {
+  } else if (roll < 0.8) {
+    // Renaming a property reaches every class using it, which is why it is worth fuzzing.
+    const target = pick(random, [...properties, ...attributes]);
+    if (!target) return;
+    if (properties.some((one) => one.id === target.id)) {
+      store().renameObjectPropertyById(target.id, `renamed${step}`);
+    } else {
+      store().renameDatatypePropertyById(target.id, `renamed${step}`);
+    }
+  } else if (roll < 0.83) {
+    const target = pick(random, attributes);
+    const range = pick(random, XSD_RANGES);
+    if (target && range) store().setAttributeRange(target.id, range);
+  } else if (roll < 0.87) {
+    const subject = pick(random, [
+      ...classes.map((entity) => ({ kind: 'class' as const, id: entity.id })),
+      ...properties.map((entity) => ({ kind: 'objectProperty' as const, id: entity.id })),
+      ...attributes.map((entity) => ({ kind: 'datatypeProperty' as const, id: entity.id })),
+    ]);
+    const term = pick(random, ANNOTATION_TERMS);
+    if (subject && term) store().annotate(subject, term, `note ${step}`, pick(random, LANGUAGES));
+  } else if (roll < 0.9) {
     const usage = pick(random, model.usages);
     if (usage) store().detachUsageById(usage.id);
-  } else if (roll < 0.94) {
+  } else if (roll < 0.95) {
     const target = pick(random, classes);
     if (target && classes.length > 1) store().deleteClassById(target.id);
   } else {
@@ -135,6 +217,23 @@ describe('a fuzzed editing session', () => {
     expect(model.classes.length, `seed ${seed} built nothing`).toBeGreaterThan(3);
     expect(model.usages.length, `seed ${seed} attached nothing`).toBeGreaterThan(3);
     expect(model.classes.some((entity) => entity.superClassIds.length > 0)).toBe(true);
+
+    /*
+     * A branch of the edit generator that never fires proves nothing, and the odds of one
+     * going cold are easy to change by accident when the roll thresholds move. Annotations
+     * are the rarest of them, so they stand in for the rest.
+     */
+    const annotations = [
+      ...model.annotations,
+      ...model.classes.flatMap((entity) => entity.annotations),
+      ...model.objectProperties.flatMap((entity) => entity.annotations),
+      ...model.datatypeProperties.flatMap((entity) => entity.annotations),
+    ];
+    expect(annotations.length, `seed ${seed} annotated nothing`).toBeGreaterThan(0);
+    expect(
+      annotations.some((annotation) => annotation.language !== undefined),
+      `seed ${seed} never wrote a language tag`,
+    ).toBe(true);
 
     // Whatever it built, it must still export as readable RDF.
     expect(() => parseTurtle(serialize(model, 'turtle').content)).not.toThrow();
