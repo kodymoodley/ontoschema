@@ -45,8 +45,12 @@ export const EDGE_TYPE = {
 export interface AttributeRow {
   usageId: string;
   property: DatatypeProperty;
-  /** True when the same property is also used on another class. */
-  shared: boolean;
+  /**
+   * How many *other* classes carry this same property. A count rather than a flag because
+   * renaming a property from one class renames it on all of them, and the row has to be able
+   * to say how far that reaches.
+   */
+  usedOnOtherClasses: number;
 }
 
 export interface ClassNodeData extends Record<string, unknown> {
@@ -91,11 +95,12 @@ export function schemaNodes(ontology: Ontology): Node[] {
       .map((usage) => {
         const property = index.datatypePropertyById.get(usage.propertyId);
         if (!property) return null;
-        return {
-          usageId: usage.id,
-          property,
-          shared: (index.usagesByProperty.get(usage.propertyId) ?? []).length > 1,
-        };
+        const elsewhere = new Set(
+          (index.usagesByProperty.get(usage.propertyId) ?? []).map((one) => one.subjectClassId),
+        );
+        elsewhere.delete(entity.id);
+
+        return { usageId: usage.id, property, usedOnOtherClasses: elsewhere.size };
       })
       .filter((row): row is AttributeRow => row !== null);
 
@@ -155,7 +160,7 @@ function sameAttributes(before: AttributeRow[], after: AttributeRow[]): boolean 
         other !== undefined &&
         row.usageId === other.usageId &&
         row.property === other.property &&
-        row.shared === other.shared
+        row.usedOnOtherClasses === other.usedOnOtherClasses
       );
     })
   );

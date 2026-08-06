@@ -18,7 +18,8 @@ import styles from './classeditor.module.css';
 interface AttributeRow {
   usageId: string;
   property: DatatypeProperty;
-  shared: boolean;
+  /** How many other classes carry this same property. */
+  usedOnOtherClasses: number;
 }
 
 interface ClassNodeData {
@@ -118,7 +119,7 @@ export function ClassNode({ data, selected }: NodeProps) {
               data-attribute-name={row.property.localName}
               data-usage-id={row.usageId}
               title={
-                row.shared
+                row.usedOnOtherClasses > 0
                   ? `${row.property.localName} is also used on other classes`
                   : row.property.localName
               }
@@ -129,7 +130,7 @@ export function ClassNode({ data, selected }: NodeProps) {
             >
               <span className={styles.attributeMarker} aria-hidden="true" />
               <span className={styles.attributeName}>{row.property.localName}</span>
-              {row.shared ? (
+              {row.usedOnOtherClasses > 0 ? (
                 <span className={styles.sharedMark} aria-label="shared">
                   ↗
                 </span>
