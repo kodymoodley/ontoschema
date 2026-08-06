@@ -81,9 +81,12 @@ export async function renameClassOnCanvas(page: Page, from: string, to: string) 
 }
 
 /**
- * A point on a class that a gesture will actually reach: below the header, which renames
- * rather than focuses, and clear of any relation label parked over the node. Labels sit above
- * the nodes so that they stay clickable, so where they land depends on the whole layout.
+ * A point on a class where a double-click reaches the class itself.
+ *
+ * Three things on a node answer the gesture before it gets there: the header renames the class,
+ * an attribute row renames that property, and a relation label parked over the node belongs to
+ * the edge. Labels sit above the nodes so they stay clickable, so where they land depends on the
+ * whole layout and has to be found rather than assumed.
  */
 export async function freePointOnClass(page: Page, className: string) {
   const found = await page.evaluate((name) => {
@@ -97,8 +100,16 @@ export async function freePointOnClass(page: Page, className: string) {
     for (let y = from; y < box.bottom - 2; y += 4) {
       for (let x = box.left + 6; x < box.right - 6; x += 8) {
         const top = document.elementFromPoint(x, y);
-        if (node.contains(top)) return { point: { x, y }, covering: '' };
-        covering = `${top?.tagName}.${top?.getAttribute('class') ?? ''}`;
+        if (!node.contains(top)) {
+          covering = `${top?.tagName}.${top?.getAttribute('class') ?? ''}`;
+          continue;
+        }
+        // An attribute row keeps the double-click for renaming that property.
+        if (top?.closest('[data-usage-id]')) {
+          covering = 'an attribute row';
+          continue;
+        }
+        return { point: { x, y }, covering: '' };
       }
     }
     return { point: null, covering };
