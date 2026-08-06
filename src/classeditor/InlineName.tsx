@@ -21,6 +21,8 @@ interface InlineNameProps {
   label: string;
   /** Applied to the text when it is not being edited, so each caller keeps its own type. */
   textClassName: string | undefined;
+  /** Shown beside the field while editing, to say how far a rename will reach. */
+  hint?: string;
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
 }
@@ -45,7 +47,7 @@ export function InlineName({ value, textClassName, editing, ...editable }: Inlin
 
 type NameFieldProps = Omit<InlineNameProps, 'textClassName' | 'editing'>;
 
-function NameField({ value, isValid, onCommit, label, onEditingChange }: NameFieldProps) {
+function NameField({ value, isValid, onCommit, label, hint, onEditingChange }: NameFieldProps) {
   const [draft, setDraft] = useState(value);
   const input = useRef<HTMLInputElement>(null);
 
@@ -62,18 +64,21 @@ function NameField({ value, isValid, onCommit, label, onEditingChange }: NameFie
   };
 
   return (
-    <input
-      ref={input}
-      className={`${styles.nameInput} ${valid ? '' : styles.nameInputInvalid}`}
-      value={draft}
-      aria-label={label}
-      aria-invalid={valid ? undefined : true}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => (valid ? commit() : onEditingChange(false))}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') commit();
-        if (event.key === 'Escape') onEditingChange(false);
-      }}
-    />
+    <>
+      <input
+        ref={input}
+        className={`${styles.nameInput} ${valid ? '' : styles.nameInputInvalid}`}
+        value={draft}
+        aria-label={label}
+        aria-invalid={valid ? undefined : true}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => (valid ? commit() : onEditingChange(false))}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') commit();
+          if (event.key === 'Escape') onEditingChange(false);
+        }}
+      />
+      {hint ? <span className={styles.renameHint}>{hint}</span> : null}
+    </>
   );
 }
