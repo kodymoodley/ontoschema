@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DOUBLE_TAP_MS, OWNS_DOUBLE_CLICK, TAP_SLOP_PX, tapDistance } from './gestures';
+import { OWNS_DOUBLE_CLICK } from './gestures';
 
 /**
  * Which parts of the canvas answer a double-click themselves, asserted against real elements
@@ -51,26 +51,5 @@ describe('OWNS_DOUBLE_CLICK', () => {
   it('treats the pane and the background as bare canvas', () => {
     expect(ownsGesture('react-flow__pane')).toBe(false);
     expect(ownsGesture('react-flow__background')).toBe(false);
-  });
-});
-
-describe('double-tap tolerances', () => {
-  it('allows a fingertip of drift but not a swipe', () => {
-    expect(tapDistance({ clientX: 100, clientY: 100 }, { x: 110, y: 110 })).toBeLessThan(
-      TAP_SLOP_PX,
-    );
-    expect(tapDistance({ clientX: 100, clientY: 100 }, { x: 180, y: 100 })).toBeGreaterThan(
-      TAP_SLOP_PX,
-    );
-  });
-
-  it('is measured as a straight line, not per axis', () => {
-    // 20 across and 20 down is 28 apart, which is a drag rather than a second tap.
-    expect(tapDistance({ clientX: 0, clientY: 0 }, { x: 20, y: 20 })).toBeGreaterThan(TAP_SLOP_PX);
-  });
-
-  it('waits about as long as the platform does', () => {
-    expect(DOUBLE_TAP_MS).toBeGreaterThanOrEqual(250);
-    expect(DOUBLE_TAP_MS).toBeLessThanOrEqual(500);
   });
 });

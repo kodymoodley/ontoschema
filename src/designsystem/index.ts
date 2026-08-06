@@ -18,3 +18,5 @@ export {
   cx,
 } from './Primitives';
 export type { TabOption } from './Primitives';
+
+export { DOUBLE_TAP_MS, TAP_SLOP_PX, useDoubleTap } from './doubletap';
