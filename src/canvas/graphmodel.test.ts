@@ -4,7 +4,9 @@ import {
   addClass,
   addRelationBetween,
   addSubClassOf,
+  attachProperty,
   createEmptyOntology,
+  detachUsage,
   moveClass,
   renameClass,
 } from '../ontologymodel';
@@ -223,5 +225,72 @@ describe('what survives a re-derive', () => {
         { id: 'a', source: 'x', target: 'y' },
       ),
     ).toBe(false);
+  });
+});
+
+/**
+ * How far a rename reaches. A datatype property lives in a pool and can sit on many classes at
+ * once, so renaming it from inside one class renames it on all of them. Each row therefore
+ * carries the number of *other* classes holding the same property, and the node uses it to say
+ * so before the rename happens.
+ */
+describe('how widely an attribute is used', () => {
+  /** Puts one datatype property on `count` classes and returns the rows of the first. */
+  function rowsAfterSharingAcross(count: number) {
+    let ontology = createEmptyOntology();
+    const ids: string[] = [];
+    for (let index = 0; index < count; index += 1) {
+      const added = addClass(ontology, { position: { x: index * 300, y: 0 } });
+      ontology = added.ontology;
+      ids.push(added.id);
+    }
+
+    const created = addAttributeToClass(ontology, { classId: ids[0]!, localName: 'name' });
+    ontology = created.ontology;
+    for (const classId of ids.slice(1)) {
+      ontology = attachProperty(ontology, {
+        propertyId: created.propertyId,
+        subjectClassId: classId,
+      }).ontology;
+    }
+
+    return { ontology, ids };
+  }
+
+  const rowsOf = (ontology: Ontology, classId: string) => {
+    const node = schemaNodes(ontology).find((entry) => entry.id === classId);
+    return (node?.data as { attributes: { usedOnOtherClasses: number }[] }).attributes;
+  };
+
+  it('counts nothing else when a property sits on one class alone', () => {
+    const { ontology, ids } = rowsAfterSharingAcross(1);
+    expect(rowsOf(ontology, ids[0]!)[0]?.usedOnOtherClasses).toBe(0);
+  });
+
+  it('counts the other classes, not itself', () => {
+    const { ontology, ids } = rowsAfterSharingAcross(3);
+    for (const classId of ids) {
+      expect(rowsOf(ontology, classId)[0]?.usedOnOtherClasses).toBe(2);
+    }
+  });
+
+  it('drops back when the property is detached from one of them', () => {
+    const { ontology, ids } = rowsAfterSharingAcross(3);
+    const usage = ontology.usages.find((one) => one.subjectClassId === ids[2]);
+    const detached = detachUsage(ontology, usage?.id ?? '');
+
+    expect(rowsOf(detached, ids[0]!)[0]?.usedOnOtherClasses).toBe(1);
+  });
+
+  it('counts a class once even if it holds the property twice', () => {
+    const { ontology, ids } = rowsAfterSharingAcross(2);
+    const property = ontology.datatypeProperties[0]!;
+    const twice = attachProperty(ontology, {
+      propertyId: property.id,
+      subjectClassId: ids[0]!,
+    }).ontology;
+
+    // The second class is still one other class, however many rows the first one shows.
+    expect(rowsOf(twice, ids[0]!)[0]?.usedOnOtherClasses).toBe(1);
   });
 });

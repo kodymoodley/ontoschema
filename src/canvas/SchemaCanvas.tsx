@@ -20,13 +20,18 @@ import {
   useSelection,
 } from '../projectstore';
 import styles from './canvas.module.css';
-import { DOUBLE_TAP_MS, OWNS_DOUBLE_CLICK, TAP_SLOP_PX, tapDistance } from './gestures';
+import { DOUBLE_TAP_MS, TAP_SLOP_PX } from '../designsystem';
+import { OWNS_DOUBLE_CLICK } from './gestures';
 import { NODE_TYPE, sameClassNode, sameRelationEdge, schemaEdges, schemaNodes } from './graphmodel';
 import { focusZoom, nextFreePosition } from './layout';
 
 /** How far the viewport may be pushed, including by a focus request. */
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
+
+/** Distance between a touch and a point remembered from an earlier one. */
+const apart = (touch: { clientX: number; clientY: number }, from: { x: number; y: number }) =>
+  Math.hypot(touch.clientX - from.x, touch.clientY - from.y);
 
 /**
  * The free-form schema surface: classes carrying their attributes, and relations drawn
@@ -278,7 +283,7 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
         !touch ||
         !start ||
         event.touches.length > 0 ||
-        tapDistance(touch, start) > TAP_SLOP_PX ||
+        apart(touch, start) > TAP_SLOP_PX ||
         (event.target as HTMLElement).closest(OWNS_DOUBLE_CLICK) !== null;
       if (cancelled) {
         tap.current = null;
@@ -290,7 +295,7 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
       const isSecondTap =
         previous !== null &&
         now - previous.at <= DOUBLE_TAP_MS &&
-        tapDistance(touch, previous) <= TAP_SLOP_PX;
+        apart(touch, previous) <= TAP_SLOP_PX;
 
       tap.current = isSecondTap ? null : { x: touch.clientX, y: touch.clientY, at: now };
       if (isSecondTap) frameEverything();

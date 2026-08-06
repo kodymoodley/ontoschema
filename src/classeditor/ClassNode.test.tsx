@@ -64,13 +64,16 @@ describe('ClassNode double-click', () => {
     expect(store().selection).toEqual({ kind: 'class', id: car });
   });
 
-  it('focuses when an attribute row is double-clicked', async () => {
+  it('renames rather than focusing when an attribute row is double-clicked', async () => {
     const user = userEvent.setup();
     const car = seed();
     renderNode(car);
 
     await user.dblClick(screen.getByText('make'));
-    expect(store().focusRequest).toBe(car);
+
+    expect(screen.getByLabelText('Attribute name')).toHaveValue('make');
+    // The row owns this gesture. Letting it reach the node would zoom the canvas instead.
+    expect(store().focusRequest).toBeNull();
   });
 
   it('renames rather than focusing when the header is double-clicked', async () => {
@@ -127,5 +130,127 @@ describe('ClassNode double-click', () => {
     expect(store().history.past.length).toBe(depth);
     expect(attributeUsagesOfClass(ontology(), car)).toHaveLength(2);
     expect(indexOntology(ontology()).classById.has(car)).toBe(true);
+  });
+});
+
+/**
+ * Renaming a datatype property from inside a class box. The property lives in a shared pool, so
+ * the rename reaches every class holding it — which is the part a user cannot see happening and
+ * the reason the field says how far it goes.
+ */
+describe('renaming an attribute in place', () => {
+  const nameOf = (propertyId: string) =>
+    ontology().datatypeProperties.find((one) => one.id === propertyId)?.localName;
+
+  const openRename = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    await user.dblClick(screen.getByText(name));
+    return screen.getByLabelText('Attribute name');
+  };
+
+  it('commits on Enter', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+    const property = ontology().datatypeProperties[0]!.id;
+
+    const field = await openRename(user, 'make');
+    await user.clear(field);
+    await user.type(field, 'manufacturer{Enter}');
+
+    expect(nameOf(property)).toBe('manufacturer');
+    expect(screen.queryByLabelText('Attribute name')).not.toBeInTheDocument();
+  });
+
+  it('abandons on Escape, leaving the name alone', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+    const property = ontology().datatypeProperties[0]!.id;
+
+    const field = await openRename(user, 'make');
+    await user.clear(field);
+    await user.type(field, 'manufacturer{Escape}');
+
+    expect(nameOf(property)).toBe('make');
+    expect(screen.queryByLabelText('Attribute name')).not.toBeInTheDocument();
+  });
+
+  it('flags a name the model would reject instead of reverting it', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+    const property = ontology().datatypeProperties[0]!.id;
+
+    const field = await openRename(user, 'make');
+    await user.clear(field);
+
+    // The field can be emptied and retyped; it just refuses to commit while it is unusable.
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    await user.type(field, '{Enter}');
+    expect(nameOf(property)).toBe('make');
+    expect(screen.getByLabelText('Attribute name')).toBeInTheDocument();
+
+    await user.type(field, 'model{Enter}');
+    expect(nameOf(property)).toBe('model');
+  });
+
+  it('opens from the keyboard with F2, so it is not a mouse-only gesture', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+
+    // The rows are the first focusable things in the node, in the order they are drawn.
+    await user.tab();
+    await user.keyboard('{F2}');
+
+    expect(screen.getByLabelText('Attribute name')).toHaveValue('make');
+  });
+
+  it('renames only the row that was opened', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+    const [make, year] = ontology().datatypeProperties;
+
+    const field = await openRename(user, 'year');
+    await user.clear(field);
+    await user.type(field, 'built{Enter}');
+
+    expect(nameOf(year!.id)).toBe('built');
+    expect(nameOf(make!.id)).toBe('make');
+  });
+
+  it('says nothing about other classes when the property is used only here', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+
+    await openRename(user, 'make');
+    expect(screen.queryByText(/more/)).not.toBeInTheDocument();
+  });
+
+  it('warns how far the rename reaches when the property is shared', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    const van = store().createClass({ localName: 'Van' });
+    const lorry = store().createClass({ localName: 'Lorry' });
+    const make = ontology().datatypeProperties[0]!.id;
+    store().attachPropertyToClass(make, van);
+    store().attachPropertyToClass(make, lorry);
+    renderNode(car);
+
+    await openRename(user, 'make');
+    expect(screen.getByText('↗ 2 more')).toBeInTheDocument();
+  });
+
+  it('names one other class the same way, since the marker carries the count', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    const van = store().createClass({ localName: 'Van' });
+    store().attachPropertyToClass(ontology().datatypeProperties[0]!.id, van);
+    renderNode(car);
+
+    await openRename(user, 'make');
+    expect(screen.getByText('↗ 1 more')).toBeInTheDocument();
   });
 });

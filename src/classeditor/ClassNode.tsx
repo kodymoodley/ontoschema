@@ -1,10 +1,12 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeCurie } from '../annotationvocabulary';
-import { toClassLocalName } from '../ontologymodel';
+import { toClassLocalName, toPropertyLocalName } from '../ontologymodel';
 import type { DatatypeProperty, OntologyClass } from '../ontologymodel';
+import { useDoubleTap } from '../designsystem';
 import { useProjectStore } from '../projectstore';
+import { InlineName } from './InlineName';
 import styles from './classeditor.module.css';
 
 /**
@@ -17,7 +19,8 @@ import styles from './classeditor.module.css';
 interface AttributeRow {
   usageId: string;
   property: DatatypeProperty;
-  shared: boolean;
+  /** How many other classes carry this same property. */
+  usedOnOtherClasses: number;
 }
 
 interface ClassNodeData {
@@ -37,26 +40,10 @@ const SIDES = [
 export function ClassNode({ data, selected }: NodeProps) {
   const { entity, attributes, superClassNames } = data as unknown as ClassNodeData;
   const renameClass = useProjectStore((state) => state.renameClassById);
-  const select = useProjectStore((state) => state.select);
   const focusClass = useProjectStore((state) => state.focusClass);
 
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(entity.localName);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing) inputRef.current?.select();
-  }, [editing]);
-
-  // An empty or unusable name is shown as invalid rather than silently reverted, so the
-  // field can be cleared and retyped.
-  const draftValid = toClassLocalName(draft) !== '';
-
-  const commit = () => {
-    if (!draftValid) return;
-    setEditing(false);
-    if (draft !== entity.localName) renameClass(entity.id, draft);
-  };
+  const [editingName, setEditingName] = useState(false);
+  const [editingUsageId, setEditingUsageId] = useState<string | null>(null);
 
   return (
     <div
@@ -100,30 +87,20 @@ export function ClassNode({ data, selected }: NodeProps) {
         className={styles.header}
         onDoubleClick={(event) => {
           event.stopPropagation();
-          setDraft(entity.localName);
-          setEditing(true);
+          setEditingName(true);
         }}
       >
         <span className={styles.marker} aria-hidden="true" />
-        {editing ? (
-          <input
-            ref={inputRef}
-            className={`${styles.nameInput} ${draftValid ? '' : styles.nameInputInvalid}`}
-            value={draft}
-            aria-label="Class name"
-            aria-invalid={draftValid ? undefined : true}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={() => (draftValid ? commit() : setEditing(false))}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') commit();
-              if (event.key === 'Escape') setEditing(false);
-            }}
-          />
-        ) : (
-          <span className={styles.name} title={entity.localName}>
-            {entity.localName}
-          </span>
-        )}
+        <InlineName
+          value={entity.localName}
+          isValid={(draft) => toClassLocalName(draft) !== ''}
+          onCommit={(draft) => renameClass(entity.id, draft)}
+          label="Class name"
+          textClassName={styles.name}
+          inputClassName={styles.nameInput}
+          editing={editingName}
+          onEditingChange={setEditingName}
+        />
       </header>
 
       {superClassNames.length > 0 ? (
@@ -137,31 +114,12 @@ export function ClassNode({ data, selected }: NodeProps) {
           </p>
         ) : (
           attributes.map((row) => (
-            <button
+            <AttributeItem
               key={row.usageId}
-              type="button"
-              className={styles.attribute}
-              data-attribute-name={row.property.localName}
-              data-usage-id={row.usageId}
-              title={
-                row.shared
-                  ? `${row.property.localName} is also used on other classes`
-                  : row.property.localName
-              }
-              onClick={(event) => {
-                event.stopPropagation();
-                select({ kind: 'datatypeProperty', id: row.property.id });
-              }}
-            >
-              <span className={styles.attributeMarker} aria-hidden="true" />
-              <span className={styles.attributeName}>{row.property.localName}</span>
-              {row.shared ? (
-                <span className={styles.sharedMark} aria-label="shared">
-                  ↗
-                </span>
-              ) : null}
-              <span className={styles.attributeRange}>{xsdDatatypeCurie(row.property.range)}</span>
-            </button>
+              row={row}
+              editing={editingUsageId === row.usageId}
+              onEditingChange={(open) => setEditingUsageId(open ? row.usageId : null)}
+            />
           ))
         )}
       </div>
@@ -175,5 +133,108 @@ export function ClassNode({ data, selected }: NodeProps) {
         ) : null}
       </footer>
     </div>
+  );
+}
+
+/**
+ * One datatype property inside a class box.
+ *
+ * A single click selects the property; a double-click renames it here rather than sending you
+ * to the inspector. The gesture has to be stopped from reaching the node, which answers a
+ * double-click by zooming — before this, double-clicking a row zoomed the canvas instead.
+ *
+ * Renaming reaches every class holding the property, because the property is one thing in a
+ * shared pool. The field says so while it is open, since the other classes are usually not on
+ * screen to be noticed changing.
+ */
+interface AttributeItemProps {
+  row: AttributeRow;
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+}
+
+function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
+  const select = useProjectStore((state) => state.select);
+  const renameProperty = useProjectStore((state) => state.renameDatatypePropertyById);
+
+  /*
+   * A double-tap has to be recognised by hand. A node is draggable, so React Flow calls
+   * preventDefault on its touch events, and only Chromium still synthesises a double-click
+   * from two taps. Firefox and WebKit do not, which would leave this gesture working with a
+   * mouse and silently doing nothing on a phone.
+   */
+  const doubleTap = useDoubleTap(() => onEditingChange(true));
+
+  const elsewhere = row.usedOnOtherClasses;
+  const shared = elsewhere > 0;
+  const range = (
+    <span className={styles.attributeRange}>{xsdDatatypeCurie(row.property.range)}</span>
+  );
+
+  if (editing) {
+    return (
+      <div
+        className={styles.attribute}
+        data-attribute-name={row.property.localName}
+        data-usage-id={row.usageId}
+      >
+        <span className={styles.attributeMarker} aria-hidden="true" />
+        <InlineName
+          value={row.property.localName}
+          isValid={(draft) => toPropertyLocalName(draft) !== ''}
+          onCommit={(draft) => renameProperty(row.property.id, draft)}
+          label="Attribute name"
+          textClassName={styles.attributeName}
+          inputClassName={styles.attributeNameInput}
+          {...(shared ? { hint: `↗ ${elsewhere} more` } : {})}
+          editing
+          onEditingChange={onEditingChange}
+        />
+        {/*
+          The range takes the trailing slot when idle and the warning takes it while editing.
+          Showing both would squeeze the field in a box only 224px wide, and which class a
+          property points at matters less mid-rename than how many classes the rename reaches.
+        */}
+        {shared ? null : range}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={styles.attribute}
+      data-attribute-name={row.property.localName}
+      data-usage-id={row.usageId}
+      title={
+        shared ? `${row.property.localName} is also used on other classes` : row.property.localName
+      }
+      onClick={(event) => {
+        event.stopPropagation();
+        select({ kind: 'datatypeProperty', id: row.property.id });
+      }}
+      onDoubleClick={(event) => {
+        // The node zooms on a double-click; this one belongs to the row.
+        event.stopPropagation();
+        onEditingChange(true);
+      }}
+      ref={doubleTap}
+      onKeyDown={(event) => {
+        // F2 renames in place, the same convention as a file manager, so the gesture is not
+        // reachable only with a mouse.
+        if (event.key !== 'F2') return;
+        event.preventDefault();
+        onEditingChange(true);
+      }}
+    >
+      <span className={styles.attributeMarker} aria-hidden="true" />
+      <span className={styles.attributeName}>{row.property.localName}</span>
+      {shared ? (
+        <span className={styles.sharedMark} aria-label="shared">
+          ↗
+        </span>
+      ) : null}
+      {range}
+    </button>
   );
 }
