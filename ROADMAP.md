@@ -21,11 +21,9 @@ this app is a linked data engineering workflow for building semantic layers for 
 schema editing that is fast, stable and predictable at real sizes — and the bar for that is
 written down in [Hardening the core](#hardening-the-core). Feature work resumes after it.
 
-1. **Rename an attribute in place on the canvas** — the gesture is already taken and currently
-   does the wrong thing
-2. Hardening the core, to the definition of done below
-3. Multiple superclasses through the UI — the one modelling gap that is a defect, not an addition
-4. Mermaid export
+1. Hardening the core, to the definition of done below
+2. Multiple superclasses through the UI — the one modelling gap that is a defect, not an addition
+3. Mermaid export
 
 The reasoning is in [Proposed running order](#proposed-running-order) at the foot of the file.
 
@@ -60,10 +58,10 @@ in `npm run verify`:
 
 ## Editing on the canvas
 
-| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Size |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Focus an empty class at the right size** — double-clicking a class that has no attributes yet zooms to about 46% of the canvas rather than the 30–40% the gesture promises, and sits a little high. The node is measured at roughly 100px, then its placeholder text reflows and it settles at 131px, so both the zoom and the centre are computed from a node smaller than the one that ends up on screen. Classes carrying attributes measure once and are unaffected. Either wait for the measurement to stop changing before framing, or stop the placeholder reflowing.                                                         | S    |
-| **Rename an attribute in place** — double-click a datatype property row inside a class node and edit its name there, the way a class header already works. Today the row is a button that selects the property and sends you to the inspector, and a double-click on it **bubbles to the node and zooms the canvas** — so the gesture is not merely missing, it is taken and doing the wrong thing. Needs `stopPropagation` on the row, the same invalid-name treatment the class header uses, and a decision about shared properties: a datatype property may sit on several classes, and renaming it from one renames it everywhere. | S    |
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Size |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- |
+| **Focus an empty class at the right size** — double-clicking a class that has no attributes yet zooms to about 46% of the canvas rather than the 30–40% the gesture promises, and sits a little high. The node is measured at roughly 100px, then its placeholder text reflows and it settles at 131px, so both the zoom and the centre are computed from a node smaller than the one that ends up on screen. Classes carrying attributes measure once and are unaffected. Either wait for the measurement to stop changing before framing, or stop the placeholder reflowing. | S    |
+| ~~**Rename an attribute in place**~~ — _done._ Double-click or double-tap a datatype property row and edit it there, matching the class header in size, type and select-on-open. A rename reaches every class holding the property, and the field says how many while it is open. F2 opens the same editor from the keyboard. The double-tap had to be recognised by hand: React Flow makes nodes draggable, and only Chromium synthesises a double-click from two taps on one.                                                                                                | —    |
 
 ## Modelling power
 
