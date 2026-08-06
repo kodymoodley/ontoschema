@@ -1,9 +1,20 @@
 name: CI
 
+# A change to Markdown alone does not need a build or three browsers. Prettier still checks
+# Markdown, but the pre-commit hook formats it before a commit exists, so CI is only a backstop
+# there.
+#
+# This is safe because no status check is required to merge: branch protection is not enforced on
+# a private repository on the Free plan. If that changes -- the repository is made public, or the
+# account moves to a paid plan and required checks are switched on -- a skipped workflow reports
+# nothing and a documentation pull request can never be merged. At that point this has to become
+# two jobs: a cheap one that always runs, and an expensive one conditional on the changed files.
 on:
   push:
     branches: [main]
+    paths-ignore: ['**/*.md']
   pull_request:
+    paths-ignore: ['**/*.md']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
