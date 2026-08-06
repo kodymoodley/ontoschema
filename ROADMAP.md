@@ -331,3 +331,4 @@ Kody's notes, kept as written.
 2. "Draw a relation by dragging from..." -> move to tooltip to make space in interface
 3. Make palette and taxonomy view subtabs of left hand panel
 4. Make Mini Map half size
+5. Class node header height increase to have more space to double-click to zoom
