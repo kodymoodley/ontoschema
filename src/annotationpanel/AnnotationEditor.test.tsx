@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useProjectStore } from '../projectstore';
 import { findClass } from '../ontologymodel';
+import { SUGGESTED_LANGUAGE_TAGS } from '../annotationvocabulary';
 import { AnnotationEditor, LanguageTagSuggestions } from './AnnotationEditor';
 
 const store = () => useProjectStore.getState();
@@ -192,5 +193,29 @@ describe('AnnotationEditor', () => {
   it('renders nothing when the target no longer exists', () => {
     const { container } = render(<AnnotationEditor target={{ kind: 'class', id: 'gone' }} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('the language tag dropdown', () => {
+  it('points the field at a suggestion list', async () => {
+    const user = userEvent.setup();
+    renderForClass();
+    await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    const field = screen.getByLabelText('rdfs:label language tag');
+    expect(field).toHaveAttribute('list', 'ontoschema-language-tags');
+  });
+
+  it('offers every suggested tag, in order', () => {
+    // Rendered on its own: the list lives at the top of the shell rather than beside the field,
+    // so a test that only looked at the input would pass while the dropdown was empty.
+    const { container } = render(<LanguageTagSuggestions />);
+    const options = [...container.querySelectorAll('option')].map((option) =>
+      option.getAttribute('value'),
+    );
+
+    expect(options).toEqual([...SUGGESTED_LANGUAGE_TAGS]);
+    expect(container.querySelector('datalist')).toHaveAttribute('id', 'ontoschema-language-tags');
   });
 });
