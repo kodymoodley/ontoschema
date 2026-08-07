@@ -1,16 +1,32 @@
-/** Suggested language tags for text annotations. The field accepts any BCP 47 tag. */
+/**
+ * Suggested language tags for text annotations: the twenty most widely spoken languages, as
+ * two-letter ISO 639-1 codes. The field still accepts any BCP 47 tag, so this is a shortcut
+ * rather than a limit — `cy` or `en-GB` are typed in and work exactly as before.
+ *
+ * Twenty rather than all 184 because the field offers these as a dropdown, and a dropdown is
+ * only useful while it can be read at a glance.
+ */
 export const SUGGESTED_LANGUAGE_TAGS = [
   'en',
-  'nl',
-  'de',
-  'fr',
-  'es',
-  'it',
-  'pt',
-  'sv',
-  'pl',
   'zh',
+  'hi',
+  'es',
+  'ar',
+  'fr',
+  'bn',
+  'pt',
+  'ru',
+  'ur',
+  'id',
+  'de',
   'ja',
+  'tr',
+  'ko',
+  'vi',
+  'it',
+  'nl',
+  'pl',
+  'sv',
 ] as const;
 
 /** Loose BCP 47 check: primary subtag plus optional subtags, e.g. `en`, `en-GB`, `zh-Hant-TW`. */
