@@ -22,6 +22,7 @@
     "test:perf": "playwright test --config playwright.perf.config.ts",
     "test:e2e:install": "playwright install --with-deps chromium firefox webkit",
     "size": "npm run build && node scripts/checkBundleSize.mjs",
+    "languages:refresh": "node scripts/generateLanguageCodes.mjs && prettier --write src/annotationvocabulary/iso639-1.ts",
     "verify": "npm run typecheck && npm run lint && npm run format:check && npm run test:node && npm run size && npm run test:e2e && npm run test:perf",
     "prepare": "husky"
   },
