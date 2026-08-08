@@ -3,8 +3,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useProjectStore } from '../projectstore';
 import { findClass } from '../ontologymodel';
-import { SUGGESTED_LANGUAGE_TAGS } from '../annotationvocabulary';
-import { AnnotationEditor, LanguageTagSuggestions } from './AnnotationEditor';
+import { SUGGESTED_LANGUAGE_TAGS, languageNames } from '../annotationvocabulary';
+import { AnnotationEditor } from './AnnotationEditor';
 
 const store = () => useProjectStore.getState();
 const ontology = () => {
@@ -16,12 +16,9 @@ const ontology = () => {
 
 function renderForClass() {
   const id = store().createClass({ localName: 'Car' });
-  render(
-    <>
-      <LanguageTagSuggestions />
-      <AnnotationEditor target={{ kind: 'class', id }} />
-    </>,
-  );
+  // The editor is self-contained now: the language list is part of the control rather than a
+  // datalist mounted separately by the shell.
+  render(<AnnotationEditor target={{ kind: 'class', id }} />);
   return id;
 }
 
@@ -97,8 +94,8 @@ describe('AnnotationEditor', () => {
       const languages = screen.getAllByLabelText('skos:prefLabel language tag');
       await user.clear(values.at(-1) as HTMLElement);
       await user.type(values.at(-1) as HTMLElement, text as string);
-      await user.clear(languages.at(-1) as HTMLElement);
-      await user.type(languages.at(-1) as HTMLElement, language as string);
+      // The language is chosen from a list now rather than typed.
+      await user.selectOptions(languages.at(-1) as HTMLElement, language as string);
     }
 
     expect(annotationsOf(id)).toHaveLength(2);
@@ -106,32 +103,6 @@ describe('AnnotationEditor', () => {
       ['Car', 'en'],
       ['Auto', 'nl'],
     ]);
-  });
-
-  it('normalises a sloppy language tag', async () => {
-    const user = userEvent.setup();
-    const id = renderForClass();
-
-    await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
-    const language = screen.getByLabelText('rdfs:label language tag');
-    await user.clear(language);
-    await user.type(language, 'EN-gb');
-
-    expect(annotationsOf(id)[0]?.language).toBe('en-GB');
-  });
-
-  it('marks a malformed language tag as invalid without discarding it', async () => {
-    const user = userEvent.setup();
-    renderForClass();
-
-    await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
-    const language = screen.getByLabelText('rdfs:label language tag');
-    await user.clear(language);
-    await user.type(language, '!!');
-
-    expect(language).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('offers no language tag for a term whose value is an IRI', async () => {
@@ -196,26 +167,64 @@ describe('AnnotationEditor', () => {
   });
 });
 
-describe('the language tag dropdown', () => {
-  it('points the field at a suggestion list', async () => {
-    const user = userEvent.setup();
-    renderForClass();
+/**
+ * Choosing a language rather than typing one. The tag is optional, but one that exists has to be
+ * a real language, and a list is what makes that true at the point of entry rather than after.
+ */
+describe('the language tag control', () => {
+  const languageField = () => screen.getByLabelText('rdfs:label language tag') as HTMLSelectElement;
+
+  async function addLabel(user: ReturnType<typeof userEvent.setup>) {
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
     await user.click(screen.getByRole('button', { name: 'Add' }));
+  }
 
-    const field = screen.getByLabelText('rdfs:label language tag');
-    expect(field).toHaveAttribute('list', 'ontoschema-language-tags');
+  it('is a list, so an invalid tag cannot be entered in the first place', async () => {
+    const user = userEvent.setup();
+    renderForClass();
+    await addLabel(user);
+
+    expect(languageField().tagName).toBe('SELECT');
   });
 
-  it('offers every suggested tag, in order', () => {
-    // Rendered on its own: the list lives at the top of the shell rather than beside the field,
-    // so a test that only looked at the input would pass while the dropdown was empty.
-    const { container } = render(<LanguageTagSuggestions />);
-    const options = [...container.querySelectorAll('option')].map((option) =>
-      option.getAttribute('value'),
-    );
+  it('offers every language, with the widely spoken ones first', async () => {
+    const user = userEvent.setup();
+    renderForClass();
+    await addLabel(user);
 
-    expect(options).toEqual([...SUGGESTED_LANGUAGE_TAGS]);
-    expect(container.querySelector('datalist')).toHaveAttribute('id', 'ontoschema-language-tags');
+    const values = [...languageField().options].map((option) => option.value);
+    expect(values[0], 'a tag stays optional').toBe('');
+    expect(values.slice(1, 1 + SUGGESTED_LANGUAGE_TAGS.length)).toEqual([
+      ...SUGGESTED_LANGUAGE_TAGS,
+    ]);
+    expect(values).toHaveLength(1 + languageNames().size);
+  });
+
+  it('names each language, since a bare code is hard to pick from', async () => {
+    const user = userEvent.setup();
+    renderForClass();
+    await addLabel(user);
+
+    const dutch = [...languageField().options].find((option) => option.value === 'nl');
+    expect(dutch?.textContent).toContain('Dutch');
+  });
+
+  it('stores the language that was chosen', async () => {
+    const user = userEvent.setup();
+    const id = renderForClass();
+    await addLabel(user);
+
+    await user.selectOptions(languageField(), 'ja');
+    expect(annotationsOf(id)[0]?.language).toBe('ja');
+  });
+
+  it('lets the tag be taken off again, because it is optional', async () => {
+    const user = userEvent.setup();
+    const id = renderForClass();
+    await addLabel(user);
+
+    await user.selectOptions(languageField(), 'ja');
+    await user.selectOptions(languageField(), '');
+    expect(annotationsOf(id)[0]?.language).toBeUndefined();
   });
 });

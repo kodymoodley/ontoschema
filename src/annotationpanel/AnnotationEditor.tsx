@@ -5,7 +5,7 @@ import {
   ONTOLOGY_ANNOTATION_TERMS,
   SUGGESTED_LANGUAGE_TAGS,
   findAnnotationTerm,
-  isValidLanguageTag,
+  languageNames,
 } from '../annotationvocabulary';
 import type { AnnotationTerm } from '../annotationvocabulary';
 import { findClass, findDatatypeProperty, findObjectProperty } from '../ontologymodel';
@@ -119,8 +119,6 @@ function AnnotationRow({ annotation, terms, onChange, onRemove }: AnnotationRowP
   const kind = term?.kind ?? 'text';
   const supportsLanguage = kind === 'text';
   const multiline = kind === 'text' && isLongFormTerm(annotation.term);
-  const languageInvalid =
-    Boolean(annotation.language) && !isValidLanguageTag(annotation.language ?? '');
 
   return (
     <div className={styles.annotation} data-annotation-term={annotation.term}>
@@ -163,15 +161,14 @@ function AnnotationRow({ annotation, terms, onChange, onRemove }: AnnotationRowP
         )}
 
         {supportsLanguage ? (
-          <TextInput
+          <Select
             className={styles.language}
             value={annotation.language ?? ''}
-            placeholder="lang"
-            list="ontoschema-language-tags"
             aria-label={`${annotation.term} language tag`}
-            invalid={languageInvalid}
             onChange={(event) => onChange({ language: event.target.value })}
-          />
+          >
+            <LanguageOptions />
+          </Select>
         ) : (
           <span className={styles.kindTag}>{kind === 'iri' ? 'IRI' : kind}</span>
         )}
@@ -194,13 +191,31 @@ function isLongFormTerm(curie: string): boolean {
   ].includes(curie);
 }
 
-/** Shared datalist of suggested language tags, mounted once by the app shell. */
-export function LanguageTagSuggestions() {
+/**
+ * Every language that can be chosen, with the widely spoken ones first.
+ *
+ * A list rather than a text field because the tag has to be a real language: typing into a
+ * field the model validates is unworkable, since half of `zh` is not a language and the
+ * character would vanish as it was typed. Choosing removes the problem instead of policing it.
+ */
+function LanguageOptions() {
+  const names = languageNames();
+  const common = SUGGESTED_LANGUAGE_TAGS.filter((code) => names.has(code));
+  const rest = [...names.keys()]
+    .filter((code) => !common.includes(code as (typeof SUGGESTED_LANGUAGE_TAGS)[number]))
+    .sort((left, right) => (names.get(left) ?? '').localeCompare(names.get(right) ?? ''));
+
+  const option = (code: string) => (
+    <option key={code} value={code}>
+      {code} — {names.get(code)}
+    </option>
+  );
+
   return (
-    <datalist id="ontoschema-language-tags">
-      {SUGGESTED_LANGUAGE_TAGS.map((tag) => (
-        <option key={tag} value={tag} />
-      ))}
-    </datalist>
+    <>
+      <option value="">no language</option>
+      <optgroup label="Widely spoken">{common.map(option)}</optgroup>
+      <optgroup label="All languages">{rest.map(option)}</optgroup>
+    </>
   );
 }
