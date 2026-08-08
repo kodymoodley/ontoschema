@@ -291,12 +291,31 @@ describe('annotations', () => {
     expect(findClass(removed, ids.truck)?.annotations).toHaveLength(0);
   });
 
-  it('normalises language tags so en-gb and EN-GB are one tag', () => {
+  it('settles the casing of a language tag, so EN and en are one tag', () => {
     const { ontology, ids } = buildAutoOntology();
     const added = addAnnotation(ontology, 'class', ids.truck, 'rdfs:label', 'Lorry');
     const id = findClass(added, ids.truck)?.annotations[0]?.id ?? '';
-    const tagged = updateAnnotation(added, 'class', ids.truck, id, { language: 'EN-gb' });
-    expect(findClass(tagged, ids.truck)?.annotations[0]?.language).toBe('en-GB');
+    const tagged = updateAnnotation(added, 'class', ids.truck, id, { language: ' EN ' });
+    expect(findClass(tagged, ids.truck)?.annotations[0]?.language).toBe('en');
+  });
+
+  it('refuses a language tag that is not a language, rather than storing it', () => {
+    const { ontology, ids } = buildAutoOntology();
+    const added = addAnnotation(ontology, 'class', ids.truck, 'rdfs:label', 'Lorry', 'en');
+    const id = findClass(added, ids.truck)?.annotations[0]?.id ?? '';
+
+    /*
+     * The model is where this has to be turned away. Catching it only in the writer would leave
+     * the tag sitting in the project file and silently missing from the export, which is the
+     * behaviour this replaced.
+     */
+    for (const rejected of ['zz', 'en-GB', 'eng', 'xx']) {
+      const attempt = updateAnnotation(added, 'class', ids.truck, id, { language: rejected });
+      expect(
+        findClass(attempt, ids.truck)?.annotations[0]?.language,
+        `${rejected} should not be stored`,
+      ).toBeUndefined();
+    }
   });
 
   it('clears the language tag when set to empty', () => {

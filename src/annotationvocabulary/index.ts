@@ -43,4 +43,9 @@ export {
 } from './datatypes';
 export type { XsdDatatype } from './datatypes';
 
-export { SUGGESTED_LANGUAGE_TAGS, isValidLanguageTag, normalizeLanguageTag } from './languages';
+export {
+  SUGGESTED_LANGUAGE_TAGS,
+  isValidLanguageTag,
+  languageNames,
+  normalizeLanguageTag,
+} from './languages';

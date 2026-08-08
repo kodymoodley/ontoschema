@@ -1,1 +1,1 @@
-export { AnnotationEditor, LanguageTagSuggestions } from './AnnotationEditor';
+export { AnnotationEditor } from './AnnotationEditor';

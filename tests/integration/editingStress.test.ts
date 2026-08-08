@@ -133,7 +133,7 @@ const XSD_RANGES = [
   'anyURI',
 ] as const;
 const ANNOTATION_TERMS = ['rdfs:label', 'skos:definition', 'dcterms:created', 'rdfs:seeAlso'];
-const LANGUAGES = [undefined, 'en', 'nl', 'pt-BR'];
+const LANGUAGES = [undefined, 'en', 'nl', 'ar'];
 
 /** One random, always-legal editing action. */
 function applyRandomEdit(random: () => number, step: number): void {

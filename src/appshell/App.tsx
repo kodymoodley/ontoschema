@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Palette, SchemaCanvas, TaxonomyCanvas, usePaletteCreate } from '../canvas';
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
-import { LanguageTagSuggestions } from '../annotationpanel';
 import { ConnectionPicker, RelationMarkers } from '../relationeditor';
 import { useCanvasView, useOntology, useProjectStore } from '../projectstore';
 import { Button, Divider, Spacer, Tabs, Toolbar } from '../designsystem';
@@ -47,7 +46,6 @@ export function App() {
   return (
     <div className={styles.shell} data-drawer={drawer}>
       <RelationMarkers />
-      <LanguageTagSuggestions />
       <ConnectionPicker />
 
       <header className={styles.header}>

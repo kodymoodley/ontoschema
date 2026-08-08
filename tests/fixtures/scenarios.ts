@@ -150,9 +150,10 @@ export function buildMultilingual(): { ontology: Ontology; ids: Record<string, s
     ['Voiture', 'fr'],
     ['سيارة', 'ar'],
     ['מכונית', 'he'],
-    ['汽車', 'zh-Hant-TW'],
+    ['汽車', 'zh'],
     ['車', 'ja'],
-    ['Lorry', 'en-GB'],
+    ['자동차', 'ko'],
+    ['गाड़ी', 'hi'],
   ];
   for (const [value, language] of labels) {
     ontology = addAnnotation(ontology, 'class', car.id, 'skos:altLabel', value, language);
