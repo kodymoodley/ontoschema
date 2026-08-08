@@ -73,6 +73,35 @@ in `npm run verify`:
 | **Find the WebKit flake in the end-to-end suite** — _investigated, not solved. See [What is known about the WebKit flake](#what-is-known-about-the-webkit-flake)._ Roughly one full parallel run in three or four fails on WebKit with an actionability timeout waiting for an element to be _stable_. Never reproduced outside a full mixed-engine run, which makes each attempt a three-minute gamble. Nothing is blocked: CI runs serially and has never seen it. | M    |
 | ~~**Recover rather than reload after a crash**~~ — _done._ Batching the writes had quietly made the crash panel's promise false: the last seconds of edits were still queued. The boundary flushes them before it logs or renders, so the workspace on disk is current by the time the panel claims it is.                                                                                                                                                           | —    |
 
+## Keeping the suite honest
+
+The suite is meant to make changing this app safe. That stops being true quietly: not when there
+are too many tests, but when they take long enough that people skip them, when one behaviour
+change breaks nine of them, or when they assert how something works rather than what it does.
+
+**Measured on 2026-08-08**, and worth re-measuring rather than assuming:
+
+| Tier                  | Tests  | Time  | Each  |
+| --------------------- | ------ | ----- | ----- |
+| Unit, in Node         | 423    | 3.1s  | 7ms   |
+| Component, in jsdom   | 137    | 10.8s | 79ms  |
+| Integration, in jsdom | 55     | 5.4s  | 98ms  |
+| End to end, 3 engines | 87 × 3 | ~2.5m | ~1.8s |
+
+615 fast tests to 87 slow ones is the shape it should be: most of the confidence comes from tests
+costing 7ms, and a browser is used only where one is genuinely needed. The failure to avoid is the
+inverse — a suite that is mostly end-to-end, takes half an hour, and is flaky throughout.
+
+**Budgets, so a breach is a decision rather than a drift.** Unit under 10s, component under 30s,
+integration under 60s, end-to-end under 5 minutes. The unit tier matters most: it runs in the
+pre-commit hook, and once that passes about ten seconds people stop running it.
+
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                                            | Size |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Try mutation testing on the domain model** — coverage says which lines ran, not whether anything would notice if they were wrong. Mutation testing changes `>` to `>=`, deletes a line, and checks that a test fails; the ones that survive are tests executing code without asserting anything about it. Too slow for CI, so a quarterly pass over `ontologymodel` and `serialization` rather than a gate. Stryker does this for TypeScript. | M    |
+| **Shard the browser suite** — only when it outgrows five minutes. Playwright takes `--shard=1/4` across parallel jobs, which trades runners for wall time. Not needed yet, and noted so it is reached for at the right moment rather than early.                                                                                                                                                                                                | S    |
+| **Run one engine per pull request, three on merge** — the other lever for when end-to-end grows. Trades a little risk for a lot of time. Also not needed yet.                                                                                                                                                                                                                                                                                   | S    |
+
 ## Editing on the canvas
 
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Size |
