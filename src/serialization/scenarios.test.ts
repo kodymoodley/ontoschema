@@ -79,43 +79,30 @@ describe('text that breaks naive writers', () => {
   });
 
   /*
-   * The two hand-written writers keep BCP 47's conventional casing; n3 lowercases language
-   * tags on the way out. RDF 1.1 defines tags as case-insensitive, so the graphs are
-   * identical either way — which the isomorphism checks above already prove — but the files
-   * differ visibly, and that is worth knowing rather than discovering.
+   * Casing used to differ between the writers — the hand-written pair kept BCP 47's
+   * conventional form while n3 lowercased on the way out — and there were tests here recording
+   * that. It cannot happen now: a tag is two lowercase letters, so there is no case to fold and
+   * no subtag to preserve. What is still worth checking is that all three writers agree.
    */
-  it('keeps conventional tag casing in RDF/XML and JSON-LD', () => {
-    expect(serializeRdfXml(ontology)).toContain('xml:lang="zh-Hant-TW"');
-    expect(serializeRdfXml(ontology)).toContain('xml:lang="en-GB"');
-    expect(serializeJsonLd(ontology)).toContain('"@language": "zh-Hant-TW"');
-  });
-
-  it('lowercases them in Turtle, which is n3 normalising rather than losing information', () => {
-    const turtle = serializeTurtle(ontology);
-    expect(turtle).toContain('@zh-hant-tw');
-    expect(turtle).not.toContain('@zh-Hant-TW');
-    // The subtags all survive; only their case is folded.
-    expect(turtle).toContain('@en-gb');
-  });
-
-  it('carries the same set of language tags through every format', async () => {
-    /*
-     * Compared case-insensitively: RDF 1.1 defines language tags that way, and the parsers
-     * differ on how they normalise — n3 lowercases on read, the RDF/XML parser does not.
-     */
+  it('writes the same language tags in every format', () => {
     const tags = (quads: Awaited<ReturnType<typeof parseRdfXml>>) =>
       quads
         .filter((quad) => quad.object.termType === 'Literal' && quad.object.language)
-        .map((quad) =>
-          quad.object.termType === 'Literal' ? quad.object.language.toLowerCase() : '',
-        )
+        .map((quad) => (quad.object.termType === 'Literal' ? quad.object.language : ''))
         .sort();
 
     const fromTurtle = tags(parseTurtle(serializeTurtle(ontology)));
-    expect(fromTurtle).toContain('zh-hant-tw');
-    expect(fromTurtle).toContain('en-gb');
-    expect(tags(await parseRdfXml(serializeRdfXml(ontology)))).toEqual(fromTurtle);
-    expect(tags(await parseJsonLd(serializeJsonLd(ontology)))).toEqual(fromTurtle);
+    expect(fromTurtle).toContain('zh');
+    expect(fromTurtle).toContain('ko');
+    expect(fromTurtle.every((tag) => /^[a-z]{2}$/.test(tag))).toBe(true);
+
+    return Promise.all([
+      parseRdfXml(serializeRdfXml(ontology)),
+      parseJsonLd(serializeJsonLd(ontology)),
+    ]).then(([rdfxml, jsonld]) => {
+      expect(tags(rdfxml)).toEqual(fromTurtle);
+      expect(tags(jsonld)).toEqual(fromTurtle);
+    });
   });
 
   it('escapes markup rather than emitting XML that cannot be read', () => {
