@@ -254,7 +254,9 @@ export async function addAnnotation(page: Page, term: string, value: string, lan
 
   const row = page.locator(`[data-annotation-term="${term}"]`).last();
   await row.getByLabel(`${term} value`).fill(value);
-  if (language !== undefined) await row.getByLabel(`${term} language tag`).fill(language);
+  // Chosen from a list, not typed: the tag has to be a real ISO 639-1 code, and a select is what
+  // makes that true at the point of entry.
+  if (language !== undefined) await row.getByLabel(`${term} language tag`).selectOption(language);
 }
 
 export async function openInspectorTab(page: Page, name: string) {
