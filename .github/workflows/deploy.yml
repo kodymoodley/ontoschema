@@ -1,0 +1,78 @@
+name: Deploy
+
+# Builds the app and pushes the result into the public `ontoschema-site` repository, which is
+# what GitHub Pages serves. The source stays private; only the compiled output is published.
+#
+# There is no path filter here, unlike CI. A filter would have to exclude Markdown while making
+# an exception for `deploy/site-README.md`, which is published and therefore does need to trigger
+# a deploy, and `paths-ignore` cannot express that. A wasted two-minute run on a documentation
+# change is cheaper than the deploy that silently does not happen.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time. Two runs racing would both force-push, and the winner would be whichever
+# finished last rather than whichever was newer.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and publish to the site repo
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The unit, component and integration tiers only -- about thirty seconds. The full suite
+      # already ran on the pull request that put this commit on `main`; what it cannot have run
+      # on is the merge itself, which is what this catches. Three browser engines would triple
+      # the deploy time for a signal that has already been obtained.
+      - name: Unit, component and integration tests
+        run: npm run test:node
+
+      # `SOURCEMAP=0` because a source map embeds the original TypeScript, and this output goes
+      # to a public repository.
+      - name: Build
+        run: npm run build
+        env:
+          SOURCEMAP: '0'
+
+      # The build setting above states the intent; this enforces it. A setting is one careless
+      # edit away from being untrue, and the cost of it being untrue is the entire private source
+      # published irreversibly. Failing the deploy is the cheap outcome.
+      - name: Refuse to publish if source maps are present
+        run: |
+          maps=$(find dist -name '*.map')
+          if [ -n "$maps" ]; then
+            echo "::error::Source maps in the build output. They embed the original TypeScript, and this build is published publicly. Not deploying."
+            echo "$maps"
+            exit 1
+          fi
+
+      # The publish branch is force-pushed on every deploy, so a README written by hand in the
+      # public repository would not survive. Shipping it as part of the output is what keeps it
+      # there.
+      - name: Add the note explaining the public repository
+        run: cp deploy/site-README.md dist/README.md
+
+      - name: Publish to the public site repo
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          external_repository: kodymoodley/ontoschema-site
+          publish_branch: main
+          publish_dir: ./dist
+          # A single commit rather than accumulating history. The repository holds a build
+          # artifact, so its history has no value and would otherwise grow without limit.
+          force_orphan: true
