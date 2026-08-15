@@ -3,11 +3,18 @@ dist/
 coverage/
 playwright-report/
 test-results/
+# Stryker's report, written by `npm run mutation`. The score that matters is recorded in
+# ROADMAP.md by hand; the report itself is a local artifact regenerated on every run.
+mutation/
 .vite/
 *.local
 # Per-developer Claude Code permissions. Anything meant to be shared belongs in
 # .claude/settings.json, which is not ignored.
 .claude/settings.local.json
+# A personal working note, kept deliberately out of every repository. Ignored rather than merely
+# untracked, because an untracked file in the root is one careless `git add` away from being
+# published.
+OntoSchema-GitHub-Pages-Setup.md
 .DS_Store
 .env
 .env.*
