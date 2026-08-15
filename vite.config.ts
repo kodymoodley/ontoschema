@@ -11,9 +11,27 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: { port: 5173 },
+  /*
+   * Relative asset URLs, so one build works wherever it is served from. GitHub Pages puts a
+   * project site under a subpath (`/ontoschema-site/`), and an absolute `/assets/...` would
+   * 404 there. Naming the subpath instead would work too, but it would tie the build to one
+   * URL and leave the end-to-end suite testing a build that is not the one deployed.
+   *
+   * Safe because the app has no client-side router: there is one HTML document, so nothing
+   * depends on the browser resolving a path the server has never heard of.
+   */
+  base: './',
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    /*
+     * A source map carries the original TypeScript inside it. The built output is published to
+     * a public repository while the source stays private, so shipping maps would hand over the
+     * very thing that arrangement exists to keep back. Local builds keep them, because there
+     * they cost nothing; the deploy workflow sets `SOURCEMAP=0`, and then refuses to publish at
+     * all if a map file turns up regardless. The setting states the intent, the check enforces
+     * it, because a setting is one careless edit away from being untrue.
+     */
+    sourcemap: process.env.SOURCEMAP !== '0',
     // Anything above this is a mistake worth being told about; `npm run size` enforces the
     // real budget against the gzipped output.
     chunkSizeWarningLimit: 400,
