@@ -115,7 +115,7 @@ test notices, which is a different and harder question. It is scoped to `src/ser
 those writers are hand-written and tested mostly by example, and it is run by hand with
 `npm run mutation` rather than in CI — it takes about 90 seconds and its answer changes slowly.
 
-**Baseline: 79.3%** — 211 mutants killed, 55 survived, on 2026-07-30. It was 71.7% when the tool was
+**Baseline: 79.3%** — 211 mutants killed, 55 survived, on 2026-08-09. It was 71.7% when the tool was
 first pointed at the module; the two survivors worth fixing were quote escaping inside XML
 attributes and the sorting that keeps an export byte-stable, both now covered.
 
