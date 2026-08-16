@@ -15,4 +15,15 @@
 # `git push --no-verify` skips it. That is deliberate and occasionally correct -- pushing a
 # work-in-progress branch for a second opinion, say. What it is not is a way past a failure on the
 # branch you intend to merge.
+# Deleting a remote branch sends no commits, and git runs this hook anyway. Twenty-three seconds
+# of tests to answer `git push --delete` is precisely the friction that gets a hook switched off,
+# so a push carrying nothing to test skips it. Git names each ref on stdin; a deletion has an
+# all-zero local sha.
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case "$local_sha" in
+  *[!0]*) pushing_commits=1 ;;
+  esac
+done
+[ -z "$pushing_commits" ] && exit 0
+
 npm run test:e2e:fast || exit 1
