@@ -93,11 +93,6 @@ export function Palette({ onCreate, onCreateObjectProperty, canCreateAttribute }
           </span>
         </span>
       </button>
-
-      <p className={styles.paletteNote}>
-        Draw a <strong>relation</strong> by dragging from the right edge of one class to another,
-        then pick which object property it is.
-      </p>
     </div>
   );
 }
