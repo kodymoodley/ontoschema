@@ -7,8 +7,9 @@
  * the disabled state need no special handling.
  *
  * Adding a root and adding a child are the same act at two levels, and no drawing distinguishes
- * them on its own — which is why the buttons carry a label and a tooltip as well. The indent on
- * the child icon is a reminder for someone who already knows, not an explanation.
+ * them on its own — which is why the buttons carry a label and a tooltip as well. The plain plus
+ * is the root; the elbow before the plus is the indent. Both are reminders for someone who
+ * already knows, not explanations.
  */
 
 interface IconProps {
@@ -17,8 +18,8 @@ interface IconProps {
 }
 
 const common = {
-  width: 15,
-  height: 15,
+  width: 17,
+  height: 17,
   viewBox: '0 0 16 16',
   fill: 'none',
   stroke: 'currentColor',
@@ -28,13 +29,12 @@ const common = {
   'aria-hidden': true,
 };
 
-/** A plus under a full-width bar: a new entry at the top level. */
+/** A plain plus: a new entry, at the top level unless the elbow below says otherwise. */
 export function AddRootIcon(_props: IconProps) {
   return (
     <svg {...common}>
-      <path d="M3 3.25h10" />
-      <path d="M8 6.75v6" />
-      <path d="M5 9.75h6" />
+      <path d="M8 3.5v9" />
+      <path d="M3.5 8h9" />
     </svg>
   );
 }
