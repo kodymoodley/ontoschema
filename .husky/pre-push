@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+
+# The end-to-end tier on one engine, before anything leaves the machine.
+#
+# This repository has no required status checks, so nothing downstream refuses a red branch: the
+# rule in CONTRIBUTING.md is the only thing that does, and a rule is easiest to keep when it is
+# rarely tested. This hook is what keeps it rarely tested. The suite that broke main for a week
+# would have failed here, on the machine that broke it, before a pull request existed.
+#
+# One engine, matching what CI runs on a pull request, because that is the cheapest thing that
+# would have caught it. Measured at 27 seconds for all 83 specs, including the production build
+# they run against. If that ever creeps past a minute or so, split the suite rather than removing
+# the hook: a gate people disable is worth less than a smaller gate they keep.
+#
+# `git push --no-verify` skips it. That is deliberate and occasionally correct -- pushing a
+# work-in-progress branch for a second opinion, say. What it is not is a way past a failure on the
+# branch you intend to merge.
+# Deleting a remote branch sends no commits, and git runs this hook anyway. Twenty-three seconds
+# of tests to answer `git push --delete` is precisely the friction that gets a hook switched off,
+# so a push carrying nothing to test skips it. Git names each ref on stdin; a deletion has an
+# all-zero local sha.
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case "$local_sha" in
+  *[!0]*) pushing_commits=1 ;;
+  esac
+done
+[ -z "$pushing_commits" ] && exit 0
+
+npm run test:e2e:fast || exit 1

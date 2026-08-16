@@ -19,6 +19,7 @@
     "test:integration": "vitest run --project integration",
     "test:node": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:fast": "playwright test --project=chromium",
     "test:perf": "playwright test --config playwright.perf.config.ts",
     "mutation": "stryker run",
     "test:e2e:install": "playwright install --with-deps chromium firefox webkit",
