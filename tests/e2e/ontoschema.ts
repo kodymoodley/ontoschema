@@ -73,7 +73,7 @@ async function dragOntoCanvas(
 /** Renames a class by double-clicking its header, as a user would on the canvas. */
 export async function renameClassOnCanvas(page: Page, from: string, to: string) {
   const node = page.locator(`[data-class-name="${from}"]`);
-  await node.locator('header').dblclick();
+  await node.locator('header [title]').dblclick();
   const input = node.getByLabel('Class name');
   await input.fill(to);
   await input.press('Enter');

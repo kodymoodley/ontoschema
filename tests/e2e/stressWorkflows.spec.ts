@@ -24,7 +24,7 @@ import {
 
 async function newClass(page: Page, name: string, x: number, y: number) {
   await dragFromPalette(page, 'class', { x, y });
-  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').last().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill(name);
   await page.getByLabel('Class name').press('Enter');
   await expect(page.locator(`[data-class-name="${name}"]`)).toBeVisible();
@@ -211,7 +211,7 @@ test('resolves names that collide once sanitised', async ({ page }) => {
 
   for (const [index, typed] of ['Used Car', 'used car', 'used_car'].entries()) {
     await dragFromPalette(page, 'class', { x: 40 + index * 260, y: 120 });
-    await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+    await page.locator('[data-class-node-id]').last().locator('header [title]').dblclick();
     await page.getByLabel('Class name').fill(typed);
     await page.getByLabel('Class name').press('Enter');
   }

@@ -86,12 +86,12 @@ async function chooseByKeyboard(page: Page, label: string, optionText: string) {
 async function twoClasses(page: Page) {
   await openApp(page);
   await page.locator('[data-palette-kind="class"]').click();
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Vehicle');
   await page.getByLabel('Class name').press('Enter');
 
   await page.locator('[data-palette-kind="class"]').click();
-  await page.locator('[data-class-node-id]').nth(1).locator('header').dblclick();
+  await page.locator('[data-class-node-id]').nth(1).locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
   await expect(page.locator('[data-class-name="Car"]')).toBeVisible();

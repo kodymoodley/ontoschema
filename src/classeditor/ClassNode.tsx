@@ -83,13 +83,13 @@ export function ClassNode({ data, selected }: NodeProps) {
         </Fragment>
       ))}
 
-      <header
-        className={styles.header}
-        onDoubleClick={(event) => {
-          event.stopPropagation();
-          setEditingName(true);
-        }}
-      >
+      {/*
+        The header owns no gesture of its own. Renaming belongs to the name itself, so the rest
+        of the strip is free for the double-click that zooms to the class -- which had almost
+        nowhere to land before, since the header, every attribute row and the relation labels
+        each claimed their own area and left only the footer.
+      */}
+      <header className={styles.header}>
         <span className={styles.marker} aria-hidden="true" />
         <InlineName
           value={entity.localName}
@@ -98,6 +98,10 @@ export function ClassNode({ data, selected }: NodeProps) {
           label="Class name"
           textClassName={styles.name}
           inputClassName={styles.nameInput}
+          onTextDoubleClick={(event) => {
+            event.stopPropagation();
+            setEditingName(true);
+          }}
           editing={editingName}
           onEditingChange={setEditingName}
         />

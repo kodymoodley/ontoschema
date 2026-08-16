@@ -127,15 +127,39 @@ test('the same class can be focused twice in a row', async ({ page }) => {
   expect(after.areaShare).toBeGreaterThanOrEqual(0.3);
 });
 
-test('double-clicking the header still renames instead of zooming', async ({ page }) => {
+test('double-clicking the name renames instead of zooming', async ({ page }) => {
   await schemaWithTwoClasses(page);
   const before = await transform(page);
 
-  await page.locator('[data-class-name="Venue"] header').dblclick();
+  await page.locator('[data-class-name="Venue"] header [title]').dblclick();
 
   await expect(page.getByLabel('Class name')).toBeVisible();
   await page.waitForTimeout(500);
   expect(await transform(page)).toBe(before);
+});
+
+/**
+ * The rest of the header is the room this gesture never had. Every part of a class used to answer
+ * a double-click with something else — the header renamed the class, each attribute row renamed
+ * that property — leaving only the footer, which got smaller in proportion as the class grew.
+ * Renaming belongs to the name itself now, so the strip beside it zooms like the node it sits in.
+ */
+test('double-clicking the header beside the name zooms rather than renaming', async ({ page }) => {
+  await schemaWithTwoClasses(page);
+
+  const header = await page.locator('[data-class-name="Venue"] header').boundingBox();
+  const name = await page.locator('[data-class-name="Venue"] header [title]').boundingBox();
+  if (!header || !name) throw new Error('could not measure the header');
+
+  // Midway between the end of the name and the right edge of the header.
+  const x = (name.x + name.width + header.x + header.width) / 2;
+  expect(x, 'the name should not fill the header').toBeGreaterThan(name.x + name.width);
+
+  const before = await transform(page);
+  await page.mouse.dblclick(x, header.y + header.height / 2);
+
+  await expect(page.getByLabel('Class name')).toHaveCount(0);
+  await expect.poll(() => transform(page)).not.toBe(before);
 });
 
 test('a class can be focused the instant it is drawn, with nothing in it yet', async ({ page }) => {
@@ -166,7 +190,7 @@ test('a class can be focused the instant it is drawn, with nothing in it yet', a
 test('a freshly drawn class can be focused too', async ({ page }) => {
   await openApp(page);
   await page.locator('[data-palette-kind="class"]').click();
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
   await selectClass(page, 'Car');

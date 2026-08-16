@@ -30,7 +30,7 @@ async function classWithAttributes(page: Page) {
   await openApp(page);
   await openDrawer(page, 'Entities');
   await page.locator('[data-palette-kind="class"]').click();
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
 
@@ -100,7 +100,7 @@ test('the rename reaches every class holding the property, and says so first', a
   await openDrawer(page, 'Entities');
   await page.locator('[data-palette-kind="class"]').click();
   const second = page.locator('[data-class-node-id]').nth(1);
-  await second.locator('header').dblclick();
+  await second.locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Van');
   await page.getByLabel('Class name').press('Enter');
 

@@ -65,7 +65,12 @@
 }
 
 .name {
-  flex: 1;
+  /*
+   * Hugs its text rather than filling the header. Stretching it would leave the whole strip
+   * owning the rename gesture even where there is no name to click, which is what made the
+   * header unusable as a zoom target. It still shrinks and ellipsises when the name is long.
+   */
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   font-size: var(--text-lg);
