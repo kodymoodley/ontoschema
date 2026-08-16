@@ -151,19 +151,16 @@ test('a class can be focused the instant it is drawn, with nothing in it yet', a
   await doubleClickClass(page, 'NewClass');
 
   /*
-   * That the gesture is answered at all is what this test is here for, so it asserts the view
-   * moved and the class genuinely filled a good part of it.
-   *
-   * The 30–40% band and the centring are asserted by every other test in this file and
-   * deliberately not here. An empty class is measured at about 100px, then its placeholder
-   * text reflows and it settles at 131px, so the zoom and the centre are both computed from a
-   * node smaller than the one that ends up on screen — landing near 46% and a little high.
-   * Classes carrying attributes measure once and hold the band. Recorded on the roadmap; it
-   * is a separate defect from the one this branch fixes, and pretending otherwise here would
-   * hide it.
+   * The band is asserted here like everywhere else. It used to be left out: the zoom was
+   * computed from the 100px a new empty class estimates rather than the 131px it renders, so
+   * this one class landed near 46% while every other test held. Focus measures the rendered
+   * box now, and an empty class is framed like any other.
    */
   const after = await measure(page, 'NewClass');
   expect(after.areaShare).toBeGreaterThanOrEqual(0.3);
+  expect(after.areaShare).toBeLessThanOrEqual(0.4);
+  expect(after.offCentreX).toBeLessThan(0.03);
+  expect(after.offCentreY).toBeLessThan(0.03);
 });
 
 test('a freshly drawn class can be focused too', async ({ page }) => {

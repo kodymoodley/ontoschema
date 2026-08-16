@@ -49,7 +49,7 @@ interface SchemaCanvasProps {
 function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const ontology = useOntology();
   const selection = useSelection();
-  const { screenToFlowPosition, getIntersectingNodes, getNode, setCenter, fitView } =
+  const { screenToFlowPosition, getIntersectingNodes, getNode, getZoom, setCenter, fitView } =
     useReactFlow();
   const surface = useRef<HTMLDivElement>(null);
 
@@ -209,16 +209,26 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
     }
 
     /*
-     * Only a real measurement will do. React Flow leaves `measured` empty until its resize
-     * observer has run — the size estimate a node carries is for deciding whether it can be
-     * drawn, not for framing it — and zooming from the estimate put a new empty class at 46%
-     * of the canvas instead of 35%. Waiting a frame for the truth is invisible; guessing is
-     * not.
+     * The size is taken from the box on screen rather than from React Flow's record of it,
+     * because that record is not always the node as it currently stands. It is seeded from the
+     * estimate a node carries so edges can be routed before anything is measured, and after
+     * that it holds the last size the resize observer saw, which is a frame behind any change
+     * to what the node contains. Both were framing classes wrongly: a new empty class filled
+     * 46% of the canvas instead of 35%, zoomed from its 100px estimate against a real 131px;
+     * and a class focused just after its first attribute was added filled 22%, zoomed from the
+     * 131px it measured while still empty against the 85px it had shrunk to.
+     *
+     * The rendered box has no such lag. It is in screen pixels, so dividing by the zoom puts it
+     * back into the coordinates `position` is expressed in.
      */
     const node = getNode(focusRequest);
     const canvas = surface.current?.getBoundingClientRect();
-    const width = node?.measured?.width ?? 0;
-    const height = node?.measured?.height ?? 0;
+    const box = surface.current
+      ?.querySelector<HTMLElement>(`[data-class-node-id="${focusRequest}"]`)
+      ?.getBoundingClientRect();
+    const zoom = getZoom();
+    const width = (box?.width ?? 0) / zoom;
+    const height = (box?.height ?? 0) / zoom;
     if (!node || !canvas || width <= 0 || height <= 0) return;
 
     clearFocus();
@@ -231,7 +241,7 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
       }),
       duration: 400,
     });
-  }, [focusRequest, clearFocus, getNode, nodes, ontology.classes, setCenter]);
+  }, [focusRequest, clearFocus, getNode, getZoom, nodes, ontology.classes, setCenter]);
 
   /**
    * Double-clicking, or double-tapping, bare canvas frames the whole schema again — the way
