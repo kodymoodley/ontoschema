@@ -1,20 +1,35 @@
 name: CI
 
+# One engine on a pull request, all three everywhere else.
+#
+# The end-to-end tier is the only expensive part, and it is expensive because it is paid three
+# times over. Nothing about a typical change is engine-specific, so a pull request runs chromium
+# and comes back in a few minutes -- fast enough that the result arrives while the change is still
+# in mind, which is the only speed that matters for a gate. Pushes to main, the nightly run and a
+# manual dispatch run all three, so a divergence between engines is caught within minutes of a
+# merge rather than at the next release.
+#
+# The engines are named once, below, and everything else follows from that.
+#
 # A change to Markdown alone does not need a build or three browsers. Prettier still checks
 # Markdown, but the pre-commit hook formats it before a commit exists, so CI is only a backstop
 # there.
 #
-# This is safe because no status check is required to merge: branch protection is not enforced on
-# a private repository on the Free plan. If that changes -- the repository is made public, or the
-# account moves to a paid plan and required checks are switched on -- a skipped workflow reports
-# nothing and a documentation pull request can never be merged. At that point this has to become
-# two jobs: a cheap one that always runs, and an expensive one conditional on the changed files.
+# This repository has no required status checks -- branch protection is not available on a private
+# repository on the Free plan. A red run therefore blocks nothing on its own, which is exactly how
+# a broken end-to-end suite once reached main and stayed there for a week. What stands in for it is
+# a rule in CONTRIBUTING.md and a pre-push hook that runs this same fast gate locally. If the
+# account ever moves to a paid plan, make this workflow a required check and delete this paragraph.
 on:
+  pull_request:
+    paths-ignore: ['**/*.md']
   push:
     branches: [main]
     paths-ignore: ['**/*.md']
-  pull_request:
-    paths-ignore: ['**/*.md']
+  schedule:
+    # 03:00 UTC daily, so a break that only shows on one engine surfaces overnight.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,8 +37,11 @@ concurrency:
 
 jobs:
   verify:
-    name: Typecheck, lint, and all three test tiers
+    name: Typecheck, lint, and all test tiers
     runs-on: ubuntu-latest
+
+    env:
+      ENGINES: ${{ github.event_name == 'pull_request' && 'chromium' || 'chromium firefox webkit' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -51,20 +69,25 @@ jobs:
       - name: Unit, component and integration tests, with coverage thresholds
         run: npm run test:node -- --coverage
 
+      # Keyed on the engines as well as the lockfile: a cache holding only chromium must not be
+      # served to a run that needs all three.
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ github.event_name == 'pull_request' && 'chromium' || 'all' }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx playwright install --with-deps $ENGINES
 
-      # Playwright serves the production build, so this exercises what actually ships, on
-      # all three engines.
+      # Playwright serves the production build, so this exercises what actually ships.
       - name: End-to-end tests against the production build
-        run: npm run test:e2e
+        run: |
+          projects=""
+          for engine in $ENGINES; do projects="$projects --project=$engine"; done
+          echo "Running the end-to-end tier on:$projects"
+          npx playwright test $projects
 
       # `npm run test:perf` is deliberately absent, and so is `npm run verify`, which would
       # pull it in. The timing suite asserts milliseconds against budgets calibrated on an idle
