@@ -1,6 +1,6 @@
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
-import type { ObjectProperty, PropertyUsage } from '../ontologymodel';
+import type { Relation, PropertyUsage } from '../ontologymodel';
 import { useProjectStore } from '../projectstore';
 import styles from './relationeditor.module.css';
 
@@ -23,7 +23,7 @@ export function RelationEdge({
   selected,
   data,
 }: EdgeProps) {
-  const payload = data as { usage?: PropertyUsage; property?: ObjectProperty; shared?: boolean };
+  const payload = data as { usage?: PropertyUsage; property?: Relation; shared?: boolean };
   const select = useProjectStore((state) => state.select);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
 
@@ -64,7 +64,7 @@ export function RelationEdge({
             }
             onClick={(event) => {
               event.stopPropagation();
-              if (payload.property) select({ kind: 'objectProperty', id: payload.property.id });
+              if (payload.property) select({ kind: 'relation', id: payload.property.id });
             }}
           >
             {payload.property?.localName ?? 'relation'}

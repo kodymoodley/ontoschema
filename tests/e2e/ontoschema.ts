@@ -241,8 +241,8 @@ export async function addAttribute(page: Page, name: string, range: string) {
 }
 
 /** Creates an object property in the pool, without using it anywhere. */
-export async function createObjectProperty(page: Page, localName: string) {
-  await page.locator('[data-palette-kind="objectProperty"]').click();
+export async function createRelation(page: Page, localName: string) {
+  await page.locator('[data-palette-kind="relation"]').click();
   await page.getByLabel('Object property local name').fill(localName);
 }
 

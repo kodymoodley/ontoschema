@@ -118,8 +118,24 @@ export function reviveProject(value: unknown): Project | null {
   };
 }
 
+/**
+ * Keys used before object properties became relations and datatype properties became attributes.
+ *
+ * A document written then has to be refused rather than read. Nothing here throws on a missing
+ * key -- an absent list simply revives as an empty one -- so an old document would otherwise open
+ * looking almost right, with every relation and attribute silently gone, and the save queue would
+ * write that back over the original within the second. Failing to open is recoverable. Opening
+ * and quietly discarding half the schema is not.
+ */
+function writtenBeforeTheRename(value: Record<string, unknown>): boolean {
+  const oldNames = 'objectProperties' in value || 'datatypeProperties' in value;
+  const newNames = 'relations' in value || 'attributes' in value;
+  return oldNames && !newNames;
+}
+
 function reviveOntology(value: unknown): Ontology | null {
   if (!isRecord(value)) return null;
+  if (writtenBeforeTheRename(value)) return null;
   const base = createEmptyOntology(
     typeof value.iri === 'string' ? value.iri : undefined,
     typeof value.prefix === 'string' ? value.prefix : undefined,
@@ -136,7 +152,7 @@ function reviveOntology(value: unknown): Ontology | null {
         annotations: reviveAnnotations(entity.annotations),
         position: revivePosition(entity.position),
       })),
-    objectProperties: records(value.objectProperties)
+    relations: records(value.relations)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')
       .map((entity) => ({
         id: entity.id as string,
@@ -144,7 +160,7 @@ function reviveOntology(value: unknown): Ontology | null {
         superPropertyIds: toStringArray(entity.superPropertyIds),
         annotations: reviveAnnotations(entity.annotations),
       })),
-    datatypeProperties: records(value.datatypeProperties)
+    attributes: records(value.attributes)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')
       .map((entity) => ({
         id: entity.id as string,
@@ -175,7 +191,7 @@ function reviveUsages(value: Record<string, unknown>): PropertyUsage[] {
   if (stored.length > 0 || Array.isArray(value.usages)) return stored;
 
   return [
-    ...records(value.datatypeProperties)
+    ...records(value.attributes)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.domainClassId === 'string')
       .map((entity) => ({
         id: createId('use'),
@@ -183,7 +199,7 @@ function reviveUsages(value: Record<string, unknown>): PropertyUsage[] {
         subjectClassId: entity.domainClassId as string,
         objectClassId: null,
       })),
-    ...records(value.objectProperties)
+    ...records(value.relations)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.domainClassId === 'string')
       .map((entity) => ({
         id: createId('use'),

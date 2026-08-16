@@ -8,7 +8,7 @@ import {
   languageNames,
 } from '../annotationvocabulary';
 import type { AnnotationTerm } from '../annotationvocabulary';
-import { findClass, findDatatypeProperty, findObjectProperty } from '../ontologymodel';
+import { findClass, findAttribute, findRelation } from '../ontologymodel';
 import type { Annotation, EntityRef } from '../ontologymodel';
 import { useOntology, useProjectStore } from '../projectstore';
 import { Button, EmptyState, Select, TextArea, TextInput } from '../designsystem';
@@ -41,10 +41,10 @@ export function AnnotationEditor({ target }: { target: EntityRef }) {
         return ontology.annotations;
       case 'class':
         return findClass(ontology, ref.id)?.annotations ?? null;
-      case 'objectProperty':
-        return findObjectProperty(ontology, ref.id)?.annotations ?? null;
-      case 'datatypeProperty':
-        return findDatatypeProperty(ontology, ref.id)?.annotations ?? null;
+      case 'relation':
+        return findRelation(ontology, ref.id)?.annotations ?? null;
+      case 'attribute':
+        return findAttribute(ontology, ref.id)?.annotations ?? null;
     }
   }
 

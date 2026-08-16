@@ -3,7 +3,7 @@ import type { XsdDatatype } from '../annotationvocabulary';
 import {
   entityIri,
   findClass,
-  findDatatypeProperty,
+  findAttribute,
   toPropertyLocalName,
   usagesOfProperty,
 } from '../ontologymodel';
@@ -19,13 +19,13 @@ import styles from './details.module.css';
  */
 export function AttributeDetails({ propertyId }: { propertyId: string }) {
   const ontology = useOntology();
-  const entity = findDatatypeProperty(ontology, propertyId);
+  const entity = findAttribute(ontology, propertyId);
 
-  const rename = useProjectStore((state) => state.renameDatatypePropertyById);
+  const rename = useProjectStore((state) => state.renameAttributeById);
   const setRange = useProjectStore((state) => state.setAttributeRange);
   const attachToClass = useProjectStore((state) => state.attachPropertyToClass);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
-  const remove = useProjectStore((state) => state.deleteDatatypePropertyById);
+  const remove = useProjectStore((state) => state.deleteAttributeById);
   const select = useProjectStore((state) => state.select);
 
   if (!entity) return null;

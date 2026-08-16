@@ -5,7 +5,7 @@ import {
   addAttribute,
   chooseExistingProperty,
   connectClasses,
-  createObjectProperty,
+  createRelation,
   dragFromPalette,
   dragPropertyOntoClass,
   downloadExport,
@@ -174,7 +174,7 @@ test('an object property stays off the canvas until it is used in a relation', a
   await page.getByLabel('Class name').fill('Wheel');
   await page.getByLabel('Class name').press('Enter');
 
-  await createObjectProperty(page, 'hasPart');
+  await createRelation(page, 'hasPart');
 
   // It exists in the property list, marked unused, and nothing is drawn for it.
   await page.getByRole('tab', { name: 'Object props' }).click();

@@ -20,7 +20,7 @@ function seed() {
   const car = store().createClass({ localName: 'Car' });
   const dealership = store().createClass({ localName: 'Dealership' });
   const price = store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
-  const offeredBy = store().createObjectProperty({ localName: 'offeredBy' });
+  const offeredBy = store().createRelation({ localName: 'offeredBy' });
   store().attachPropertyToClass(offeredBy, car, dealership);
   store().reparentClass(dealership, car);
   store().annotate({ kind: 'class', id: car }, 'skos:prefLabel', 'Car', 'en');

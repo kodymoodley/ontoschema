@@ -136,7 +136,7 @@ describe('HierarchyTree — classes', () => {
 describe('HierarchyTree — object properties', () => {
   it('marks a property that is not used anywhere', async () => {
     const user = userEvent.setup();
-    store().createObjectProperty({ localName: 'hasPart' });
+    store().createRelation({ localName: 'hasPart' });
     render(<HierarchyTree />);
 
     await user.click(screen.getByRole('tab', { name: 'Object props' }));
@@ -147,7 +147,7 @@ describe('HierarchyTree — object properties', () => {
     const user = userEvent.setup();
     const car = store().createClass({ localName: 'Car' });
     const wheel = store().createClass({ localName: 'Wheel' });
-    const hasPart = store().createObjectProperty({ localName: 'hasPart' });
+    const hasPart = store().createRelation({ localName: 'hasPart' });
     store().attachPropertyToClass(hasPart, car, wheel);
     render(<HierarchyTree />);
 
@@ -197,7 +197,7 @@ describe('HierarchyTree — datatype property pool', () => {
 
     await user.click(poolRow('price') as HTMLElement);
     await user.click(screen.getByRole('button', { name: 'Delete' }));
-    expect(ontology().datatypeProperties).toHaveLength(0);
+    expect(ontology().attributes).toHaveLength(0);
     expect(ontology().usages).toHaveLength(0);
   });
 

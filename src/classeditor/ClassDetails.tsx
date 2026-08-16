@@ -6,8 +6,8 @@ import {
   canSubclass,
   entityIri,
   findClass,
-  findDatatypeProperty,
-  findObjectProperty,
+  findAttribute,
+  findRelation,
   relationUsagesTouchingClass,
   toClassLocalName,
 } from '../ontologymodel';
@@ -90,14 +90,14 @@ export function ClassDetails({ classId }: { classId: string }) {
         {attributeUsages.length > 0 ? (
           <ul className={styles.list}>
             {attributeUsages.map((usage) => {
-              const property = findDatatypeProperty(ontology, usage.propertyId);
+              const property = findAttribute(ontology, usage.propertyId);
               if (!property) return null;
               return (
                 <li key={usage.id} className={styles.row}>
                   <button
                     type="button"
                     className={styles.linkButton}
-                    onClick={() => select({ kind: 'datatypeProperty', id: property.id })}
+                    onClick={() => select({ kind: 'attribute', id: property.id })}
                   >
                     {property.localName}
                   </button>
@@ -148,7 +148,7 @@ export function ClassDetails({ classId }: { classId: string }) {
         <Field label={`Relations (${relationUsages.length})`}>
           <ul className={styles.list}>
             {relationUsages.map((usage) => {
-              const property = findObjectProperty(ontology, usage.propertyId);
+              const property = findRelation(ontology, usage.propertyId);
               if (!property) return null;
               const outgoing = usage.subjectClassId === classId;
               const otherId = outgoing ? usage.objectClassId : usage.subjectClassId;
@@ -158,7 +158,7 @@ export function ClassDetails({ classId }: { classId: string }) {
                   <button
                     type="button"
                     className={styles.linkButton}
-                    onClick={() => select({ kind: 'objectProperty', id: property.id })}
+                    onClick={() => select({ kind: 'relation', id: property.id })}
                   >
                     {property.localName}
                   </button>

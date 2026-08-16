@@ -37,7 +37,7 @@ describe.each(EXAMPLES.map((example) => [example.title, example] as const))(
 
     it('stays within the size the examples are written to', () => {
       expect(ontology.classes.length).toBeLessThanOrEqual(MAX_CLASSES);
-      expect(ontology.objectProperties.length).toBeLessThanOrEqual(MAX_OBJECT_PROPERTIES);
+      expect(ontology.relations.length).toBeLessThanOrEqual(MAX_OBJECT_PROPERTIES);
       // Big enough to be worth opening.
       expect(ontology.classes.length).toBeGreaterThanOrEqual(10);
     });
@@ -45,8 +45,8 @@ describe.each(EXAMPLES.map((example) => [example.title, example] as const))(
     it('gives every entity a legal, distinct name', () => {
       const names = [
         ...ontology.classes.map((e) => e.localName),
-        ...ontology.objectProperties.map((e) => e.localName),
-        ...ontology.datatypeProperties.map((e) => e.localName),
+        ...ontology.relations.map((e) => e.localName),
+        ...ontology.attributes.map((e) => e.localName),
       ];
       for (const name of names) {
         expect(validateLocalName(name).valid, `"${name}"`).toBe(true);
@@ -115,8 +115,8 @@ describe.each(EXAMPLES.map((example) => [example.title, example] as const))(
     it('reports a size matching what it actually builds', () => {
       const size = exampleSize(example);
       expect(size.classes).toBe(ontology.classes.length);
-      expect(size.objectProperties).toBe(ontology.objectProperties.length);
-      expect(size.datatypeProperties).toBe(ontology.datatypeProperties.length);
+      expect(size.relations).toBe(ontology.relations.length);
+      expect(size.attributes).toBe(ontology.attributes.length);
     });
 
     it('builds the same thing every time', () => {
@@ -152,7 +152,7 @@ describe('the library as a whole', () => {
   it('shows off property reuse somewhere, since that is the least obvious idea', () => {
     const reusing = EXAMPLES.filter((example) => {
       const ontology = example.build();
-      return ontology.objectProperties.some(
+      return ontology.relations.some(
         (property) => usagesOfProperty(ontology, property.id).length > 1,
       );
     });

@@ -43,7 +43,7 @@ describe('ConnectionPicker', () => {
     await user.type(screen.getByLabelText('New object property name'), 'offeredBy');
     await user.click(screen.getByTestId('confirm-connection'));
 
-    const property = ontology().objectProperties.find((p) => p.localName === 'offeredBy');
+    const property = ontology().relations.find((p) => p.localName === 'offeredBy');
     expect(property).toBeDefined();
     const usages = usagesOfProperty(ontology(), property?.id ?? '');
     expect(usages).toHaveLength(1);
@@ -66,15 +66,15 @@ describe('ConnectionPicker', () => {
 
   it('reuses an existing property instead of creating a second one', async () => {
     const user = userEvent.setup();
-    const hasPart = store().createObjectProperty({ localName: 'hasPart' });
+    const hasPart = store().createRelation({ localName: 'hasPart' });
     const { car, dealership } = drawnConnection();
-    const before = ontology().objectProperties.length;
+    const before = ontology().relations.length;
     render(<ConnectionPicker />);
 
     await user.selectOptions(screen.getByLabelText('Object property to use'), hasPart);
     await user.click(screen.getByTestId('confirm-connection'));
 
-    expect(ontology().objectProperties).toHaveLength(before);
+    expect(ontology().relations).toHaveLength(before);
     expect(usagesOfProperty(ontology(), hasPart)[0]).toMatchObject({
       subjectClassId: car,
       objectClassId: dealership,
@@ -82,7 +82,7 @@ describe('ConnectionPicker', () => {
   });
 
   it('shows how often each candidate property is already used', () => {
-    store().createObjectProperty({ localName: 'hasPart' });
+    store().createRelation({ localName: 'hasPart' });
     drawnConnection();
     render(<ConnectionPicker />);
     expect(screen.getByRole('option', { name: /hasPart \(unused\)/ })).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe('ConnectionPicker', () => {
 
   it('hides the name field when an existing property is chosen', async () => {
     const user = userEvent.setup();
-    const hasPart = store().createObjectProperty({ localName: 'hasPart' });
+    const hasPart = store().createRelation({ localName: 'hasPart' });
     drawnConnection();
     render(<ConnectionPicker />);
 
@@ -118,7 +118,7 @@ describe('ConnectionPicker', () => {
     await user.type(screen.getByLabelText('New object property name'), 'offeredBy');
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    expect(ontology().objectProperties).toHaveLength(0);
+    expect(ontology().relations).toHaveLength(0);
     expect(ontology().usages).toHaveLength(0);
     expect(useProjectStore.getState().pendingConnection).toBeNull();
   });
@@ -142,7 +142,7 @@ describe('ConnectionPicker', () => {
     render(<ConnectionPicker />);
 
     await user.type(screen.getByLabelText('New object property name'), 'offeredBy{Enter}');
-    expect(ontology().objectProperties.map((p) => p.localName)).toEqual(['offeredBy']);
+    expect(ontology().relations.map((p) => p.localName)).toEqual(['offeredBy']);
   });
 
   it('records the whole connection as a single undo step', async () => {
@@ -156,7 +156,7 @@ describe('ConnectionPicker', () => {
 
     expect(store().history.past.length).toBe(depth + 1);
     store().undo();
-    expect(ontology().objectProperties).toHaveLength(0);
+    expect(ontology().relations).toHaveLength(0);
     expect(ontology().usages).toHaveLength(0);
   });
 });
