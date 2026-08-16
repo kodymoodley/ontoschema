@@ -91,7 +91,7 @@ describe('RelationDetails', () => {
     const { offeredBy } = usedOnce();
     render(<RelationDetails propertyId={offeredBy} />);
 
-    const field = screen.getByLabelText('Object property local name');
+    const field = screen.getByLabelText('Relation local name');
     await user.clear(field);
     await user.type(field, 'soldBy');
 
@@ -104,7 +104,7 @@ describe('RelationDetails', () => {
     const { offeredBy } = usedOnce();
     render(<RelationDetails propertyId={offeredBy} />);
 
-    const field = screen.getByLabelText('Object property local name');
+    const field = screen.getByLabelText('Relation local name');
     await user.clear(field);
 
     expect(field).toHaveValue('');

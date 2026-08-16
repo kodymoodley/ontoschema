@@ -29,9 +29,9 @@ export async function dragFromPalette(
   await dragOntoCanvas(page, page.locator(`[data-palette-kind="${kind}"]`), target);
 }
 
-/** Drags an existing datatype property out of the pool and onto a class, to reuse it. */
+/** Drags an existing attribute out of the pool and onto a class, to reuse it. */
 export async function dragPropertyOntoClass(page: Page, propertyName: string, className: string) {
-  await page.getByRole('tab', { name: 'Data props' }).click();
+  await page.getByRole('tab', { name: 'Attributes' }).click();
   await dragOntoCanvas(page, page.locator(`[data-datatype-property="${propertyName}"]`), {
     onClass: className,
   });
@@ -189,8 +189,8 @@ export async function connectClasses(page: Page, sourceName: string, targetName:
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.up();
 
-  // Drawing an edge asks which object property it is.
-  await expect(page.getByRole('dialog', { name: 'Which object property?' })).toBeVisible();
+  // Drawing an edge asks which relation it is.
+  await expect(page.getByRole('dialog', { name: 'Which relation?' })).toBeVisible();
 }
 
 /**
@@ -198,13 +198,13 @@ export async function connectClasses(page: Page, sourceName: string, targetName:
  * existing property's label reuses it.
  */
 export async function chooseNewProperty(page: Page, localName: string) {
-  await page.getByLabel('New object property name').fill(localName);
+  await page.getByLabel('New relation name').fill(localName);
   await page.getByTestId('confirm-connection').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
 export async function chooseExistingProperty(page: Page, propertyName: string) {
-  const picker = page.getByLabel('Object property to use');
+  const picker = page.getByLabel('Relation to use');
   // Options read "hasPart (unused)" / "offeredBy (used 2×)", so match on the name and
   // select by value rather than trying to reproduce the whole label.
   const value = await picker.evaluate(
@@ -214,7 +214,7 @@ export async function chooseExistingProperty(page: Page, propertyName: string) {
       )?.value ?? '',
     propertyName,
   );
-  if (!value) throw new Error(`no object property named ${propertyName} in the picker`);
+  if (!value) throw new Error(`no relation named ${propertyName} in the picker`);
 
   await picker.selectOption(value);
   await page.getByTestId('confirm-connection').click();
@@ -240,10 +240,10 @@ export async function addAttribute(page: Page, name: string, range: string) {
   await expect(page.getByLabel('New attribute name')).toHaveValue('');
 }
 
-/** Creates an object property in the pool, without using it anywhere. */
+/** Creates an relation in the pool, without using it anywhere. */
 export async function createRelation(page: Page, localName: string) {
   await page.locator('[data-palette-kind="relation"]').click();
-  await page.getByLabel('Object property local name').fill(localName);
+  await page.getByLabel('Relation local name').fill(localName);
 }
 
 /** Adds an annotation to whatever is selected, with an optional language tag. */

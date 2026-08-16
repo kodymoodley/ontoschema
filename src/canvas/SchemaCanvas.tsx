@@ -160,11 +160,11 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
         return;
       }
 
-      // Both attribute drops require a class to land on: a datatype property cannot exist
+      // Both attribute drops require a class to land on: a attribute cannot exist
       // on its own, so there is nothing sensible to create on empty canvas.
       const classId = classAt(event.clientX, event.clientY);
       if (!classId) {
-        setRejectedDrop('Drop a datatype property onto a class — it has to belong to one.');
+        setRejectedDrop('Drop a attribute onto a class — it has to belong to one.');
         window.setTimeout(() => setRejectedDrop(null), 2600);
         return;
       }
@@ -184,7 +184,7 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
 
   /**
    * Drawing an edge does not invent a property. It records the pair of classes and lets the
-   * connection picker decide which object property this is — an existing one, or a new one.
+   * connection picker decide which relation this is — an existing one, or a new one.
    */
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -406,8 +406,8 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
         <div className={styles.emptyCanvas}>
           <p className={styles.emptyTitle}>Nothing on the canvas yet</p>
           <p className={styles.emptyBody}>
-            Drag a <strong>Class</strong> from the palette to begin, then drop datatype properties
-            onto it and connect classes to create relations.
+            Drag a <strong>Class</strong> from the palette to begin, then drop attributes onto it
+            and connect classes to create relations.
           </p>
         </div>
       ) : null}

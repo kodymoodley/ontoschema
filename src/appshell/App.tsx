@@ -154,11 +154,11 @@ export function App() {
             </span>
             <span className={styles.statusItem}>
               <span className={`${styles.statusDot} ${styles.dotRelation}`} />
-              {relationCount} object properties
+              {relationCount} relations
             </span>
             <span className={styles.statusItem}>
               <span className={`${styles.statusDot} ${styles.dotAttribute}`} />
-              {attributeCount} datatype properties
+              {attributeCount} attributes
             </span>
             <Spacer />
             <span>

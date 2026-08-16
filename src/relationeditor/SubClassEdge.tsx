@@ -5,7 +5,7 @@ import styles from './relationeditor.module.css';
 /**
  * A subclass link, drawn in the taxonomy's visual language: a grey orthogonal line ending
  * in a hollow triangle at the superclass. Orthogonal routing and the UML generalization
- * arrowhead make hierarchy immediately distinguishable from an object property, and it is
+ * arrowhead make hierarchy immediately distinguishable from an relation, and it is
  * the same shape a Mermaid or PlantUML class diagram would use.
  */
 export function SubClassEdge({

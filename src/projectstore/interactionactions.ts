@@ -73,7 +73,7 @@ export function createInteractionActions(
 
     /*
      * Drawing an edge deliberately does not invent a property. It records the pair of
-     * classes and lets the picker decide which object property this is — an existing one, or
+     * classes and lets the picker decide which relation this is — an existing one, or
      * a new one — which is what makes a property reusable across class pairs.
      */
     beginConnection(connection) {

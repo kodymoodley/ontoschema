@@ -136,7 +136,7 @@ describe('subClassEdges', () => {
   });
 });
 
-describe('object property hierarchy', () => {
+describe('relation hierarchy', () => {
   it('nests subproperties and refuses cycles', () => {
     const { ontology, ids } = buildAutoOntology();
     const nested = setSuperRelation(ontology, ids.offeredBy, ids.hasPart);
@@ -148,7 +148,7 @@ describe('object property hierarchy', () => {
   });
 });
 
-describe('datatype property pool', () => {
+describe('attribute pool', () => {
   it('is a flat alphabetical list, not a hierarchy', () => {
     const { ontology } = buildAutoOntology();
     expect(attributeList(ontology).map((property) => property.localName)).toEqual([

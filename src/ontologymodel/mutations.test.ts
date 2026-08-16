@@ -146,7 +146,7 @@ describe('subclass links', () => {
   });
 });
 
-describe('datatype properties', () => {
+describe('attributes', () => {
   it('creates the property and attaches it in one step', () => {
     const withClass = addClass(createEmptyOntology(), { localName: 'Car' });
     const added = addAttributeToClass(withClass.ontology, {
@@ -165,7 +165,7 @@ describe('datatype properties', () => {
     expect(after.attributes.find((p) => p.id === ids.year)?.range).toBe('dateTime');
   });
 
-  it('shares one namespace with object properties when deduplicating names', () => {
+  it('shares one namespace with relations when deduplicating names', () => {
     const { ontology, ids } = buildAutoOntology();
     const added = addAttributeToClass(ontology, { classId: ids.truck, localName: 'offeredBy' });
     expect(added.ontology.attributes.at(-1)?.localName).toBe('offeredBy2');
@@ -179,7 +179,7 @@ describe('datatype properties', () => {
   });
 });
 
-describe('object properties', () => {
+describe('relations', () => {
   it('is created unused, with nothing on the canvas to show for it', () => {
     const { ontology, id } = addRelation(createEmptyOntology(), { localName: 'isRelatedTo' });
     expect(usagesOfProperty(ontology, id)).toHaveLength(0);
@@ -224,7 +224,7 @@ describe('usages', () => {
     expect(twice.id).toBe(once.id);
   });
 
-  it('draws the same object property between a second pair of classes', () => {
+  it('draws the same relation between a second pair of classes', () => {
     const { ontology, ids } = buildAutoOntology();
     const after = attachProperty(ontology, {
       propertyId: ids.offeredBy,

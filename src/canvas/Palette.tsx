@@ -4,7 +4,7 @@ import styles from './canvas.module.css';
 /**
  * What can be brought onto the canvas.
  *
- * Classes and datatype properties are dragged. An object property is *created*, not
+ * Classes and attributes are dragged. An relation is *created*, not
  * dragged: it lives in the property pool until it is used between two classes, at which
  * point it appears as an edge. There is no such thing as a property floating on the canvas.
  */
@@ -25,7 +25,7 @@ const DRAGGABLE: PaletteEntry[] = [
   },
   {
     kind: 'attribute',
-    name: 'Datatype property',
+    name: 'Attribute',
     hint: 'An attribute with an xsd range e.g., make, year. Must be dropped onto a class.',
     swatch: styles.swatchAttribute ?? '',
   },
@@ -35,7 +35,7 @@ interface PaletteProps {
   /** Click fallback for the draggable entries; the attribute needs a selected class. */
   onCreate: (kind: 'class' | 'attribute') => void;
   onCreateRelation: () => void;
-  /** A datatype property can only be created against a class. */
+  /** A attribute can only be created against a class. */
   canCreateAttribute: boolean;
 }
 
@@ -62,11 +62,7 @@ export function Palette({ onCreate, onCreateRelation, canCreateAttribute }: Pale
             // Click is the keyboard- and test-friendly equivalent of dragging onto the canvas.
             onClick={() => onCreate(entry.kind)}
             disabled={disabled}
-            title={
-              disabled
-                ? 'Select a class first — a datatype property must belong to one.'
-                : undefined
-            }
+            title={disabled ? 'Select a class first — a attribute must belong to one.' : undefined}
           >
             <span className={`${styles.swatch} ${entry.swatch}`} aria-hidden="true" />
             <span className={styles.paletteText}>
@@ -81,12 +77,12 @@ export function Palette({ onCreate, onCreateRelation, canCreateAttribute }: Pale
         type="button"
         className={styles.paletteItem}
         data-palette-kind="relation"
-        aria-label="Add Object property"
+        aria-label="Add Relation"
         onClick={onCreateRelation}
       >
         <span className={`${styles.swatch} ${styles.swatchGeneric}`} aria-hidden="true" />
         <span className={styles.paletteText}>
-          <span className={styles.paletteName}>Object property</span>
+          <span className={styles.paletteName}>Relation</span>
           <span className={styles.paletteHint}>
             Reusable e.g., hasPart, isRelatedTo. Added to the property list; draw it between two
             classes to use it.

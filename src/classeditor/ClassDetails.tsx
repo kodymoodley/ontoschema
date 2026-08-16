@@ -106,7 +106,7 @@ export function ClassDetails({ classId }: { classId: string }) {
                     type="button"
                     className={styles.removeButton}
                     aria-label={`Remove ${property.localName} from ${entity.localName}`}
-                    title="Remove from this class — the property stays in the list"
+                    title="Remove from this class — the attribute stays in the list"
                     onClick={() => detachUsage(usage.id)}
                   >
                     ×
@@ -169,7 +169,7 @@ export function ClassDetails({ classId }: { classId: string }) {
                     type="button"
                     className={styles.removeButton}
                     aria-label={`Remove the ${property.localName} relation`}
-                    title="Remove this relation — the property stays in the list"
+                    title="Remove this use — the relation stays in the list"
                     onClick={() => detachUsage(usage.id)}
                   >
                     ×

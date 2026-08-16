@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { addAttribute, downloadExport, openApp, selectClass } from './ontoschema';
 
 /**
- * Renaming a datatype property from inside a class box, in a real browser.
+ * Renaming a attribute from inside a class box, in a real browser.
  *
  * The component tests already cover the editor's rules. What needs a browser is that the
  * gesture reaches the row at all rather than the canvas underneath it, that a touch device can
@@ -105,7 +105,7 @@ test('the rename reaches every class holding the property, and says so first', a
   await page.getByLabel('Class name').press('Enter');
 
   await openDrawer(page, 'Entities');
-  await page.getByRole('tab', { name: 'Data props' }).click();
+  await page.getByRole('tab', { name: 'Attributes' }).click();
   const box = await page.locator('[data-class-name="Van"]').boundingBox();
   const transfer = await page.evaluateHandle(() => new DataTransfer());
   const source = page.locator('[data-datatype-property="make"]');

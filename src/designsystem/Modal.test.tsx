@@ -22,7 +22,7 @@ function PickerLikeDialog({ onClose = () => {} }: { onClose?: () => void }) {
         draw relation
       </button>
       <Modal
-        title="Which object property?"
+        title="Which relation?"
         open={open}
         onClose={() => {
           setOpen(false);

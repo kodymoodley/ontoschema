@@ -119,7 +119,7 @@ describe('editing through the store reaches the model', () => {
     expect(ontology().usages).toHaveLength(before);
   });
 
-  it('reuses an existing object property rather than minting another one', () => {
+  it('reuses an existing relation rather than minting another one', () => {
     const ids = buildAutomotiveProject();
     const propertyCount = ontology().relations.length;
 
@@ -130,7 +130,7 @@ describe('editing through the store reaches the model', () => {
     expect(usagesOfProperty(ontology(), ids.hasPart)).toHaveLength(1);
   });
 
-  it('reuses a datatype property on a second class', () => {
+  it('reuses a attribute on a second class', () => {
     const ids = buildAutomotiveProject();
     store().attachPropertyToClass(ids.price, ids.truck);
 
@@ -550,9 +550,13 @@ describe('persistence', () => {
     expect(workspace.projects.length).toBeGreaterThan(0);
   });
 
+  /*
+   * Unversioned on purpose. A file carrying `version: 1` is refused now, because 1 predates
+   * relations and attributes being renamed. What is left of the pre-usage-model path is the
+   * shape held in local storage, which has no version field at all, so that is what this drives.
+   */
   it('reconstructs usages from a document written before the usage model existed', async () => {
     const legacy = {
-      version: 1,
       project: {
         id: 'p1',
         name: 'Legacy',

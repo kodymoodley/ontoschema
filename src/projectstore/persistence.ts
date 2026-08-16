@@ -119,7 +119,7 @@ export function reviveProject(value: unknown): Project | null {
 }
 
 /**
- * Keys used before object properties became relations and datatype properties became attributes.
+ * Keys used before relations became relations and attributes became attributes.
  *
  * A document written then has to be refused rather than read. Nothing here throws on a missing
  * key -- an absent list simply revives as an empty one -- so an old document would otherwise open
@@ -249,7 +249,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /* --------------------------------------------------- project file exchange */
 
-export const PROJECT_FILE_VERSION = 1;
+/*
+ * 2 since relations and attributes were renamed, which changed the keys a project file is
+ * written with. Version 1 files are refused rather than read: see `writtenBeforeTheRename`.
+ */
+export const PROJECT_FILE_VERSION = 2;
 
 export function projectToFile(project: Project): string {
   return `${JSON.stringify({ version: PROJECT_FILE_VERSION, project }, null, 2)}\n`;
@@ -259,6 +263,12 @@ export function projectFromFile(content: string): Project | null {
   try {
     const parsed: unknown = JSON.parse(content);
     if (!isRecord(parsed)) return null;
+    /*
+     * The version was written but never read, which made it decoration. It is checked now, so a
+     * file from before the rename is turned away by its own stated version rather than only by
+     * the shape of its keys. Both checks stay: a workspace in local storage carries no version.
+     */
+    if (typeof parsed.version === 'number' && parsed.version < PROJECT_FILE_VERSION) return null;
     // Accept both the wrapped file format and a bare project object.
     return reviveProject(parsed.project ?? parsed);
   } catch {

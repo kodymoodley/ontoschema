@@ -120,7 +120,7 @@ function toneFor(ref: EntityRef): 'class' | 'relation' | 'attribute' | 'neutral'
 
 function kindLabel(ref: EntityRef): string {
   if (ref.kind === 'class') return 'Class';
-  if (ref.kind === 'relation') return 'Object property';
-  if (ref.kind === 'attribute') return 'Datatype property';
+  if (ref.kind === 'relation') return 'Relation';
+  if (ref.kind === 'attribute') return 'Attribute';
   return 'Ontology';
 }

@@ -163,7 +163,7 @@ test('all four serializations download and agree with each other', async ({ page
   }
 });
 
-test('an object property stays off the canvas until it is used in a relation', async ({ page }) => {
+test('an relation stays off the canvas until it is used in a relation', async ({ page }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
   await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
@@ -177,7 +177,7 @@ test('an object property stays off the canvas until it is used in a relation', a
   await createRelation(page, 'hasPart');
 
   // It exists in the property list, marked unused, and nothing is drawn for it.
-  await page.getByRole('tab', { name: 'Object props' }).click();
+  await page.getByRole('tab', { name: 'Relations' }).click();
   await expect(page.locator('[data-tree-item="hasPart"]')).toBeVisible();
   await expect(page.locator('[data-tree-item="hasPart"]')).toContainText('unused');
   await expect(page.locator('[data-relation-name]')).toHaveCount(0);
@@ -199,9 +199,7 @@ test('an object property stays off the canvas until it is used in a relation', a
   expect(used).toMatch(/:Car_hasPart[\s\S]*sh:class \w*:Wheel/);
 });
 
-test('a datatype property must be dropped onto a class, not onto empty canvas', async ({
-  page,
-}) => {
+test('a attribute must be dropped onto a class, not onto empty canvas', async ({ page }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
   await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
@@ -220,9 +218,7 @@ test('a datatype property must be dropped onto a class, not onto empty canvas', 
   await expect(page.locator('[data-class-name="Car"]').getByText('xsd:string')).toBeVisible();
 });
 
-test('a datatype property is reused on a second class by dragging it from the list', async ({
-  page,
-}) => {
+test('a attribute is reused on a second class by dragging it from the list', async ({ page }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
   await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();

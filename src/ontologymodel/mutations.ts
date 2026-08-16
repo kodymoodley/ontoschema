@@ -110,7 +110,7 @@ export function setSuperClass(
   };
 }
 
-/* -------------------------------------------------- datatype properties */
+/* -------------------------------------------------- attributes */
 
 export function addAttribute(
   ontology: Ontology,
@@ -167,7 +167,7 @@ export function deleteAttribute(ontology: Ontology, id: string): Ontology {
   };
 }
 
-/* ---------------------------------------------------- object properties */
+/* ---------------------------------------------------- relations */
 
 export function addRelation(
   ontology: Ontology,
@@ -295,8 +295,8 @@ export function setUsageEndpoints(
 }
 
 /**
- * Creates a datatype property and attaches it to a class in one step — the common path,
- * since a datatype property can never exist unattached in the editor.
+ * Creates a attribute and attaches it to a class in one step — the common path,
+ * since a attribute can never exist unattached in the editor.
  */
 export function addAttributeToClass(
   ontology: Ontology,
@@ -314,7 +314,7 @@ export function addAttributeToClass(
 }
 
 /**
- * Creates an object property and uses it between two classes — what the connection picker
+ * Creates an relation and uses it between two classes — what the connection picker
  * calls when the user chooses "new property" rather than an existing one.
  */
 export function addRelationBetween(

@@ -1,7 +1,7 @@
 /**
  * The contract for what can be dragged onto the canvas.
  *
- * Both the drag sources (the palette, the datatype property pool) and the drop target (the
+ * Both the drag sources (the palette, the attribute pool) and the drop target (the
  * canvas) must agree on this, but they live in sibling UI modules that are not allowed to
  * import one another. It therefore sits in the app-state layer, which is the explicit
  * shared layer both sides already depend on.
@@ -12,9 +12,9 @@ export const DRAG_MIME = 'application/x-ontoschema-drag';
 export type DragPayload =
   /** A new class, dropped anywhere on the canvas. */
   | { kind: 'newClass' }
-  /** A new datatype property; only meaningful when dropped onto a class. */
+  /** A new attribute; only meaningful when dropped onto a class. */
   | { kind: 'newAttribute' }
-  /** An existing datatype property from the pool, reused on the class it lands on. */
+  /** An existing attribute from the pool, reused on the class it lands on. */
   | { kind: 'existingAttribute'; propertyId: string };
 
 export function encodeDragPayload(payload: DragPayload): string {

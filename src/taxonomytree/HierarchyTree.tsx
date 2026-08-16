@@ -22,8 +22,8 @@ import styles from './taxonomytree.module.css';
 /**
  * The panel where the property pool lives and taxonomies are built.
  *
- * Classes and object properties are hierarchies, so they get trees: drag a node onto
- * another to re-parent it, or onto empty space to promote it to a root. Datatype properties
+ * Classes and relations are hierarchies, so they get trees: drag a node onto
+ * another to re-parent it, or onto empty space to promote it to a root. Attributes
  * get a flat list instead — arranging attributes into a taxonomy is rarely meaningful, and
  * the useful question is only which ones exist and where they are used. Dragging one from
  * that list onto a class on the canvas is how a property gets reused.
@@ -33,8 +33,8 @@ type PanelTab = 'classes' | 'relations' | 'attributes';
 
 const TABS = [
   { value: 'classes' as const, label: 'Classes' },
-  { value: 'relations' as const, label: 'Object props' },
-  { value: 'attributes' as const, label: 'Data props' },
+  { value: 'relations' as const, label: 'Relations' },
+  { value: 'attributes' as const, label: 'Attributes' },
 ];
 
 export function HierarchyTree() {
@@ -213,13 +213,13 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'relations' }) {
         <EmptyState>
           {isClasses
             ? 'No classes yet. Add one here or drag a class onto the canvas.'
-            : 'No object properties yet. Add one here, then draw an edge between two classes to use it.'}
+            : 'No relations yet. Add one here, then draw an edge between two classes to use it.'}
         </EmptyState>
       ) : (
         <div
           className={styles.tree}
           role="tree"
-          aria-label={isClasses ? 'Class hierarchy' : 'Object property hierarchy'}
+          aria-label={isClasses ? 'Class hierarchy' : 'Relation hierarchy'}
           // Dropping into the blank area below the tree promotes a node to a root.
           onDragOver={(event) => {
             if (dragging) event.preventDefault();
@@ -237,7 +237,7 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'relations' }) {
   );
 }
 
-/* -------------------------------------------------- datatype property pool */
+/* -------------------------------------------------- attribute pool */
 
 function AttributePool() {
   const ontology = useOntology();
@@ -263,11 +263,11 @@ function AttributePool() {
 
       {properties.length === 0 ? (
         <EmptyState>
-          No datatype properties yet. Drop one from the palette onto a class, or add one from a
-          class in the inspector.
+          No attributes yet. Drop one from the palette onto a class, or add one from a class in the
+          inspector.
         </EmptyState>
       ) : (
-        <ul className={styles.pool} aria-label="Datatype properties">
+        <ul className={styles.pool} aria-label="Attributes">
           {properties.map((property) => {
             const uses = usagesOfProperty(ontology, property.id).length;
             return (
