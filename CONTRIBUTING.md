@@ -47,6 +47,9 @@ file under `src/serialization/` and run `npm run lint`.
 | integration (`tests/integration`, jsdom) | `npm run test:integration` | store → model → all four serializations, parsed back with real parsers |
 | e2e (`tests/e2e`, Playwright)            | `npm run test:e2e`         | the canvas, drag and drop, real file downloads                         |
 
+`npm run test:e2e` runs all three engines; `npm run test:e2e:fast` runs chromium alone, which is
+what the pre-push hook and a pull request use.
+
 Component tests exist because neither a pure unit test nor an end-to-end test catches focus
 and re-render defects economically. If you touch a panel, add one there.
 
@@ -92,6 +95,37 @@ feature. If reviewing it means holding two unrelated ideas at once, it should ha
 
 Write the message to explain **why**, in the imperative, with the reasoning below a blank line.
 The diff already says what changed.
+
+## A red check is never merged
+
+This is the one rule with no machinery behind it, so it is written down instead.
+
+GitHub does not offer branch protection on a private repository on the Free plan. Nothing stops
+a pull request from being merged while its checks are red — the merge button looks exactly the
+same either way. **The rule is that you do not press it.**
+
+It is written down because it has already been broken, at a cost worth remembering. A change
+turned a text input into a dropdown and updated five kinds of test, but not the end-to-end helper
+six other tests went through. CI went red. It was merged anyway. `main` stayed red for a week,
+seven unrelated dependency pull requests inherited the failure, and a red check stopped meaning
+anything — which is the actual damage. A broken test is cheap. A signal nobody believes is not.
+
+So:
+
+- **Red means stop**, including when the failure looks unrelated to your change. "Unrelated" is a
+  diagnosis, not an observation, and it is the one that let the week happen.
+- **If `main` is red, fixing it comes before anything else.** Everything merged on top inherits it
+  and hides it.
+- **A flaky check is a red check** until you have found out why. Playwright reports flakes
+  separately; do not skim past them.
+
+Two things make this affordable rather than aspirational. A pull request runs one engine, so the
+answer arrives in a few minutes. And `.husky/pre-push` runs that same gate before a branch ever
+leaves your machine, so a red pull request is rare enough that stopping for one is not a habit
+you have to build.
+
+If this repository ever moves to a paid plan, make CI a required check and delete this section.
+An enforced rule beats a remembered one.
 
 ## Before you open a pull request
 
