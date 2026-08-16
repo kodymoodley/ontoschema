@@ -192,3 +192,39 @@ test('the row keeps its shape and selects the name, as the class header does', a
   // The whole name is selected, so typing replaces it and a click puts the caret instead.
   expect(field.selected).toBe(true);
 });
+
+/**
+ * The row's height is the app's decision, not the resolved font's.
+ *
+ * The test above checks the row keeps its shape, but only under whichever font the machine
+ * running it happens to have. That is how the height came to be wrong: the input was sized to
+ * the label's line box as measured on one machine, which held until a machine without Inter or
+ * Segoe UI rendered a shorter line and the row grew as soon as the editor opened.
+ *
+ * Generic families rather than font names, because a name that is not installed changes nothing
+ * and the test would pass without having tried anything.
+ */
+test('the row keeps its height whatever font the platform resolves', async ({ page }) => {
+  await classWithAttributes(page);
+
+  const heights: number[] = [];
+  for (const family of ['sans-serif', 'serif', 'monospace', 'cursive']) {
+    await page.addStyleTag({ content: `:root { --font-sans: ${family}; }` });
+
+    const idle = await row(page, 'make').boundingBox();
+    await row(page, 'make').dblclick();
+    const open = await page.locator('[data-usage-id]').first().boundingBox();
+
+    // Opening the editor must not resize the row, whatever the label is being drawn in.
+    expect(Math.round(open!.height), `${family}: opening the editor`).toBe(
+      Math.round(idle!.height),
+    );
+
+    await nameField(page).press('Escape');
+    await expect(row(page, 'make')).toBeVisible();
+    heights.push(Math.round(idle!.height));
+  }
+
+  // And the height is the same one in every font, rather than each font choosing its own.
+  expect(new Set(heights).size, `row heights were ${heights.join(', ')}`).toBe(1);
+});
