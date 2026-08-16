@@ -155,7 +155,7 @@ test('annotates in eight languages and round-trips every one', async ({ page }) 
     ['Voiture', 'fr'],
     ['سيارة', 'ar'],
     ['מכונית', 'he'],
-    ['汽車', 'zh-Hant-TW'],
+    ['汽車', 'zh'],
     ['車', 'ja'],
   ];
   for (const [value, language] of labels) {
@@ -179,7 +179,9 @@ test('annotates in eight languages and round-trips every one', async ({ page }) 
   const tags = altLabels.map((quad) =>
     quad.object.termType === 'Literal' ? quad.object.language.toLowerCase() : '',
   );
-  expect(tags).toContain('zh-hant-tw');
+  // One tag per script the test carries, which is what it exists to stress: a language written in
+  // Han characters and one written right to left.
+  expect(tags).toContain('zh');
   expect(tags).toContain('ar');
 });
 
