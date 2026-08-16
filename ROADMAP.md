@@ -22,9 +22,10 @@ twenty-five consecutive parallel runs — see [What was known about the WebKit
 flake](#what-was-known-about-the-webkit-flake) for why that is evidence rather than luck, and for
 what to do if it returns. Feature work resumes.
 
-1. **The four small canvas and interface fixes** — halve the minimap, taller class header, hint
-   into a tooltip, new class in the middle of the view. All S, all independent, one pull request
-   each.
+1. **The five small canvas and interface fixes** — halve the minimap, taller class header, hint
+   into a tooltip, new class in the middle of the view, icons on the taxonomy buttons. All S, all
+   independent, one pull request each. The icons carry an accessibility decision the other four
+   do not, so that one is small but not thoughtless.
 2. **Say relations and attributes throughout the interface** — early on purpose. It touches every
    label and every test that queries one, and each feature added first makes it bigger.
 3. **Multiple superclasses through the UI** — still the one modelling gap that is a defect rather
@@ -301,6 +302,7 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 
 | ~~**Offer every ISO 639-1 language code**~~ — _done, and the control changed with it._ The entry assumed the list was the problem. It was not: the field was a text box with a `datalist`, and a datalist filters its suggestions by what is already typed, so with `en` in the box exactly one suggestion showed however long the list grew. It is a select now, carrying all 183 current two-letter codes, generated at build time because `Intl` recognises a different set in each browser engine. | — |
 | **Move the "draw a relation by dragging" hint into a tooltip** — it is a paragraph of standing text in the palette, and the space is worth more than the sentence. _(todo 2)_ | S |
+| **Icons instead of words on the taxonomy buttons** — `+ Root`, `+ Child` and `Delete` are text today and take more of a narrow panel than three controls should. Protege is the obvious reference and the obvious trap: its glyphs are legible but dated, so take the arrangement and not the drawing. Three things decide whether this works. The buttons need real accessible names rather than an icon and nothing — `aria-label="Add root class"` and the like — which means the component tests that query `+ Root` and `+ Child` get better names, not broken ones. They need tooltips, because root-versus-child is a relationship and no icon says that on its own. And they should be inline SVG: three glyphs do not justify an icon dependency, and everything else here is self-contained. Check the second `Delete` further down the same file so the two do not diverge. _(todo 16)_ | S |
 | **Make the palette and the taxonomy tree subtabs of the left panel** — they are stacked today, so both are cramped and neither is whole. _(todo 3)_ | M |
 | **Say relations and attributes throughout the interface** — rather than object properties and datatype properties. The exported RDF keeps `owl:ObjectProperty` either way, since that is what the vocabulary calls it. **Decide the depth before starting**, because it changes the size. The interface alone is wide but shallow — every label, tab, aria-label and the tests that query by them — and is the **M**. Carrying the same names into the code, so `datatypeProperty` becomes `attribute` across the model, the store, the serializers and the file names, is an **L**: it renames the domain vocabulary itself, touches every module, and is safe only because the suite is thorough. Doing the interface now and the code never would leave the two permanently out of step, which is its own cost. _(todos 8, 14)_ | M–L |
 | **Collect the file actions into one menu, and move export in with them** — save, open, delete and new each take a top-level button, and the header is the most crowded strip in the app. Folding them into one menu reclaims the room and makes the header read as one thing rather than a row of equals. Export belongs there too: it is the only inspector tab that has nothing to do with what is selected, which is why it sits oddly beside Details and Annotations. Moving it touches the tab set, the panel, and the `downloadExport` helper every export test goes through. _(todo 13)_ | M |
@@ -437,5 +439,6 @@ list as originally written is in the git history; ask and it comes back.
 | 13     | Editing workflow       | Collect the file actions into one menu, export with them                                  | M    |
 | 14     | Editing workflow       | Folded into the relations-and-attributes rename, which now asks how deep to go            | M–L  |
 | 15     | Editing workflow       | Folded into "Revamp the interface for small screens", which now wants a design note first | L    |
+| 16     | Editing workflow       | Icons instead of words on the taxonomy buttons                                            | S    |
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
