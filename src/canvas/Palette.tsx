@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DRAG_MIME, encodeDragPayload } from '../projectstore';
 import styles from './canvas.module.css';
 
@@ -40,6 +41,8 @@ interface PaletteProps {
 }
 
 export function Palette({ onCreate, onCreateObjectProperty, canCreateAttribute }: PaletteProps) {
+  const [showRelationHint, setShowRelationHint] = useState(false);
+
   return (
     <div className={styles.palette}>
       {DRAGGABLE.map((entry) => {
@@ -94,10 +97,31 @@ export function Palette({ onCreate, onCreateObjectProperty, canCreateAttribute }
         </span>
       </button>
 
-      <p className={styles.paletteNote}>
-        Draw a <strong>relation</strong> by dragging from the right edge of one class to another,
-        then pick which object property it is.
-      </p>
+      {/*
+        The hint used to stand here as a permanent paragraph. It is worth reading once and takes
+        three lines of a narrow panel forever, so it is behind a button now.
+
+        A button rather than a `title` attribute: a native tooltip needs a mouse hovering, which
+        rules out touch entirely and the keyboard mostly. This opens on click, tap or Enter.
+      */}
+      <button
+        type="button"
+        className={styles.paletteNoteToggle}
+        aria-expanded={showRelationHint}
+        aria-controls="palette-relation-hint"
+        aria-label="How do I draw a relation?"
+        title="How do I draw a relation?"
+        onClick={() => setShowRelationHint((shown) => !shown)}
+      >
+        <span aria-hidden="true">?</span>
+      </button>
+
+      {showRelationHint ? (
+        <p id="palette-relation-hint" className={styles.paletteNote}>
+          Draw a <strong>relation</strong> by dragging from the right edge of one class to another,
+          then pick which object property it is.
+        </p>
+      ) : null}
     </div>
   );
 }
