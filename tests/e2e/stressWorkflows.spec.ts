@@ -6,7 +6,7 @@ import {
   addAttribute,
   chooseExistingProperty,
   connectClasses,
-  createObjectProperty,
+  createRelation,
   dragFromPalette,
   dragPropertyOntoClass,
   downloadExport,
@@ -114,7 +114,7 @@ test('points one property at three different classes and exports a disjunction',
     await newClass(page, name, 40 + (index % 2) * 320, 100 + Math.floor(index / 2) * 220);
   }
 
-  await createObjectProperty(page, 'hasPart');
+  await createRelation(page, 'hasPart');
   for (const target of ['Wheel', 'Door', 'Engine']) {
     await connectClasses(page, 'Car', target);
     await chooseExistingProperty(page, 'hasPart');
@@ -232,7 +232,7 @@ test('resolves names that collide once sanitised', async ({ page }) => {
   expect(new Set(subjects).size).toBe(subjects.length);
 });
 
-test('reuses one datatype property across five classes', async ({ page }) => {
+test('reuses one attribute across five classes', async ({ page }) => {
   await openApp(page);
   await newClass(page, 'Car', 40, 120);
   await selectClass(page, 'Car');

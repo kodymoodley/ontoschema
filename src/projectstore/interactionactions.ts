@@ -48,9 +48,8 @@ export function createInteractionActions(
       const { selection } = get();
       if (!selection) return;
       if (selection.kind === 'class') get().deleteClassById(selection.id);
-      else if (selection.kind === 'objectProperty') get().deleteObjectPropertyById(selection.id);
-      else if (selection.kind === 'datatypeProperty')
-        get().deleteDatatypePropertyById(selection.id);
+      else if (selection.kind === 'relation') get().deleteRelationById(selection.id);
+      else if (selection.kind === 'attribute') get().deleteAttributeById(selection.id);
     },
     setView(view) {
       set((state) => ({ ...state, view }));
@@ -74,7 +73,7 @@ export function createInteractionActions(
 
     /*
      * Drawing an edge deliberately does not invent a property. It records the pair of
-     * classes and lets the picker decide which object property this is — an existing one, or
+     * classes and lets the picker decide which relation this is — an existing one, or
      * a new one — which is what makes a property reusable across class pairs.
      */
     beginConnection(connection) {
@@ -97,7 +96,7 @@ export function createInteractionActions(
       set((state) => ({
         ...state,
         pendingConnection: null,
-        selection: { kind: 'objectProperty', id: propertyId },
+        selection: { kind: 'relation', id: propertyId },
       }));
     },
     completeConnectionWithNewProperty(localName) {
@@ -115,7 +114,7 @@ export function createInteractionActions(
       set((state) => ({
         ...state,
         pendingConnection: null,
-        selection: propertyId ? { kind: 'objectProperty', id: propertyId } : null,
+        selection: propertyId ? { kind: 'relation', id: propertyId } : null,
       }));
     },
   };

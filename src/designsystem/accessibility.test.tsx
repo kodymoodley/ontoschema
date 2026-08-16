@@ -20,7 +20,7 @@ function seed() {
   const car = store().createClass({ localName: 'Car' });
   const dealership = store().createClass({ localName: 'Dealership' });
   const price = store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
-  const offeredBy = store().createObjectProperty({ localName: 'offeredBy' });
+  const offeredBy = store().createRelation({ localName: 'offeredBy' });
   store().attachPropertyToClass(offeredBy, car, dealership);
   store().reparentClass(dealership, car);
   store().annotate({ kind: 'class', id: car }, 'skos:prefLabel', 'Car', 'en');
@@ -75,7 +75,7 @@ describe('panels have no axe violations', () => {
     const { container } = render(<HierarchyTree />);
     await expectNoAxeViolations(container);
 
-    for (const tab of ['Object props', 'Data props']) {
+    for (const tab of ['Relations', 'Attributes']) {
       await user.click(screen.getByRole('tab', { name: tab }));
       await expectNoAxeViolations(container);
     }

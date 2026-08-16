@@ -118,8 +118,24 @@ export function reviveProject(value: unknown): Project | null {
   };
 }
 
+/**
+ * Keys used before relations became relations and attributes became attributes.
+ *
+ * A document written then has to be refused rather than read. Nothing here throws on a missing
+ * key -- an absent list simply revives as an empty one -- so an old document would otherwise open
+ * looking almost right, with every relation and attribute silently gone, and the save queue would
+ * write that back over the original within the second. Failing to open is recoverable. Opening
+ * and quietly discarding half the schema is not.
+ */
+function writtenBeforeTheRename(value: Record<string, unknown>): boolean {
+  const oldNames = 'objectProperties' in value || 'datatypeProperties' in value;
+  const newNames = 'relations' in value || 'attributes' in value;
+  return oldNames && !newNames;
+}
+
 function reviveOntology(value: unknown): Ontology | null {
   if (!isRecord(value)) return null;
+  if (writtenBeforeTheRename(value)) return null;
   const base = createEmptyOntology(
     typeof value.iri === 'string' ? value.iri : undefined,
     typeof value.prefix === 'string' ? value.prefix : undefined,
@@ -136,7 +152,7 @@ function reviveOntology(value: unknown): Ontology | null {
         annotations: reviveAnnotations(entity.annotations),
         position: revivePosition(entity.position),
       })),
-    objectProperties: records(value.objectProperties)
+    relations: records(value.relations)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')
       .map((entity) => ({
         id: entity.id as string,
@@ -144,7 +160,7 @@ function reviveOntology(value: unknown): Ontology | null {
         superPropertyIds: toStringArray(entity.superPropertyIds),
         annotations: reviveAnnotations(entity.annotations),
       })),
-    datatypeProperties: records(value.datatypeProperties)
+    attributes: records(value.attributes)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')
       .map((entity) => ({
         id: entity.id as string,
@@ -175,7 +191,7 @@ function reviveUsages(value: Record<string, unknown>): PropertyUsage[] {
   if (stored.length > 0 || Array.isArray(value.usages)) return stored;
 
   return [
-    ...records(value.datatypeProperties)
+    ...records(value.attributes)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.domainClassId === 'string')
       .map((entity) => ({
         id: createId('use'),
@@ -183,7 +199,7 @@ function reviveUsages(value: Record<string, unknown>): PropertyUsage[] {
         subjectClassId: entity.domainClassId as string,
         objectClassId: null,
       })),
-    ...records(value.objectProperties)
+    ...records(value.relations)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.domainClassId === 'string')
       .map((entity) => ({
         id: createId('use'),
@@ -233,7 +249,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /* --------------------------------------------------- project file exchange */
 
-export const PROJECT_FILE_VERSION = 1;
+/*
+ * 2 since relations and attributes were renamed, which changed the keys a project file is
+ * written with. Version 1 files are refused rather than read: see `writtenBeforeTheRename`.
+ */
+export const PROJECT_FILE_VERSION = 2;
 
 export function projectToFile(project: Project): string {
   return `${JSON.stringify({ version: PROJECT_FILE_VERSION, project }, null, 2)}\n`;
@@ -243,6 +263,12 @@ export function projectFromFile(content: string): Project | null {
   try {
     const parsed: unknown = JSON.parse(content);
     if (!isRecord(parsed)) return null;
+    /*
+     * The version was written but never read, which made it decoration. It is checked now, so a
+     * file from before the rename is turned away by its own stated version rather than only by
+     * the shape of its keys. Both checks stay: a workspace in local storage carries no version.
+     */
+    if (typeof parsed.version === 'number' && parsed.version < PROJECT_FILE_VERSION) return null;
     // Accept both the wrapped file format and a bare project object.
     return reviveProject(parsed.project ?? parsed);
   } catch {

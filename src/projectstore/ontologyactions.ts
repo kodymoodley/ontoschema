@@ -2,22 +2,22 @@ import {
   addAnnotation,
   addAttributeToClass,
   addClass,
-  addObjectProperty,
+  addRelation,
   attachProperty,
   deleteClass,
-  deleteDatatypeProperty,
-  deleteObjectProperty,
+  deleteAttribute,
+  deleteRelation,
   detachUsage,
   moveClass,
   removeAnnotation,
   renameClass,
-  renameDatatypeProperty,
-  renameObjectProperty,
-  setDatatypePropertyRange,
+  renameAttribute,
+  renameRelation,
+  setAttributeRange,
   setOntologyIri,
   setOntologyPrefix,
   setSuperClass,
-  setSuperObjectProperty,
+  setSuperRelation,
   setUsageEndpoints,
   updateAnnotation,
 } from '../ontologymodel';
@@ -40,14 +40,14 @@ export interface OntologyActions {
   reparentClass(childId: string, parentId: string | null): void;
 
   createAttributeOn(classId: string, options?: { localName?: string; range?: XsdDatatype }): string;
-  renameDatatypePropertyById(id: string, localName: string): void;
+  renameAttributeById(id: string, localName: string): void;
   setAttributeRange(id: string, range: XsdDatatype): void;
-  deleteDatatypePropertyById(id: string): void;
+  deleteAttributeById(id: string): void;
 
-  createObjectProperty(options?: { localName?: string }): string;
-  renameObjectPropertyById(id: string, localName: string): void;
-  deleteObjectPropertyById(id: string): void;
-  reparentObjectProperty(childId: string, parentId: string | null): void;
+  createRelation(options?: { localName?: string }): string;
+  renameRelationById(id: string, localName: string): void;
+  deleteRelationById(id: string): void;
+  reparentRelation(childId: string, parentId: string | null): void;
 
   attachPropertyToClass(propertyId: string, classId: string, objectClassId?: string | null): string;
   detachUsageById(usageId: string): void;
@@ -100,7 +100,7 @@ export function createOntologyActions(
       editor.edit((ontology) => setSuperClass(ontology, childId, parentId));
     },
 
-    /* ------------------------------------------------ datatype properties */
+    /* ------------------------------------------------ attributes */
 
     createAttributeOn(classId, options = {}) {
       return editor.editReturning((ontology) => {
@@ -108,39 +108,39 @@ export function createOntologyActions(
         return { ontology: result.ontology, id: result.propertyId };
       });
     },
-    renameDatatypePropertyById(id, localName) {
-      editor.edit((ontology) => renameDatatypeProperty(ontology, id, localName), {
+    renameAttributeById(id, localName) {
+      editor.edit((ontology) => renameAttribute(ontology, id, localName), {
         history: 'coalesce',
         coalesceKey: `rename:${id}`,
       });
     },
     setAttributeRange(id, range) {
-      editor.edit((ontology) => setDatatypePropertyRange(ontology, id, range));
+      editor.edit((ontology) => setAttributeRange(ontology, id, range));
     },
-    deleteDatatypePropertyById(id) {
-      editor.edit((ontology) => deleteDatatypeProperty(ontology, id));
+    deleteAttributeById(id) {
+      editor.edit((ontology) => deleteAttribute(ontology, id));
       forgetIfSelected(id);
     },
 
-    /* -------------------------------------------------- object properties */
+    /* -------------------------------------------------- relations */
 
-    createObjectProperty(options = {}) {
-      const id = editor.editReturning((ontology) => addObjectProperty(ontology, options));
-      if (id) set((state) => ({ ...state, selection: { kind: 'objectProperty', id } }));
+    createRelation(options = {}) {
+      const id = editor.editReturning((ontology) => addRelation(ontology, options));
+      if (id) set((state) => ({ ...state, selection: { kind: 'relation', id } }));
       return id;
     },
-    renameObjectPropertyById(id, localName) {
-      editor.edit((ontology) => renameObjectProperty(ontology, id, localName), {
+    renameRelationById(id, localName) {
+      editor.edit((ontology) => renameRelation(ontology, id, localName), {
         history: 'coalesce',
         coalesceKey: `rename:${id}`,
       });
     },
-    deleteObjectPropertyById(id) {
-      editor.edit((ontology) => deleteObjectProperty(ontology, id));
+    deleteRelationById(id) {
+      editor.edit((ontology) => deleteRelation(ontology, id));
       forgetIfSelected(id);
     },
-    reparentObjectProperty(childId, parentId) {
-      editor.edit((ontology) => setSuperObjectProperty(ontology, childId, parentId));
+    reparentRelation(childId, parentId) {
+      editor.edit((ontology) => setSuperRelation(ontology, childId, parentId));
     },
 
     /* ------------------------------------------------------------- usages */

@@ -4,11 +4,11 @@ import {
   canSubclass,
   canSubproperty,
   classForest,
-  datatypePropertyList,
-  objectPropertyForest,
+  attributeList,
+  relationForest,
   usagesOfProperty,
 } from '../ontologymodel';
-import type { ObjectProperty, OntologyClass, TaxonomyNode } from '../ontologymodel';
+import type { Relation, OntologyClass, TaxonomyNode } from '../ontologymodel';
 import {
   DRAG_MIME,
   encodeDragPayload,
@@ -23,19 +23,19 @@ import styles from './taxonomytree.module.css';
 /**
  * The panel where the property pool lives and taxonomies are built.
  *
- * Classes and object properties are hierarchies, so they get trees: drag a node onto
- * another to re-parent it, or onto empty space to promote it to a root. Datatype properties
+ * Classes and relations are hierarchies, so they get trees: drag a node onto
+ * another to re-parent it, or onto empty space to promote it to a root. Attributes
  * get a flat list instead — arranging attributes into a taxonomy is rarely meaningful, and
  * the useful question is only which ones exist and where they are used. Dragging one from
  * that list onto a class on the canvas is how a property gets reused.
  */
 
-type PanelTab = 'classes' | 'objectProperties' | 'datatypeProperties';
+type PanelTab = 'classes' | 'relations' | 'attributes';
 
 const TABS = [
   { value: 'classes' as const, label: 'Classes' },
-  { value: 'objectProperties' as const, label: 'Object props' },
-  { value: 'datatypeProperties' as const, label: 'Data props' },
+  { value: 'relations' as const, label: 'Relations' },
+  { value: 'attributes' as const, label: 'Attributes' },
 ];
 
 export function HierarchyTree() {
@@ -44,13 +44,9 @@ export function HierarchyTree() {
   return (
     <>
       <Tabs options={TABS} value={tab} onChange={setTab} ariaLabel="Ontology entities" />
-      {tab === 'datatypeProperties' ? (
-        <DatatypePropertyPool />
-      ) : (
-        <HierarchyFor kind={tab} key={tab} />
-      )}
+      {tab === 'attributes' ? <AttributePool /> : <HierarchyFor kind={tab} key={tab} />}
       <p className={styles.hint}>
-        {tab === 'datatypeProperties'
+        {tab === 'attributes'
           ? 'Drag a property onto a class on the canvas to use it there. The same property can be used on any number of classes.'
           : 'Drag an item onto another to make it a subclass; drop it on empty space to promote it to a root.'}
       </p>
@@ -60,7 +56,7 @@ export function HierarchyTree() {
 
 /* ----------------------------------------------------------- hierarchies */
 
-function HierarchyFor({ kind }: { kind: 'classes' | 'objectProperties' }) {
+function HierarchyFor({ kind }: { kind: 'classes' | 'relations' }) {
   const ontology = useOntology();
   const selection = useSelection();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -69,18 +65,18 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'objectProperties' }) {
 
   const select = useProjectStore((state) => state.select);
   const createClass = useProjectStore((state) => state.createClass);
-  const createObjectProperty = useProjectStore((state) => state.createObjectProperty);
+  const createRelation = useProjectStore((state) => state.createRelation);
   const reparentClass = useProjectStore((state) => state.reparentClass);
-  const reparentObjectProperty = useProjectStore((state) => state.reparentObjectProperty);
+  const reparentRelation = useProjectStore((state) => state.reparentRelation);
   const deleteClass = useProjectStore((state) => state.deleteClassById);
-  const deleteObjectProperty = useProjectStore((state) => state.deleteObjectPropertyById);
+  const deleteRelation = useProjectStore((state) => state.deleteRelationById);
 
   const classes = useMemo(() => classForest(ontology), [ontology]);
-  const properties = useMemo(() => objectPropertyForest(ontology), [ontology]);
+  const properties = useMemo(() => relationForest(ontology), [ontology]);
 
   const isClasses = kind === 'classes';
-  const forest: TaxonomyNode<OntologyClass | ObjectProperty>[] = isClasses ? classes : properties;
-  const selectableKind = isClasses ? 'class' : 'objectProperty';
+  const forest: TaxonomyNode<OntologyClass | Relation>[] = isClasses ? classes : properties;
+  const selectableKind = isClasses ? 'class' : 'relation';
   const hasSelection = selection?.kind === selectableKind;
 
   const toggle = (id: string) =>
@@ -97,12 +93,12 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'objectProperties' }) {
       : canSubproperty(ontology, childId, parentId);
 
   const reparent = (childId: string, parentId: string | null) =>
-    isClasses ? reparentClass(childId, parentId) : reparentObjectProperty(childId, parentId);
+    isClasses ? reparentClass(childId, parentId) : reparentRelation(childId, parentId);
 
   /*
    * Named for the tree they belong to. This component renders both the class hierarchy and the
-   * object property hierarchy, and "Add child" alone would be ambiguous between them once the
-   * word is only in a tooltip.
+   * relation hierarchy, and "Add child" alone would be ambiguous between them once the word is
+   * only in a tooltip.
    *
    * "selected" is in the delete labels to keep them distinct from the inspector's own "Delete
    * class", which acts on the same thing from elsewhere. Two buttons answering to one name is a
@@ -111,26 +107,26 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'objectProperties' }) {
   const label = isClasses
     ? { root: 'Add root class', child: 'Add child class', remove: 'Delete selected class' }
     : {
-        root: 'Add root object property',
-        child: 'Add child object property',
-        remove: 'Delete selected object property',
+        root: 'Add root relation',
+        child: 'Add child relation',
+        remove: 'Delete selected relation',
       };
 
-  const addRoot = () => (isClasses ? createClass() : createObjectProperty());
+  const addRoot = () => (isClasses ? createClass() : createRelation());
 
   const addChild = () => {
     const parentId = selection?.id;
-    const id = isClasses ? createClass() : createObjectProperty();
+    const id = isClasses ? createClass() : createRelation();
     if (parentId && hasSelection && id) reparent(id, parentId);
   };
 
   const removeSelected = () => {
     if (!selection || !hasSelection) return;
     if (isClasses) deleteClass(selection.id);
-    else deleteObjectProperty(selection.id);
+    else deleteRelation(selection.id);
   };
 
-  const renderNode = (node: TaxonomyNode<OntologyClass | ObjectProperty>) => {
+  const renderNode = (node: TaxonomyNode<OntologyClass | Relation>) => {
     const { entity, children } = node;
     const isCollapsed = collapsed.has(entity.id);
     const isSelected = selection?.kind === selectableKind && selection.id === entity.id;
@@ -255,13 +251,13 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'objectProperties' }) {
         <EmptyState>
           {isClasses
             ? 'No classes yet. Add one here or drag a class onto the canvas.'
-            : 'No object properties yet. Add one here, then draw an edge between two classes to use it.'}
+            : 'No relations yet. Add one here, then draw an edge between two classes to use it.'}
         </EmptyState>
       ) : (
         <div
           className={styles.tree}
           role="tree"
-          aria-label={isClasses ? 'Class hierarchy' : 'Object property hierarchy'}
+          aria-label={isClasses ? 'Class hierarchy' : 'Relation hierarchy'}
           // Dropping into the blank area below the tree promotes a node to a root.
           onDragOver={(event) => {
             if (dragging) event.preventDefault();
@@ -279,16 +275,16 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'objectProperties' }) {
   );
 }
 
-/* -------------------------------------------------- datatype property pool */
+/* -------------------------------------------------- attribute pool */
 
-function DatatypePropertyPool() {
+function AttributePool() {
   const ontology = useOntology();
   const selection = useSelection();
   const select = useProjectStore((state) => state.select);
-  const deleteProperty = useProjectStore((state) => state.deleteDatatypePropertyById);
+  const deleteProperty = useProjectStore((state) => state.deleteAttributeById);
 
-  const properties = useMemo(() => datatypePropertyList(ontology), [ontology]);
-  const selected = selection?.kind === 'datatypeProperty' ? selection.id : null;
+  const properties = useMemo(() => attributeList(ontology), [ontology]);
+  const selected = selection?.kind === 'attribute' ? selection.id : null;
 
   return (
     <>
@@ -299,8 +295,8 @@ function DatatypePropertyPool() {
           variant="danger"
           onClick={() => selected && deleteProperty(selected)}
           disabled={selected === null}
-          aria-label="Delete datatype property"
-          title="Delete datatype property"
+          aria-label="Delete attribute"
+          title="Delete attribute"
         >
           <DeleteIcon />
         </Button>
@@ -308,11 +304,11 @@ function DatatypePropertyPool() {
 
       {properties.length === 0 ? (
         <EmptyState>
-          No datatype properties yet. Drop one from the palette onto a class, or add one from a
-          class in the inspector.
+          No attributes yet. Drop one from the palette onto a class, or add one from a class in the
+          inspector.
         </EmptyState>
       ) : (
-        <ul className={styles.pool} aria-label="Datatype properties">
+        <ul className={styles.pool} aria-label="Attributes">
           {properties.map((property) => {
             const uses = usagesOfProperty(ontology, property.id).length;
             return (
@@ -324,11 +320,11 @@ function DatatypePropertyPool() {
                   draggable
                   data-datatype-property={property.localName}
                   title={`Drag ${property.localName} onto a class to use it there`}
-                  onClick={() => select({ kind: 'datatypeProperty', id: property.id })}
+                  onClick={() => select({ kind: 'attribute', id: property.id })}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      select({ kind: 'datatypeProperty', id: property.id });
+                      select({ kind: 'attribute', id: property.id });
                     }
                   }}
                   onDragStart={(event) => {

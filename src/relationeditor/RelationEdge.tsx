@@ -1,11 +1,11 @@
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
-import type { ObjectProperty, PropertyUsage } from '../ontologymodel';
+import type { Relation, PropertyUsage } from '../ontologymodel';
 import { useProjectStore } from '../projectstore';
 import styles from './relationeditor.module.css';
 
 /**
- * One use of an object property between two classes, drawn as a directed edge from the
+ * One use of an relation between two classes, drawn as a directed edge from the
  * subject class to the object class. The arrow and the accent colour distinguish it from a
  * subclass link, which is grey and carries a hollow triangle.
  *
@@ -23,7 +23,7 @@ export function RelationEdge({
   selected,
   data,
 }: EdgeProps) {
-  const payload = data as { usage?: PropertyUsage; property?: ObjectProperty; shared?: boolean };
+  const payload = data as { usage?: PropertyUsage; property?: Relation; shared?: boolean };
   const select = useProjectStore((state) => state.select);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
 
@@ -64,7 +64,7 @@ export function RelationEdge({
             }
             onClick={(event) => {
               event.stopPropagation();
-              if (payload.property) select({ kind: 'objectProperty', id: payload.property.id });
+              if (payload.property) select({ kind: 'relation', id: payload.property.id });
             }}
           >
             {payload.property?.localName ?? 'relation'}
@@ -75,7 +75,7 @@ export function RelationEdge({
               type="button"
               className={styles.relationRemove}
               aria-label={`Remove this ${payload.property?.localName ?? 'relation'} relation`}
-              title="Remove this relation — the property stays in the list"
+              title="Remove this use — the relation stays in the list"
               onClick={(event) => {
                 event.stopPropagation();
                 detachUsage(id);

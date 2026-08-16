@@ -6,7 +6,7 @@ import { addAttribute, downloadExport, openApp, selectClass } from './ontoschema
  * Every outcome that also has a drag gesture, reached with the keyboard alone.
  *
  * Three things on the canvas and in the hierarchy are done by dragging: re-parenting a class,
- * re-parenting an object property, and putting an existing datatype property onto another
+ * re-parenting an relation, and putting an existing attribute onto another
  * class. None of those drags is the only route — each has a control in the inspector — but
  * that was only ever true by reading the code. Nothing drove those controls the way a keyboard
  * user has to: reaching them by tabbing, and choosing with the keys rather than with a call
@@ -133,7 +133,7 @@ test('a class is promoted back to a root with the keyboard', async ({ page }) =>
   await expect(page.locator('[data-class-name="Car"]')).not.toContainText('⊂');
 });
 
-test('a datatype property is put on a second class with the keyboard', async ({ page }) => {
+test('a attribute is put on a second class with the keyboard', async ({ page }) => {
   await twoClasses(page);
   await selectClass(page, 'Car');
   await addAttribute(page, 'weight', 'integer');
@@ -152,19 +152,17 @@ test('a datatype property is put on a second class with the keyboard', async ({ 
   expect(turtle.match(/ex:weight a owl:DatatypeProperty/g) ?? []).toHaveLength(1);
 });
 
-test('an object property is re-parented with the keyboard', async ({ page }) => {
+test('an relation is re-parented with the keyboard', async ({ page }) => {
   await twoClasses(page);
-  await page.locator('[data-palette-kind="objectProperty"]').click();
-  await page.getByLabel('Object property local name').fill('partOf');
-  await page.locator('[data-palette-kind="objectProperty"]').click();
-  await page.getByLabel('Object property local name').fill('componentOf');
+  await page.locator('[data-palette-kind="relation"]').click();
+  await page.getByLabel('Relation local name').fill('partOf');
+  await page.locator('[data-palette-kind="relation"]').click();
+  await page.getByLabel('Relation local name').fill('componentOf');
 
   await chooseByKeyboard(page, 'Superproperty', 'part');
 
-  await page.getByRole('tab', { name: 'Object props' }).click();
-  await expect(page.getByRole('tree', { name: 'Object property hierarchy' })).toContainText(
-    'componentOf',
-  );
+  await page.getByRole('tab', { name: 'Relations' }).click();
+  await expect(page.getByRole('tree', { name: 'Relation hierarchy' })).toContainText('componentOf');
 });
 
 test('a class and an attribute are created from the palette with the keyboard', async ({
@@ -179,7 +177,7 @@ test('a class and an attribute are created from the palette with the keyboard', 
   // The palette's click path puts a class in the first free slot rather than needing a drop
   // point, which is what makes it usable without a pointer at all.
   await page.locator('[data-class-node-id]').first().locator('header').click();
-  await tabTo(page, 'Add Datatype property');
+  await tabTo(page, 'Add Attribute');
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-usage-id]')).toHaveCount(1);
 });

@@ -32,7 +32,7 @@ export function App() {
   const undo = useProjectStore((state) => state.undo);
   const redo = useProjectStore((state) => state.redo);
   const deleteSelection = useProjectStore((state) => state.deleteSelection);
-  const createObjectProperty = useProjectStore((state) => state.createObjectProperty);
+  const createRelation = useProjectStore((state) => state.createRelation);
   const { create, canCreateAttribute } = usePaletteCreate();
   const { theme, toggleTheme } = useThemePreference();
   // Which side panel is showing when the viewport is too narrow for three columns.
@@ -40,8 +40,8 @@ export function App() {
 
   useGlobalShortcuts({ undo, redo, deleteSelection });
 
-  const attributeCount = ontology.datatypeProperties.length;
-  const relationCount = ontology.objectProperties.length;
+  const attributeCount = ontology.attributes.length;
+  const relationCount = ontology.relations.length;
 
   return (
     <div className={styles.shell} data-drawer={drawer}>
@@ -109,8 +109,8 @@ export function App() {
                 create(kind);
                 setDrawer('none');
               }}
-              onCreateObjectProperty={() => {
-                createObjectProperty();
+              onCreateRelation={() => {
+                createRelation();
                 setDrawer('none');
               }}
               canCreateAttribute={canCreateAttribute}
@@ -154,11 +154,11 @@ export function App() {
             </span>
             <span className={styles.statusItem}>
               <span className={`${styles.statusDot} ${styles.dotRelation}`} />
-              {relationCount} object properties
+              {relationCount} relations
             </span>
             <span className={styles.statusItem}>
               <span className={`${styles.statusDot} ${styles.dotAttribute}`} />
-              {attributeCount} datatype properties
+              {attributeCount} attributes
             </span>
             <Spacer />
             <span>

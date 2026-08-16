@@ -1,12 +1,6 @@
 import type { Edge, Node } from '@xyflow/react';
 import { indexOntology, subClassEdges, taxonomyModules } from '../ontologymodel';
-import type {
-  DatatypeProperty,
-  ObjectProperty,
-  Ontology,
-  OntologyClass,
-  PropertyUsage,
-} from '../ontologymodel';
+import type { Attribute, Relation, Ontology, OntologyClass, PropertyUsage } from '../ontologymodel';
 import {
   CLASS_NODE_WIDTH,
   chooseHierarchySides,
@@ -44,7 +38,7 @@ export const EDGE_TYPE = {
 /** One attribute row inside a class box. */
 export interface AttributeRow {
   usageId: string;
-  property: DatatypeProperty;
+  property: Attribute;
   /**
    * How many *other* classes carry this same property. A count rather than a flag because
    * renaming a property from one class renames it on all of them, and the row has to be able
@@ -74,7 +68,7 @@ export interface TaxonomyModuleNodeData extends Record<string, unknown> {
 
 export interface RelationEdgeData extends Record<string, unknown> {
   usage: PropertyUsage;
-  property: ObjectProperty;
+  property: Relation;
   /** True when the same property is also used elsewhere in the schema. */
   shared: boolean;
 }
@@ -93,7 +87,7 @@ export function schemaNodes(ontology: Ontology): Node[] {
   return ontology.classes.map((entity) => {
     const attributes: AttributeRow[] = (index.attributeUsagesByClass.get(entity.id) ?? [])
       .map((usage) => {
-        const property = index.datatypePropertyById.get(usage.propertyId);
+        const property = index.attributeById.get(usage.propertyId);
         if (!property) return null;
         const elsewhere = new Set(
           (index.usagesByProperty.get(usage.propertyId) ?? []).map((one) => one.subjectClassId),
@@ -206,7 +200,7 @@ export function schemaEdges(ontology: Ontology): Edge[] {
 
   const relations: Edge[] = [];
   for (const usage of ontology.usages) {
-    const property = index.objectPropertyById.get(usage.propertyId);
+    const property = index.relationById.get(usage.propertyId);
     if (!property || usage.objectClassId === null) continue;
     if (!index.classById.has(usage.subjectClassId) || !index.classById.has(usage.objectClassId)) {
       continue;

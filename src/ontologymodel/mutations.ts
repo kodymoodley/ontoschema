@@ -10,8 +10,8 @@ import {
 import { canSubclass, canSubproperty } from './taxonomy';
 import type {
   Annotation,
-  DatatypeProperty,
-  ObjectProperty,
+  Attribute,
+  Relation,
   Ontology,
   OntologyClass,
   Position,
@@ -110,14 +110,14 @@ export function setSuperClass(
   };
 }
 
-/* -------------------------------------------------- datatype properties */
+/* -------------------------------------------------- attributes */
 
-export function addDatatypeProperty(
+export function addAttribute(
   ontology: Ontology,
   options: { localName?: string; range?: XsdDatatype } = {},
 ): { ontology: Ontology; id: string } {
   const desired = toPropertyLocalName(options.localName ?? 'newAttribute') || 'newAttribute';
-  const property: DatatypeProperty = {
+  const property: Attribute = {
     id: createId('dtp'),
     localName: uniqueLocalName(desired, propertyLocalNames(ontology)),
     range: options.range ?? DEFAULT_XSD_DATATYPE,
@@ -125,47 +125,39 @@ export function addDatatypeProperty(
     annotations: [],
   };
   return {
-    ontology: { ...ontology, datatypeProperties: [...ontology.datatypeProperties, property] },
+    ontology: { ...ontology, attributes: [...ontology.attributes, property] },
     id: property.id,
   };
 }
 
-export function renameDatatypeProperty(
-  ontology: Ontology,
-  id: string,
-  localName: string,
-): Ontology {
+export function renameAttribute(ontology: Ontology, id: string, localName: string): Ontology {
   const cleaned = toPropertyLocalName(localName);
   if (!cleaned) return ontology;
   const taken = [
-    ...ontology.objectProperties.map((e) => e.localName),
-    ...ontology.datatypeProperties.filter((e) => e.id !== id).map((e) => e.localName),
+    ...ontology.relations.map((e) => e.localName),
+    ...ontology.attributes.filter((e) => e.id !== id).map((e) => e.localName),
   ];
   const unique = uniqueLocalName(cleaned, taken);
   return {
     ...ontology,
-    datatypeProperties: mapById(ontology.datatypeProperties, id, (e) => ({
+    attributes: mapById(ontology.attributes, id, (e) => ({
       ...e,
       localName: unique,
     })),
   };
 }
 
-export function setDatatypePropertyRange(
-  ontology: Ontology,
-  id: string,
-  range: XsdDatatype,
-): Ontology {
+export function setAttributeRange(ontology: Ontology, id: string, range: XsdDatatype): Ontology {
   return {
     ...ontology,
-    datatypeProperties: mapById(ontology.datatypeProperties, id, (e) => ({ ...e, range })),
+    attributes: mapById(ontology.attributes, id, (e) => ({ ...e, range })),
   };
 }
 
-export function deleteDatatypeProperty(ontology: Ontology, id: string): Ontology {
+export function deleteAttribute(ontology: Ontology, id: string): Ontology {
   return {
     ...ontology,
-    datatypeProperties: ontology.datatypeProperties
+    attributes: ontology.attributes
       .filter((property) => property.id !== id)
       .map((property) => ({
         ...property,
@@ -175,43 +167,43 @@ export function deleteDatatypeProperty(ontology: Ontology, id: string): Ontology
   };
 }
 
-/* ---------------------------------------------------- object properties */
+/* ---------------------------------------------------- relations */
 
-export function addObjectProperty(
+export function addRelation(
   ontology: Ontology,
   options: { localName?: string } = {},
 ): { ontology: Ontology; id: string } {
   const desired = toPropertyLocalName(options.localName ?? 'isRelatedTo') || 'isRelatedTo';
-  const property: ObjectProperty = {
+  const property: Relation = {
     id: createId('obp'),
     localName: uniqueLocalName(desired, propertyLocalNames(ontology)),
     superPropertyIds: [],
     annotations: [],
   };
   return {
-    ontology: { ...ontology, objectProperties: [...ontology.objectProperties, property] },
+    ontology: { ...ontology, relations: [...ontology.relations, property] },
     id: property.id,
   };
 }
 
-export function renameObjectProperty(ontology: Ontology, id: string, localName: string): Ontology {
+export function renameRelation(ontology: Ontology, id: string, localName: string): Ontology {
   const cleaned = toPropertyLocalName(localName);
   if (!cleaned) return ontology;
   const taken = [
-    ...ontology.objectProperties.filter((e) => e.id !== id).map((e) => e.localName),
-    ...ontology.datatypeProperties.map((e) => e.localName),
+    ...ontology.relations.filter((e) => e.id !== id).map((e) => e.localName),
+    ...ontology.attributes.map((e) => e.localName),
   ];
   const unique = uniqueLocalName(cleaned, taken);
   return {
     ...ontology,
-    objectProperties: mapById(ontology.objectProperties, id, (e) => ({ ...e, localName: unique })),
+    relations: mapById(ontology.relations, id, (e) => ({ ...e, localName: unique })),
   };
 }
 
-export function deleteObjectProperty(ontology: Ontology, id: string): Ontology {
+export function deleteRelation(ontology: Ontology, id: string): Ontology {
   return {
     ...ontology,
-    objectProperties: ontology.objectProperties
+    relations: ontology.relations
       .filter((property) => property.id !== id)
       .map((property) => ({
         ...property,
@@ -221,7 +213,7 @@ export function deleteObjectProperty(ontology: Ontology, id: string): Ontology {
   };
 }
 
-export function setSuperObjectProperty(
+export function setSuperRelation(
   ontology: Ontology,
   childId: string,
   parentId: string | null,
@@ -229,7 +221,7 @@ export function setSuperObjectProperty(
   if (parentId !== null && !canSubproperty(ontology, childId, parentId)) return ontology;
   return {
     ...ontology,
-    objectProperties: mapById(ontology.objectProperties, childId, (entity) => ({
+    relations: mapById(ontology.relations, childId, (entity) => ({
       ...entity,
       superPropertyIds: parentId === null ? [] : [parentId],
     })),
@@ -240,8 +232,8 @@ export function setSuperObjectProperty(
 
 function propertyExists(ontology: Ontology, propertyId: string): boolean {
   return (
-    ontology.datatypeProperties.some((entity) => entity.id === propertyId) ||
-    ontology.objectProperties.some((entity) => entity.id === propertyId)
+    ontology.attributes.some((entity) => entity.id === propertyId) ||
+    ontology.relations.some((entity) => entity.id === propertyId)
   );
 }
 
@@ -303,14 +295,14 @@ export function setUsageEndpoints(
 }
 
 /**
- * Creates a datatype property and attaches it to a class in one step — the common path,
- * since a datatype property can never exist unattached in the editor.
+ * Creates a attribute and attaches it to a class in one step — the common path,
+ * since a attribute can never exist unattached in the editor.
  */
 export function addAttributeToClass(
   ontology: Ontology,
   options: { classId: string; localName?: string; range?: XsdDatatype },
 ): { ontology: Ontology; propertyId: string; usageId: string } {
-  const created = addDatatypeProperty(ontology, {
+  const created = addAttribute(ontology, {
     ...(options.localName !== undefined ? { localName: options.localName } : {}),
     ...(options.range !== undefined ? { range: options.range } : {}),
   });
@@ -322,14 +314,14 @@ export function addAttributeToClass(
 }
 
 /**
- * Creates an object property and uses it between two classes — what the connection picker
+ * Creates an relation and uses it between two classes — what the connection picker
  * calls when the user chooses "new property" rather than an existing one.
  */
 export function addRelationBetween(
   ontology: Ontology,
   options: { localName?: string; subjectClassId: string; objectClassId: string },
 ): { ontology: Ontology; propertyId: string; usageId: string } {
-  const created = addObjectProperty(
+  const created = addRelation(
     ontology,
     options.localName !== undefined ? { localName: options.localName } : {},
   );
@@ -343,7 +335,7 @@ export function addRelationBetween(
 
 /* ------------------------------------------------------------ annotations */
 
-type AnnotationOwner = 'class' | 'objectProperty' | 'datatypeProperty' | 'ontology';
+type AnnotationOwner = 'class' | 'relation' | 'attribute' | 'ontology';
 
 function updateAnnotations(
   ontology: Ontology,
@@ -362,18 +354,18 @@ function updateAnnotations(
           annotations: update(e.annotations),
         })),
       };
-    case 'objectProperty':
+    case 'relation':
       return {
         ...ontology,
-        objectProperties: mapById(ontology.objectProperties, ownerId, (e) => ({
+        relations: mapById(ontology.relations, ownerId, (e) => ({
           ...e,
           annotations: update(e.annotations),
         })),
       };
-    case 'datatypeProperty':
+    case 'attribute':
       return {
         ...ontology,
-        datatypeProperties: mapById(ontology.datatypeProperties, ownerId, (e) => ({
+        attributes: mapById(ontology.attributes, ownerId, (e) => ({
           ...e,
           annotations: update(e.annotations),
         })),

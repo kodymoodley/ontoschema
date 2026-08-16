@@ -7,7 +7,7 @@ import type { Example } from './builder';
 
 /**
  * Schemas to open and take apart. Each is small enough to hold in your head — no more than
- * fifteen classes and fifteen object properties — but big enough to have made real
+ * fifteen classes and fifteen relations — but big enough to have made real
  * modelling decisions, and each shows off something the editor does.
  *
  * Ordered gentlest first.

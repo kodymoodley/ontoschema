@@ -229,8 +229,8 @@ test('a relation can be drawn by hand from any side', async ({ page }) => {
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.up();
 
-  await expect(page.getByRole('dialog', { name: 'Which object property?' })).toBeVisible();
-  await page.getByLabel('New object property name').fill('hasEngine');
+  await expect(page.getByRole('dialog', { name: 'Which relation?' })).toBeVisible();
+  await page.getByLabel('New relation name').fill('hasEngine');
   await page.getByTestId('confirm-connection').click();
   await expect(page.locator('[data-relation-name="hasEngine"]')).toBeVisible();
 });

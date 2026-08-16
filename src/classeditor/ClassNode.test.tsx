@@ -153,13 +153,13 @@ describe('ClassNode double-click', () => {
 });
 
 /**
- * Renaming a datatype property from inside a class box. The property lives in a shared pool, so
+ * Renaming a attribute from inside a class box. The property lives in a shared pool, so
  * the rename reaches every class holding it — which is the part a user cannot see happening and
  * the reason the field says how far it goes.
  */
 describe('renaming an attribute in place', () => {
   const nameOf = (propertyId: string) =>
-    ontology().datatypeProperties.find((one) => one.id === propertyId)?.localName;
+    ontology().attributes.find((one) => one.id === propertyId)?.localName;
 
   const openRename = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
     await user.dblClick(screen.getByText(name));
@@ -170,7 +170,7 @@ describe('renaming an attribute in place', () => {
     const user = userEvent.setup();
     const car = seed();
     renderNode(car);
-    const property = ontology().datatypeProperties[0]!.id;
+    const property = ontology().attributes[0]!.id;
 
     const field = await openRename(user, 'make');
     await user.clear(field);
@@ -184,7 +184,7 @@ describe('renaming an attribute in place', () => {
     const user = userEvent.setup();
     const car = seed();
     renderNode(car);
-    const property = ontology().datatypeProperties[0]!.id;
+    const property = ontology().attributes[0]!.id;
 
     const field = await openRename(user, 'make');
     await user.clear(field);
@@ -198,7 +198,7 @@ describe('renaming an attribute in place', () => {
     const user = userEvent.setup();
     const car = seed();
     renderNode(car);
-    const property = ontology().datatypeProperties[0]!.id;
+    const property = ontology().attributes[0]!.id;
 
     const field = await openRename(user, 'make');
     await user.clear(field);
@@ -229,7 +229,7 @@ describe('renaming an attribute in place', () => {
     const user = userEvent.setup();
     const car = seed();
     renderNode(car);
-    const [make, year] = ontology().datatypeProperties;
+    const [make, year] = ontology().attributes;
 
     const field = await openRename(user, 'year');
     await user.clear(field);
@@ -253,7 +253,7 @@ describe('renaming an attribute in place', () => {
     const car = seed();
     const van = store().createClass({ localName: 'Van' });
     const lorry = store().createClass({ localName: 'Lorry' });
-    const make = ontology().datatypeProperties[0]!.id;
+    const make = ontology().attributes[0]!.id;
     store().attachPropertyToClass(make, van);
     store().attachPropertyToClass(make, lorry);
     renderNode(car);
@@ -266,7 +266,7 @@ describe('renaming an attribute in place', () => {
     const user = userEvent.setup();
     const car = seed();
     const van = store().createClass({ localName: 'Van' });
-    store().attachPropertyToClass(ontology().datatypeProperties[0]!.id, van);
+    store().attachPropertyToClass(ontology().attributes[0]!.id, van);
     renderNode(car);
 
     await openRename(user, 'make');

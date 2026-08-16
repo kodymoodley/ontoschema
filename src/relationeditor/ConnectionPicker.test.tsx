@@ -40,10 +40,10 @@ describe('ConnectionPicker', () => {
     const { car, dealership } = drawnConnection();
     render(<ConnectionPicker />);
 
-    await user.type(screen.getByLabelText('New object property name'), 'offeredBy');
+    await user.type(screen.getByLabelText('New relation name'), 'offeredBy');
     await user.click(screen.getByTestId('confirm-connection'));
 
-    const property = ontology().objectProperties.find((p) => p.localName === 'offeredBy');
+    const property = ontology().relations.find((p) => p.localName === 'offeredBy');
     expect(property).toBeDefined();
     const usages = usagesOfProperty(ontology(), property?.id ?? '');
     expect(usages).toHaveLength(1);
@@ -56,7 +56,7 @@ describe('ConnectionPicker', () => {
     drawnConnection();
     render(<ConnectionPicker />);
 
-    const field = screen.getByLabelText('New object property name');
+    const field = screen.getByLabelText('New relation name');
     await user.click(field);
     await user.keyboard('offeredBy');
 
@@ -66,15 +66,15 @@ describe('ConnectionPicker', () => {
 
   it('reuses an existing property instead of creating a second one', async () => {
     const user = userEvent.setup();
-    const hasPart = store().createObjectProperty({ localName: 'hasPart' });
+    const hasPart = store().createRelation({ localName: 'hasPart' });
     const { car, dealership } = drawnConnection();
-    const before = ontology().objectProperties.length;
+    const before = ontology().relations.length;
     render(<ConnectionPicker />);
 
-    await user.selectOptions(screen.getByLabelText('Object property to use'), hasPart);
+    await user.selectOptions(screen.getByLabelText('Relation to use'), hasPart);
     await user.click(screen.getByTestId('confirm-connection'));
 
-    expect(ontology().objectProperties).toHaveLength(before);
+    expect(ontology().relations).toHaveLength(before);
     expect(usagesOfProperty(ontology(), hasPart)[0]).toMatchObject({
       subjectClassId: car,
       objectClassId: dealership,
@@ -82,7 +82,7 @@ describe('ConnectionPicker', () => {
   });
 
   it('shows how often each candidate property is already used', () => {
-    store().createObjectProperty({ localName: 'hasPart' });
+    store().createRelation({ localName: 'hasPart' });
     drawnConnection();
     render(<ConnectionPicker />);
     expect(screen.getByRole('option', { name: /hasPart \(unused\)/ })).toBeInTheDocument();
@@ -90,13 +90,13 @@ describe('ConnectionPicker', () => {
 
   it('hides the name field when an existing property is chosen', async () => {
     const user = userEvent.setup();
-    const hasPart = store().createObjectProperty({ localName: 'hasPart' });
+    const hasPart = store().createRelation({ localName: 'hasPart' });
     drawnConnection();
     render(<ConnectionPicker />);
 
-    expect(screen.getByLabelText('New object property name')).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText('Object property to use'), hasPart);
-    expect(screen.queryByLabelText('New object property name')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('New relation name')).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Relation to use'), hasPart);
+    expect(screen.queryByLabelText('New relation name')).not.toBeInTheDocument();
   });
 
   it('refuses to confirm a new property with no usable name', async () => {
@@ -105,7 +105,7 @@ describe('ConnectionPicker', () => {
     render(<ConnectionPicker />);
 
     expect(screen.getByTestId('confirm-connection')).toBeDisabled();
-    await user.type(screen.getByLabelText('New object property name'), '///');
+    await user.type(screen.getByLabelText('New relation name'), '///');
     expect(screen.getByTestId('confirm-connection')).toBeDisabled();
     expect(screen.getByText('That name cannot be used.')).toBeInTheDocument();
   });
@@ -115,10 +115,10 @@ describe('ConnectionPicker', () => {
     drawnConnection();
     render(<ConnectionPicker />);
 
-    await user.type(screen.getByLabelText('New object property name'), 'offeredBy');
+    await user.type(screen.getByLabelText('New relation name'), 'offeredBy');
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    expect(ontology().objectProperties).toHaveLength(0);
+    expect(ontology().relations).toHaveLength(0);
     expect(ontology().usages).toHaveLength(0);
     expect(useProjectStore.getState().pendingConnection).toBeNull();
   });
@@ -128,12 +128,12 @@ describe('ConnectionPicker', () => {
     drawnConnection();
     const { rerender } = render(<ConnectionPicker />);
 
-    await user.type(screen.getByLabelText('New object property name'), 'abandoned');
+    await user.type(screen.getByLabelText('New relation name'), 'abandoned');
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     drawnConnection();
     rerender(<ConnectionPicker />);
-    expect(screen.getByLabelText('New object property name')).toHaveValue('');
+    expect(screen.getByLabelText('New relation name')).toHaveValue('');
   });
 
   it('confirms on Enter from the name field', async () => {
@@ -141,8 +141,8 @@ describe('ConnectionPicker', () => {
     drawnConnection();
     render(<ConnectionPicker />);
 
-    await user.type(screen.getByLabelText('New object property name'), 'offeredBy{Enter}');
-    expect(ontology().objectProperties.map((p) => p.localName)).toEqual(['offeredBy']);
+    await user.type(screen.getByLabelText('New relation name'), 'offeredBy{Enter}');
+    expect(ontology().relations.map((p) => p.localName)).toEqual(['offeredBy']);
   });
 
   it('records the whole connection as a single undo step', async () => {
@@ -151,12 +151,12 @@ describe('ConnectionPicker', () => {
     const depth = store().history.past.length;
     render(<ConnectionPicker />);
 
-    await user.type(screen.getByLabelText('New object property name'), 'offeredBy');
+    await user.type(screen.getByLabelText('New relation name'), 'offeredBy');
     await user.click(screen.getByTestId('confirm-connection'));
 
     expect(store().history.past.length).toBe(depth + 1);
     store().undo();
-    expect(ontology().objectProperties).toHaveLength(0);
+    expect(ontology().relations).toHaveLength(0);
     expect(ontology().usages).toHaveLength(0);
   });
 });

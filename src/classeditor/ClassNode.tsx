@@ -3,7 +3,7 @@ import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeCurie } from '../annotationvocabulary';
 import { toClassLocalName, toPropertyLocalName } from '../ontologymodel';
-import type { DatatypeProperty, OntologyClass } from '../ontologymodel';
+import type { Attribute, OntologyClass } from '../ontologymodel';
 import { useDoubleTap } from '../designsystem';
 import { useProjectStore } from '../projectstore';
 import { InlineName } from './InlineName';
@@ -11,14 +11,14 @@ import styles from './classeditor.module.css';
 
 /**
  * The class shape on the schema canvas: a header carrying the local name, the superclass
- * it sits under, and its datatype properties rendered as typed rows inside the box.
+ * it sits under, and its attributes rendered as typed rows inside the box.
  *
  * Double-clicking the header renames in place; the full editing surface is the inspector.
  */
 
 interface AttributeRow {
   usageId: string;
-  property: DatatypeProperty;
+  property: Attribute;
   /** How many other classes carry this same property. */
   usedOnOtherClasses: number;
 }
@@ -113,9 +113,7 @@ export function ClassNode({ data, selected }: NodeProps) {
 
       <div className={styles.attributes}>
         {attributes.length === 0 ? (
-          <p className={styles.emptyAttributes}>
-            Drop a datatype property here to add an attribute.
-          </p>
+          <p className={styles.emptyAttributes}>Drop a attribute here to add an attribute.</p>
         ) : (
           attributes.map((row) => (
             <AttributeItem
@@ -141,7 +139,7 @@ export function ClassNode({ data, selected }: NodeProps) {
 }
 
 /**
- * One datatype property inside a class box.
+ * One attribute inside a class box.
  *
  * A single click selects the property; a double-click renames it here rather than sending you
  * to the inspector. The gesture has to be stopped from reaching the node, which answers a
@@ -159,7 +157,7 @@ interface AttributeItemProps {
 
 function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
   const select = useProjectStore((state) => state.select);
-  const renameProperty = useProjectStore((state) => state.renameDatatypePropertyById);
+  const renameProperty = useProjectStore((state) => state.renameAttributeById);
 
   /*
    * A double-tap has to be recognised by hand. A node is draggable, so React Flow calls
@@ -215,7 +213,7 @@ function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
       }
       onClick={(event) => {
         event.stopPropagation();
-        select({ kind: 'datatypeProperty', id: row.property.id });
+        select({ kind: 'attribute', id: row.property.id });
       }}
       onDoubleClick={(event) => {
         // The node zooms on a double-click; this one belongs to the row.

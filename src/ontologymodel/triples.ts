@@ -142,13 +142,9 @@ export function ontologyToTriples(
   const index = indexOntology(ontology);
 
   const classIri = new Map(ontology.classes.map((e) => [e.id, subjectOf(e.localName)]));
-  const objectPropertyIri = new Map(
-    ontology.objectProperties.map((e) => [e.id, subjectOf(e.localName)]),
-  );
-  const datatypePropertyIri = new Map(
-    ontology.datatypeProperties.map((e) => [e.id, subjectOf(e.localName)]),
-  );
-  const propertyIri = (id: string) => objectPropertyIri.get(id) ?? datatypePropertyIri.get(id);
+  const relationIri = new Map(ontology.relations.map((e) => [e.id, subjectOf(e.localName)]));
+  const attributeIri = new Map(ontology.attributes.map((e) => [e.id, subjectOf(e.localName)]));
+  const propertyIri = (id: string) => relationIri.get(id) ?? attributeIri.get(id);
 
   const triples: Triple[] = [];
 
@@ -170,13 +166,13 @@ export function ontologyToTriples(
       }
     }
 
-    for (const property of ontology.objectProperties) {
-      const subject = objectPropertyIri.get(property.id);
+    for (const property of ontology.relations) {
+      const subject = relationIri.get(property.id);
       if (!subject) continue;
       triples.push({ subject, predicate: RDF_TYPE, object: iri(OWL_OBJECT_PROPERTY) });
       triples.push(...annotationTriples(subject, property.annotations));
       for (const parentId of property.superPropertyIds) {
-        const parent = objectPropertyIri.get(parentId);
+        const parent = relationIri.get(parentId);
         if (parent && parent !== subject) {
           triples.push({ subject, predicate: RDFS_SUBPROPERTY_OF, object: iri(parent) });
         }
@@ -192,13 +188,13 @@ export function ontologyToTriples(
       if (range) triples.push({ subject, predicate: RDFS_RANGE, object: iri(range) });
     }
 
-    for (const property of ontology.datatypeProperties) {
-      const subject = datatypePropertyIri.get(property.id);
+    for (const property of ontology.attributes) {
+      const subject = attributeIri.get(property.id);
       if (!subject) continue;
       triples.push({ subject, predicate: RDF_TYPE, object: iri(OWL_DATATYPE_PROPERTY) });
       triples.push(...annotationTriples(subject, property.annotations));
       for (const parentId of property.superPropertyIds) {
-        const parent = datatypePropertyIri.get(parentId);
+        const parent = attributeIri.get(parentId);
         if (parent && parent !== subject) {
           triples.push({ subject, predicate: RDFS_SUBPROPERTY_OF, object: iri(parent) });
         }
@@ -223,7 +219,7 @@ export function ontologyToTriples(
       ...shapeTriples(ontology, {
         classIri,
         propertyIri,
-        datatypePropertyIds: new Set(ontology.datatypeProperties.map((e) => e.id)),
+        attributeIds: new Set(ontology.attributes.map((e) => e.id)),
         namespace,
       }),
     );
@@ -235,7 +231,7 @@ export function ontologyToTriples(
 interface ShapeContext {
   classIri: Map<string, string>;
   propertyIri: (id: string) => string | undefined;
-  datatypePropertyIds: Set<string>;
+  attributeIds: Set<string>;
   namespace: string;
 }
 
@@ -291,8 +287,8 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
       if (!path) continue;
 
       const property =
-        ontology.datatypeProperties.find((e) => e.id === propertyId) ??
-        ontology.objectProperties.find((e) => e.id === propertyId);
+        ontology.attributes.find((e) => e.id === propertyId) ??
+        ontology.relations.find((e) => e.id === propertyId);
       if (!property) continue;
 
       const propertyShape = shapeIri(`${entity.localName}_${property.localName}`);
@@ -303,8 +299,8 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
         { subject: propertyShape, predicate: SH_NAME, object: literal(property.localName) },
       );
 
-      if (context.datatypePropertyIds.has(propertyId)) {
-        const datatype = ontology.datatypeProperties.find((e) => e.id === propertyId);
+      if (context.attributeIds.has(propertyId)) {
+        const datatype = ontology.attributes.find((e) => e.id === propertyId);
         if (datatype) {
           propertyShapeTriples.push({
             subject: propertyShape,

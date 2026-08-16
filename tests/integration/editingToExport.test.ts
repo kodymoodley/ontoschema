@@ -9,7 +9,7 @@ import {
   attributeUsagesOfClass,
   classForest,
   findClass,
-  findObjectProperty,
+  findRelation,
   relationUsagesTouchingClass,
   taxonomyModules,
   usagesOfProperty,
@@ -54,10 +54,10 @@ function buildAutomotiveProject() {
   // Drawing an edge asks which property it is; here the user creates a new one.
   store().beginConnection({ subjectClassId: car, objectClassId: dealership });
   store().completeConnectionWithNewProperty('offeredBy');
-  const offeredBy = ontology().objectProperties.find((p) => p.localName === 'offeredBy')?.id ?? '';
+  const offeredBy = ontology().relations.find((p) => p.localName === 'offeredBy')?.id ?? '';
 
   // Declared but never drawn, so it lives only in the property list.
-  const hasPart = store().createObjectProperty({ localName: 'hasPart' });
+  const hasPart = store().createRelation({ localName: 'hasPart' });
 
   store().annotate({ kind: 'class', id: car }, 'skos:prefLabel', 'Car', 'en');
   store().annotate({ kind: 'class', id: car }, 'skos:prefLabel', 'Auto', 'nl');
@@ -119,25 +119,25 @@ describe('editing through the store reaches the model', () => {
     expect(ontology().usages).toHaveLength(before);
   });
 
-  it('reuses an existing object property rather than minting another one', () => {
+  it('reuses an existing relation rather than minting another one', () => {
     const ids = buildAutomotiveProject();
-    const propertyCount = ontology().objectProperties.length;
+    const propertyCount = ontology().relations.length;
 
     store().beginConnection({ subjectClassId: ids.truck, objectClassId: ids.dealership });
     store().completeConnectionWith(ids.hasPart);
 
-    expect(ontology().objectProperties).toHaveLength(propertyCount);
+    expect(ontology().relations).toHaveLength(propertyCount);
     expect(usagesOfProperty(ontology(), ids.hasPart)).toHaveLength(1);
   });
 
-  it('reuses a datatype property on a second class', () => {
+  it('reuses a attribute on a second class', () => {
     const ids = buildAutomotiveProject();
     store().attachPropertyToClass(ids.price, ids.truck);
 
     expect(usagesOfProperty(ontology(), ids.price)).toHaveLength(2);
     expect(attributeUsagesOfClass(ontology(), ids.truck)).toHaveLength(1);
     // One property, not a copy.
-    expect(ontology().datatypeProperties.filter((p) => p.localName === 'price')).toHaveLength(1);
+    expect(ontology().attributes.filter((p) => p.localName === 'price')).toHaveLength(1);
   });
 
   it('detaching a property from a class leaves it in the pool', () => {
@@ -148,7 +148,7 @@ describe('editing through the store reaches the model', () => {
     store().detachUsageById(usage?.id ?? '');
 
     expect(attributeUsagesOfClass(ontology(), ids.car)).toHaveLength(4);
-    expect(ontology().datatypeProperties.some((p) => p.id === ids.make)).toBe(true);
+    expect(ontology().attributes.some((p) => p.id === ids.make)).toBe(true);
   });
 });
 
@@ -250,7 +250,7 @@ describe('destructive edits stay consistent all the way to the export', () => {
     const model = ontology();
     expect(findClass(model, ids.car)).toBeUndefined();
     expect(usagesOfProperty(model, ids.offeredBy)).toHaveLength(0);
-    expect(model.datatypeProperties).toHaveLength(5);
+    expect(model.attributes).toHaveLength(5);
 
     const turtle = serialize(model, 'turtle').content;
     expect(turtle).not.toContain('auto:Car ');
@@ -334,7 +334,7 @@ describe('undo and redo', () => {
     store().attachPropertyToClass(ids.price, ids.truck);
     store().undo();
     expect(usagesOfProperty(ontology(), ids.price)).toHaveLength(1);
-    expect(ontology().datatypeProperties.some((p) => p.id === ids.price)).toBe(true);
+    expect(ontology().attributes.some((p) => p.id === ids.price)).toBe(true);
   });
 
   it('does nothing when there is nothing to undo', () => {
@@ -473,9 +473,9 @@ describe('multiple projects', () => {
       'Truck',
       'Vehicle',
     ]);
-    expect(restored.datatypeProperties).toHaveLength(5);
+    expect(restored.attributes).toHaveLength(5);
     expect(restored.usages).toHaveLength(6);
-    expect(findObjectProperty(restored, ids.offeredBy)).toBeDefined();
+    expect(findRelation(restored, ids.offeredBy)).toBeDefined();
     expect(serialize(restored, 'turtle').content).toContain('"Auto"@nl');
   });
 
@@ -550,9 +550,13 @@ describe('persistence', () => {
     expect(workspace.projects.length).toBeGreaterThan(0);
   });
 
+  /*
+   * Unversioned on purpose. A file carrying `version: 1` is refused now, because 1 predates
+   * relations and attributes being renamed. What is left of the pre-usage-model path is the
+   * shape held in local storage, which has no version field at all, so that is what this drives.
+   */
   it('reconstructs usages from a document written before the usage model existed', async () => {
     const legacy = {
-      version: 1,
       project: {
         id: 'p1',
         name: 'Legacy',
@@ -578,7 +582,7 @@ describe('persistence', () => {
               position: { x: 200, y: 0 },
             },
           ],
-          objectProperties: [
+          relations: [
             {
               id: 'o1',
               localName: 'offeredBy',
@@ -589,7 +593,7 @@ describe('persistence', () => {
               annotations: [],
             },
           ],
-          datatypeProperties: [
+          attributes: [
             {
               id: 'd1',
               localName: 'make',

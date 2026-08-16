@@ -133,13 +133,13 @@ describe('HierarchyTree — classes', () => {
   });
 });
 
-describe('HierarchyTree — object properties', () => {
+describe('HierarchyTree — relations', () => {
   it('marks a property that is not used anywhere', async () => {
     const user = userEvent.setup();
-    store().createObjectProperty({ localName: 'hasPart' });
+    store().createRelation({ localName: 'hasPart' });
     render(<HierarchyTree />);
 
-    await user.click(screen.getByRole('tab', { name: 'Object props' }));
+    await user.click(screen.getByRole('tab', { name: 'Relations' }));
     expect(item('hasPart')).toHaveTextContent('unused');
   });
 
@@ -147,16 +147,16 @@ describe('HierarchyTree — object properties', () => {
     const user = userEvent.setup();
     const car = store().createClass({ localName: 'Car' });
     const wheel = store().createClass({ localName: 'Wheel' });
-    const hasPart = store().createObjectProperty({ localName: 'hasPart' });
+    const hasPart = store().createRelation({ localName: 'hasPart' });
     store().attachPropertyToClass(hasPart, car, wheel);
     render(<HierarchyTree />);
 
-    await user.click(screen.getByRole('tab', { name: 'Object props' }));
+    await user.click(screen.getByRole('tab', { name: 'Relations' }));
     expect(item('hasPart')).toHaveTextContent('1×');
   });
 });
 
-describe('HierarchyTree — datatype property pool', () => {
+describe('HierarchyTree — attribute pool', () => {
   it('lists properties alphabetically with their range and usage count', async () => {
     const user = userEvent.setup();
     const car = store().createClass({ localName: 'Car' });
@@ -164,7 +164,7 @@ describe('HierarchyTree — datatype property pool', () => {
     store().createAttributeOn(car, { localName: 'make', range: 'string' });
     render(<HierarchyTree />);
 
-    await user.click(screen.getByRole('tab', { name: 'Data props' }));
+    await user.click(screen.getByRole('tab', { name: 'Attributes' }));
     const names = [...document.querySelectorAll('[data-datatype-property]')].map((element) =>
       element.getAttribute('data-datatype-property'),
     );
@@ -178,7 +178,7 @@ describe('HierarchyTree — datatype property pool', () => {
     const car = store().createClass({ localName: 'Car' });
     const price = store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
     render(<HierarchyTree />);
-    await user.click(screen.getByRole('tab', { name: 'Data props' }));
+    await user.click(screen.getByRole('tab', { name: 'Attributes' }));
 
     const payloads: Record<string, string> = {};
     fireEvent.dragStart(poolRow('price') as HTMLElement, dragData(payloads));
@@ -193,18 +193,18 @@ describe('HierarchyTree — datatype property pool', () => {
     const car = store().createClass({ localName: 'Car' });
     store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
     render(<HierarchyTree />);
-    await user.click(screen.getByRole('tab', { name: 'Data props' }));
+    await user.click(screen.getByRole('tab', { name: 'Attributes' }));
 
     await user.click(poolRow('price') as HTMLElement);
-    await user.click(screen.getByRole('button', { name: 'Delete datatype property' }));
-    expect(ontology().datatypeProperties).toHaveLength(0);
+    await user.click(screen.getByRole('button', { name: 'Delete attribute' }));
+    expect(ontology().attributes).toHaveLength(0);
     expect(ontology().usages).toHaveLength(0);
   });
 
-  it('explains itself when there are no datatype properties yet', async () => {
+  it('explains itself when there are no attributes yet', async () => {
     const user = userEvent.setup();
     render(<HierarchyTree />);
-    await user.click(screen.getByRole('tab', { name: 'Data props' }));
-    expect(screen.getByText(/No datatype properties yet/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Attributes' }));
+    expect(screen.getByText(/No attributes yet/i)).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 import type {
   Annotation,
-  DatatypeProperty,
-  ObjectProperty,
+  Attribute,
+  Relation,
   Ontology,
   OntologyClass,
   Project,
@@ -34,8 +34,8 @@ export function createEmptyOntology(
     prefix,
     annotations: [],
     classes: [],
-    objectProperties: [],
-    datatypeProperties: [],
+    relations: [],
+    attributes: [],
     usages: [],
   };
 }
@@ -57,12 +57,12 @@ export function findClass(ontology: Ontology, id: string): OntologyClass | undef
   return ontology.classes.find((entity) => entity.id === id);
 }
 
-export function findObjectProperty(ontology: Ontology, id: string): ObjectProperty | undefined {
-  return ontology.objectProperties.find((entity) => entity.id === id);
+export function findRelation(ontology: Ontology, id: string): Relation | undefined {
+  return ontology.relations.find((entity) => entity.id === id);
 }
 
-export function findDatatypeProperty(ontology: Ontology, id: string): DatatypeProperty | undefined {
-  return ontology.datatypeProperties.find((entity) => entity.id === id);
+export function findAttribute(ontology: Ontology, id: string): Attribute | undefined {
+  return ontology.attributes.find((entity) => entity.id === id);
 }
 
 export function findUsage(ontology: Ontology, id: string): PropertyUsage | undefined {
@@ -75,8 +75,8 @@ export function findUsage(ontology: Ontology, id: string): PropertyUsage | undef
  */
 export interface OntologyIndex {
   classById: Map<string, OntologyClass>;
-  objectPropertyById: Map<string, ObjectProperty>;
-  datatypePropertyById: Map<string, DatatypeProperty>;
+  relationById: Map<string, Relation>;
+  attributeById: Map<string, Attribute>;
   attributeUsagesByClass: Map<string, PropertyUsage[]>;
   relationUsagesByClass: Map<string, PropertyUsage[]>;
   usagesByProperty: Map<string, PropertyUsage[]>;
@@ -84,8 +84,8 @@ export interface OntologyIndex {
 
 export function indexOntology(ontology: Ontology): OntologyIndex {
   const classById = new Map(ontology.classes.map((entity) => [entity.id, entity]));
-  const objectPropertyById = new Map(ontology.objectProperties.map((e) => [e.id, e]));
-  const datatypePropertyById = new Map(ontology.datatypeProperties.map((e) => [e.id, e]));
+  const relationById = new Map(ontology.relations.map((e) => [e.id, e]));
+  const attributeById = new Map(ontology.attributes.map((e) => [e.id, e]));
 
   const attributeUsagesByClass = new Map<string, PropertyUsage[]>();
   const relationUsagesByClass = new Map<string, PropertyUsage[]>();
@@ -100,17 +100,17 @@ export function indexOntology(ontology: Ontology): OntologyIndex {
   for (const usage of ontology.usages) {
     if (!classById.has(usage.subjectClassId)) continue;
     push(usagesByProperty, usage.propertyId, usage);
-    if (datatypePropertyById.has(usage.propertyId)) {
+    if (attributeById.has(usage.propertyId)) {
       push(attributeUsagesByClass, usage.subjectClassId, usage);
-    } else if (objectPropertyById.has(usage.propertyId)) {
+    } else if (relationById.has(usage.propertyId)) {
       push(relationUsagesByClass, usage.subjectClassId, usage);
     }
   }
 
   return {
     classById,
-    objectPropertyById,
-    datatypePropertyById,
+    relationById,
+    attributeById,
     attributeUsagesByClass,
     relationUsagesByClass,
     usagesByProperty,
@@ -121,7 +121,7 @@ export function indexOntology(ontology: Ontology): OntologyIndex {
 
 /** Attribute usages on a class, i.e. the typed rows shown inside its box. */
 export function attributeUsagesOfClass(ontology: Ontology, classId: string): PropertyUsage[] {
-  const datatypeIds = new Set(ontology.datatypeProperties.map((entity) => entity.id));
+  const datatypeIds = new Set(ontology.attributes.map((entity) => entity.id));
   return ontology.usages.filter(
     (usage) => usage.subjectClassId === classId && datatypeIds.has(usage.propertyId),
   );
@@ -129,7 +129,7 @@ export function attributeUsagesOfClass(ontology: Ontology, classId: string): Pro
 
 /** Relation usages leaving a class, i.e. the edges drawn from it. */
 export function relationUsagesOfClass(ontology: Ontology, classId: string): PropertyUsage[] {
-  const objectIds = new Set(ontology.objectProperties.map((entity) => entity.id));
+  const objectIds = new Set(ontology.relations.map((entity) => entity.id));
   return ontology.usages.filter(
     (usage) => usage.subjectClassId === classId && objectIds.has(usage.propertyId),
   );
@@ -138,7 +138,7 @@ export function relationUsagesOfClass(ontology: Ontology, classId: string): Prop
 /** Every relation usage in the ontology whose endpoints both still exist. */
 export function relationUsages(ontology: Ontology): PropertyUsage[] {
   const classIds = new Set(ontology.classes.map((entity) => entity.id));
-  const objectIds = new Set(ontology.objectProperties.map((entity) => entity.id));
+  const objectIds = new Set(ontology.relations.map((entity) => entity.id));
   return ontology.usages.filter(
     (usage) =>
       objectIds.has(usage.propertyId) &&
@@ -167,7 +167,7 @@ export function hasUnambiguousDomain(ontology: Ontology, propertyId: string): bo
 
 /** Classes that touch a relation usage in either direction. */
 export function relationUsagesTouchingClass(ontology: Ontology, classId: string): PropertyUsage[] {
-  const objectIds = new Set(ontology.objectProperties.map((entity) => entity.id));
+  const objectIds = new Set(ontology.relations.map((entity) => entity.id));
   return ontology.usages.filter(
     (usage) =>
       objectIds.has(usage.propertyId) &&
@@ -182,8 +182,8 @@ export function resolveUsage(ontology: Ontology, usage: PropertyUsage): Resolved
     usage,
     subjectClass,
     objectClass: usage.objectClassId ? (findClass(ontology, usage.objectClassId) ?? null) : null,
-    objectProperty: findObjectProperty(ontology, usage.propertyId) ?? null,
-    datatypeProperty: findDatatypeProperty(ontology, usage.propertyId) ?? null,
+    relation: findRelation(ontology, usage.propertyId) ?? null,
+    attribute: findAttribute(ontology, usage.propertyId) ?? null,
   };
 }
 
@@ -195,15 +195,15 @@ export function classLocalNames(ontology: Ontology): string[] {
 
 export function propertyLocalNames(ontology: Ontology): string[] {
   return [
-    ...ontology.objectProperties.map((entity) => entity.localName),
-    ...ontology.datatypeProperties.map((entity) => entity.localName),
+    ...ontology.relations.map((entity) => entity.localName),
+    ...ontology.attributes.map((entity) => entity.localName),
   ];
 }
 
 export function isOntologyEmpty(ontology: Ontology): boolean {
   return (
     ontology.classes.length === 0 &&
-    ontology.objectProperties.length === 0 &&
-    ontology.datatypeProperties.length === 0
+    ontology.relations.length === 0 &&
+    ontology.attributes.length === 0
   );
 }

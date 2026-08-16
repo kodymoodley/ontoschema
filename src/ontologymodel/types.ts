@@ -31,10 +31,10 @@ export interface OntologyClass {
  * property may be used is a *local* fact about a class, not a global fact about the
  * property — see PropertyUsage.
  *
- * A datatype property's xsd range is the exception: `price` is a decimal wherever it is
+ * A attribute's xsd range is the exception: `price` is a decimal wherever it is
  * used, so the range lives on the property and is always safe to export as `rdfs:range`.
  */
-export interface DatatypeProperty {
+export interface Attribute {
   id: string;
   localName: string;
   range: XsdDatatype;
@@ -42,7 +42,7 @@ export interface DatatypeProperty {
   annotations: Annotation[];
 }
 
-export interface ObjectProperty {
+export interface Relation {
   id: string;
   localName: string;
   superPropertyIds: string[];
@@ -79,8 +79,8 @@ export interface Ontology {
   prefix: string;
   annotations: Annotation[];
   classes: OntologyClass[];
-  objectProperties: ObjectProperty[];
-  datatypeProperties: DatatypeProperty[];
+  relations: Relation[];
+  attributes: Attribute[];
   usages: PropertyUsage[];
 }
 
@@ -93,20 +93,20 @@ export interface Project {
 }
 
 /** Every kind of thing that can be selected and annotated. */
-export type EntityKind = 'class' | 'objectProperty' | 'datatypeProperty' | 'ontology';
+export type EntityKind = 'class' | 'relation' | 'attribute' | 'ontology';
 
 export interface EntityRef {
   kind: EntityKind;
   id: string;
 }
 
-export type AnnotatableEntity = OntologyClass | ObjectProperty | DatatypeProperty;
+export type AnnotatableEntity = OntologyClass | Relation | Attribute;
 
 /** A usage resolved against the entities it refers to, for rendering and serialization. */
 export interface ResolvedUsage {
   usage: PropertyUsage;
   subjectClass: OntologyClass;
   objectClass: OntologyClass | null;
-  objectProperty: ObjectProperty | null;
-  datatypeProperty: DatatypeProperty | null;
+  relation: Relation | null;
+  attribute: Attribute | null;
 }

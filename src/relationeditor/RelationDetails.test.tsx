@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useProjectStore } from '../projectstore';
-import { findObjectProperty, usagesOfProperty } from '../ontologymodel';
+import { findRelation, usagesOfProperty } from '../ontologymodel';
 import { RelationDetails } from './RelationDetails';
 
 const store = () => useProjectStore.getState();
@@ -16,14 +16,14 @@ const ontology = () => {
 function usedOnce() {
   const car = store().createClass({ localName: 'Car' });
   const dealership = store().createClass({ localName: 'Dealership' });
-  const offeredBy = store().createObjectProperty({ localName: 'offeredBy' });
+  const offeredBy = store().createRelation({ localName: 'offeredBy' });
   store().attachPropertyToClass(offeredBy, car, dealership);
   return { car, dealership, offeredBy };
 }
 
 describe('RelationDetails', () => {
   it('reports an unused property and says nothing is drawn for it', () => {
-    const hasPart = store().createObjectProperty({ localName: 'hasPart' });
+    const hasPart = store().createRelation({ localName: 'hasPart' });
     render(<RelationDetails propertyId={hasPart} />);
 
     expect(screen.getByText('Unused')).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe('RelationDetails', () => {
     await user.click(screen.getByRole('button', { name: 'Remove the offeredBy relation on Car' }));
 
     expect(usagesOfProperty(ontology(), offeredBy)).toHaveLength(0);
-    expect(findObjectProperty(ontology(), offeredBy)).toBeDefined();
+    expect(findRelation(ontology(), offeredBy)).toBeDefined();
   });
 
   it('renames without dropping its uses', async () => {
@@ -91,11 +91,11 @@ describe('RelationDetails', () => {
     const { offeredBy } = usedOnce();
     render(<RelationDetails propertyId={offeredBy} />);
 
-    const field = screen.getByLabelText('Object property local name');
+    const field = screen.getByLabelText('Relation local name');
     await user.clear(field);
     await user.type(field, 'soldBy');
 
-    expect(findObjectProperty(ontology(), offeredBy)?.localName).toBe('soldBy');
+    expect(findRelation(ontology(), offeredBy)?.localName).toBe('soldBy');
     expect(usagesOfProperty(ontology(), offeredBy)).toHaveLength(1);
   });
 
@@ -104,12 +104,12 @@ describe('RelationDetails', () => {
     const { offeredBy } = usedOnce();
     render(<RelationDetails propertyId={offeredBy} />);
 
-    const field = screen.getByLabelText('Object property local name');
+    const field = screen.getByLabelText('Relation local name');
     await user.clear(field);
 
     expect(field).toHaveValue('');
     expect(field).toHaveAttribute('aria-invalid', 'true');
-    expect(findObjectProperty(ontology(), offeredBy)?.localName).toBe('offeredBy');
+    expect(findRelation(ontology(), offeredBy)?.localName).toBe('offeredBy');
   });
 
   it('deletes the property and all of its uses', async () => {
@@ -119,7 +119,7 @@ describe('RelationDetails', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete property' }));
 
-    expect(findObjectProperty(ontology(), offeredBy)).toBeUndefined();
+    expect(findRelation(ontology(), offeredBy)).toBeUndefined();
     expect(ontology().usages).toHaveLength(0);
   });
 });

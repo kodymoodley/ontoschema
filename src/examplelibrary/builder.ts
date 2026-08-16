@@ -2,7 +2,7 @@ import {
   addAnnotation,
   addAttributeToClass,
   addClass,
-  addObjectProperty,
+  addRelation,
   addSubClassOf,
   attachProperty,
   createEmptyOntology,
@@ -29,7 +29,7 @@ export interface ClassSpec {
   definition?: string;
   /** Extra labels, for showing off language tags. */
   labels?: readonly LocalisedText[];
-  /** Datatype properties this class carries. */
+  /** Attributes this class carries. */
   attributes?: readonly (readonly [string, XsdDatatype])[];
 }
 
@@ -53,7 +53,7 @@ export interface ExampleSpec {
   classes: readonly ClassSpec[];
   relations: readonly RelationSpec[];
   /**
-   * Object properties declared but not drawn anywhere — they sit in the property list ready
+   * Relations declared but not drawn anywhere — they sit in the property list ready
    * to be used, which is the quickest way to see what an unused property looks like.
    */
   spareProperties?: readonly (readonly [string, string])[];
@@ -122,14 +122,14 @@ export function buildExample(spec: ExampleSpec): Ontology {
   for (const relation of spec.relations) {
     let propertyId = propertyIds.get(relation.name);
     if (!propertyId) {
-      const added = addObjectProperty(ontology, { localName: relation.name });
+      const added = addRelation(ontology, { localName: relation.name });
       ontology = added.ontology;
       propertyId = added.id;
       propertyIds.set(relation.name, propertyId);
       if (relation.definition) {
         ontology = addAnnotation(
           ontology,
-          'objectProperty',
+          'relation',
           propertyId,
           'skos:definition',
           relation.definition,
@@ -149,10 +149,10 @@ export function buildExample(spec: ExampleSpec): Ontology {
   }
 
   for (const [name, definition] of spec.spareProperties ?? []) {
-    const added = addObjectProperty(ontology, { localName: name });
+    const added = addRelation(ontology, { localName: name });
     ontology = addAnnotation(
       added.ontology,
-      'objectProperty',
+      'relation',
       added.id,
       'skos:definition',
       definition,
@@ -170,17 +170,14 @@ export function asExample(spec: ExampleSpec): Example {
 /** Headline numbers for the picker, computed from the spec rather than a built ontology. */
 export function exampleSize(spec: ExampleSpec): {
   classes: number;
-  objectProperties: number;
-  datatypeProperties: number;
+  relations: number;
+  attributes: number;
 } {
   return {
     classes: spec.classes.length,
-    objectProperties:
+    relations:
       new Set(spec.relations.map((relation) => relation.name)).size +
       (spec.spareProperties?.length ?? 0),
-    datatypeProperties: spec.classes.reduce(
-      (total, entry) => total + (entry.attributes?.length ?? 0),
-      0,
-    ),
+    attributes: spec.classes.reduce((total, entry) => total + (entry.attributes?.length ?? 0), 0),
   };
 }

@@ -47,7 +47,7 @@ export function ConnectionPicker() {
 
   return (
     <Modal
-      title="Which object property?"
+      title="Which relation?"
       open
       onClose={close}
       footer={
@@ -71,14 +71,14 @@ export function ConnectionPicker() {
         <strong>{object.localName}</strong>
       </p>
 
-      <Field label="Property" hint="Reuse one you already have, or create a new one.">
+      <Field label="Relation" hint="Reuse one you already have, or create a new one.">
         <Select
           value={choice}
-          aria-label="Object property to use"
+          aria-label="Relation to use"
           onChange={(event) => setChoice(event.target.value)}
         >
-          <option value="">— create a new property —</option>
-          {ontology.objectProperties.map((property) => {
+          <option value="">— create a new relation —</option>
+          {ontology.relations.map((property) => {
             const uses = usagesOfProperty(ontology, property.id).length;
             return (
               <option key={property.id} value={property.id}>
@@ -92,7 +92,7 @@ export function ConnectionPicker() {
 
       {creatingNew ? (
         <Field
-          label="New property name"
+          label="New relation name"
           error={newName.trim() && cleanedNewName === '' ? 'That name cannot be used.' : undefined}
         >
           <input
@@ -103,7 +103,7 @@ export function ConnectionPicker() {
             // The dialog owns initial focus; this marks the field it should land on.
             data-autofocus
             placeholder="offeredBy"
-            aria-label="New object property name"
+            aria-label="New relation name"
             onChange={(event) => setNewName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') confirm();

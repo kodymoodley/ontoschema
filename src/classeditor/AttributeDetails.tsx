@@ -3,7 +3,7 @@ import type { XsdDatatype } from '../annotationvocabulary';
 import {
   entityIri,
   findClass,
-  findDatatypeProperty,
+  findAttribute,
   toPropertyLocalName,
   usagesOfProperty,
 } from '../ontologymodel';
@@ -12,20 +12,20 @@ import { Button, Field, NameInput, Select } from '../designsystem';
 import styles from './details.module.css';
 
 /**
- * Inspector section for a selected datatype property: what it is, and which classes use it.
+ * Inspector section for a selected attribute: what it is, and which classes use it.
  *
  * The xsd range lives on the property rather than on each use, because `price` is a decimal
  * wherever it appears — which is also what makes `rdfs:range` always safe to export.
  */
 export function AttributeDetails({ propertyId }: { propertyId: string }) {
   const ontology = useOntology();
-  const entity = findDatatypeProperty(ontology, propertyId);
+  const entity = findAttribute(ontology, propertyId);
 
-  const rename = useProjectStore((state) => state.renameDatatypePropertyById);
+  const rename = useProjectStore((state) => state.renameAttributeById);
   const setRange = useProjectStore((state) => state.setAttributeRange);
   const attachToClass = useProjectStore((state) => state.attachPropertyToClass);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
-  const remove = useProjectStore((state) => state.deleteDatatypePropertyById);
+  const remove = useProjectStore((state) => state.deleteAttributeById);
   const select = useProjectStore((state) => state.select);
 
   if (!entity) return null;
@@ -42,7 +42,7 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
           aria-label="Attribute local name"
           onCommit={(value) => rename(propertyId, value)}
           validate={(value) =>
-            toPropertyLocalName(value) === '' ? 'A property needs a name.' : undefined
+            toPropertyLocalName(value) === '' ? 'An attribute needs a name.' : undefined
           }
         />
       </Field>
@@ -51,7 +51,7 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
         <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
       </Field>
 
-      <Field label="Range" hint="The xsd datatype of the value, wherever this property is used.">
+      <Field label="Range" hint="The xsd datatype of the value, wherever this attribute is used.">
         <Select
           value={entity.range}
           aria-label="Attribute range"
@@ -75,7 +75,7 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
       >
         {usages.length === 0 ? (
           <p className={styles.unusedNote}>
-            Not used by any class yet. Drag it from the Datatype properties list onto a class.
+            Not used by any class yet. Drag it from the Attributes list onto a class.
           </p>
         ) : (
           <ul className={styles.list}>

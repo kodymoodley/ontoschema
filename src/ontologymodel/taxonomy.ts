@@ -1,4 +1,4 @@
-import type { DatatypeProperty, ObjectProperty, Ontology, OntologyClass } from './types';
+import type { Attribute, Relation, Ontology, OntologyClass } from './types';
 
 /**
  * Taxonomy queries over class and object-property hierarchies.
@@ -47,14 +47,14 @@ export function canSubclass(ontology: Ontology, childId: string, parentId: strin
 }
 
 export function canSubproperty(ontology: Ontology, childId: string, parentId: string): boolean {
-  return !wouldCycle(toHierarchyProps(ontology.objectProperties), childId, parentId);
+  return !wouldCycle(toHierarchyProps(ontology.relations), childId, parentId);
 }
 
 function toHierarchy(classes: readonly OntologyClass[]): HierarchyNode[] {
   return classes.map((entity) => ({ id: entity.id, parentIds: entity.superClassIds }));
 }
 
-function toHierarchyProps(properties: readonly ObjectProperty[]): HierarchyNode[] {
+function toHierarchyProps(properties: readonly Relation[]): HierarchyNode[] {
   return properties.map((entity) => ({ id: entity.id, parentIds: entity.superPropertyIds }));
 }
 
@@ -101,18 +101,18 @@ export function classForest(ontology: Ontology): TaxonomyNode<OntologyClass>[] {
   return buildForest(ontology.classes, (entity) => entity.superClassIds);
 }
 
-export function objectPropertyForest(ontology: Ontology): TaxonomyNode<ObjectProperty>[] {
-  return buildForest(ontology.objectProperties, (entity) => entity.superPropertyIds);
+export function relationForest(ontology: Ontology): TaxonomyNode<Relation>[] {
+  return buildForest(ontology.relations, (entity) => entity.superPropertyIds);
 }
 
 /**
- * Datatype properties are presented as a flat, alphabetical pool rather than a hierarchy.
+ * Attributes are presented as a flat, alphabetical pool rather than a hierarchy.
  * They are the attributes a class can carry, and arranging attributes into a taxonomy is
  * rarely meaningful — the useful question is only "which ones exist, and where are they
  * used".
  */
-export function datatypePropertyList(ontology: Ontology): DatatypeProperty[] {
-  return [...ontology.datatypeProperties].sort((a, b) => a.localName.localeCompare(b.localName));
+export function attributeList(ontology: Ontology): Attribute[] {
+  return [...ontology.attributes].sort((a, b) => a.localName.localeCompare(b.localName));
 }
 
 /** Root classes, in model order — each becomes its own module box in the taxonomy view. */

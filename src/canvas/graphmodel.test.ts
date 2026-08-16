@@ -229,13 +229,13 @@ describe('what survives a re-derive', () => {
 });
 
 /**
- * How far a rename reaches. A datatype property lives in a pool and can sit on many classes at
+ * How far a rename reaches. A attribute lives in a pool and can sit on many classes at
  * once, so renaming it from inside one class renames it on all of them. Each row therefore
  * carries the number of *other* classes holding the same property, and the node uses it to say
  * so before the rename happens.
  */
 describe('how widely an attribute is used', () => {
-  /** Puts one datatype property on `count` classes and returns the rows of the first. */
+  /** Puts one attribute on `count` classes and returns the rows of the first. */
   function rowsAfterSharingAcross(count: number) {
     let ontology = createEmptyOntology();
     const ids: string[] = [];
@@ -284,7 +284,7 @@ describe('how widely an attribute is used', () => {
 
   it('counts a class once even if it holds the property twice', () => {
     const { ontology, ids } = rowsAfterSharingAcross(2);
-    const property = ontology.datatypeProperties[0]!;
+    const property = ontology.attributes[0]!;
     const twice = attachProperty(ontology, {
       propertyId: property.id,
       subjectClassId: ids[0]!,

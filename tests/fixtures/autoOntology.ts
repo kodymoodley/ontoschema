@@ -2,7 +2,7 @@ import {
   addAnnotation,
   addAttributeToClass,
   addClass,
-  addObjectProperty,
+  addRelation,
   addRelationBetween,
   addSubClassOf,
   attachProperty,
@@ -18,7 +18,7 @@ import type { XsdDatatype } from '../../src/annotationvocabulary';
  * Vehicle
  *   +- Car (make, model, year, engine, price)  --offeredBy-->  Dealership
  *   +- Truck                                                   (Organization)
- * plus `hasPart`, an object property that exists but is not used anywhere.
+ * plus `hasPart`, an relation that exists but is not used anywhere.
  */
 export interface AutoOntology {
   ontology: Ontology;
@@ -85,7 +85,7 @@ export function buildAutoOntology(): AutoOntology {
   ontology = offeredBy.ontology;
 
   // Declared but never used, so it appears in the property list and nowhere on the canvas.
-  const hasPart = addObjectProperty(ontology, { localName: 'hasPart' });
+  const hasPart = addRelation(ontology, { localName: 'hasPart' });
   ontology = hasPart.ontology;
 
   ontology = addAnnotation(ontology, 'class', car.id, 'skos:prefLabel', 'Car', 'en');
@@ -103,7 +103,7 @@ export function buildAutoOntology(): AutoOntology {
   ontology = addAnnotation(ontology, 'class', dealership.id, 'skos:altLabel', 'Autodealer', 'nl');
   ontology = addAnnotation(
     ontology,
-    'objectProperty',
+    'relation',
     offeredBy.propertyId,
     'rdfs:label',
     'offered by',
@@ -111,7 +111,7 @@ export function buildAutoOntology(): AutoOntology {
   );
   ontology = addAnnotation(
     ontology,
-    'datatypeProperty',
+    'attribute',
     attributeIds.price ?? '',
     'skos:definition',
     'Asking price in euro.',

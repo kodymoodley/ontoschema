@@ -37,8 +37,8 @@ beforeEach(() => {
 function assertConsistent(model: Ontology, context: string): void {
   const classIds = new Set(model.classes.map((entity) => entity.id));
   const propertyIds = new Set([
-    ...model.objectProperties.map((entity) => entity.id),
-    ...model.datatypeProperties.map((entity) => entity.id),
+    ...model.relations.map((entity) => entity.id),
+    ...model.attributes.map((entity) => entity.id),
   ]);
 
   for (const usage of model.usages) {
@@ -61,8 +61,8 @@ function assertConsistent(model: Ontology, context: string): void {
 
   const names = [
     ...model.classes.map((e) => e.localName),
-    ...model.objectProperties.map((e) => e.localName),
-    ...model.datatypeProperties.map((e) => e.localName),
+    ...model.relations.map((e) => e.localName),
+    ...model.attributes.map((e) => e.localName),
   ];
   for (const name of names) {
     expect(validateLocalName(name).valid, `${context}: illegal local name "${name}"`).toBe(true);
@@ -95,7 +95,7 @@ function assertConsistent(model: Ontology, context: string): void {
   );
 
   // A range the model does not recognise would export as a broken datatype IRI.
-  for (const property of model.datatypeProperties) {
+  for (const property of model.attributes) {
     expect(isXsdDatatype(property.range), `${context}: unknown range "${property.range}"`).toBe(
       true,
     );
@@ -104,8 +104,8 @@ function assertConsistent(model: Ontology, context: string): void {
   // Annotations are addressed by term, so an unknown one has nowhere to go on export.
   const annotated = [
     ...model.classes,
-    ...model.objectProperties,
-    ...model.datatypeProperties,
+    ...model.relations,
+    ...model.attributes,
     { annotations: model.annotations },
   ];
   for (const entity of annotated) {
@@ -139,8 +139,8 @@ const LANGUAGES = [undefined, 'en', 'nl', 'ar'];
 function applyRandomEdit(random: () => number, step: number): void {
   const model = ontology();
   const classes = model.classes;
-  const properties = model.objectProperties;
-  const attributes = model.datatypeProperties;
+  const properties = model.relations;
+  const attributes = model.attributes;
   const roll = random();
 
   if (roll < 0.18 || classes.length < 2) {
@@ -149,7 +149,7 @@ function applyRandomEdit(random: () => number, step: number): void {
     const target = pick(random, classes);
     if (target) store().createAttributeOn(target.id, { localName: `field${step}` });
   } else if (roll < 0.46) {
-    store().createObjectProperty({ localName: `rel${step}` });
+    store().createRelation({ localName: `rel${step}` });
   } else if (roll < 0.6) {
     const subject = pick(random, classes);
     const object = pick(random, classes);
@@ -170,9 +170,9 @@ function applyRandomEdit(random: () => number, step: number): void {
     const target = pick(random, [...properties, ...attributes]);
     if (!target) return;
     if (properties.some((one) => one.id === target.id)) {
-      store().renameObjectPropertyById(target.id, `renamed${step}`);
+      store().renameRelationById(target.id, `renamed${step}`);
     } else {
-      store().renameDatatypePropertyById(target.id, `renamed${step}`);
+      store().renameAttributeById(target.id, `renamed${step}`);
     }
   } else if (roll < 0.83) {
     const target = pick(random, attributes);
@@ -181,8 +181,8 @@ function applyRandomEdit(random: () => number, step: number): void {
   } else if (roll < 0.87) {
     const subject = pick(random, [
       ...classes.map((entity) => ({ kind: 'class' as const, id: entity.id })),
-      ...properties.map((entity) => ({ kind: 'objectProperty' as const, id: entity.id })),
-      ...attributes.map((entity) => ({ kind: 'datatypeProperty' as const, id: entity.id })),
+      ...properties.map((entity) => ({ kind: 'relation' as const, id: entity.id })),
+      ...attributes.map((entity) => ({ kind: 'attribute' as const, id: entity.id })),
     ]);
     const term = pick(random, ANNOTATION_TERMS);
     if (subject && term) store().annotate(subject, term, `note ${step}`, pick(random, LANGUAGES));
@@ -195,8 +195,8 @@ function applyRandomEdit(random: () => number, step: number): void {
   } else {
     const target = pick(random, [...properties, ...attributes]);
     if (!target) return;
-    if (properties.some((p) => p.id === target.id)) store().deleteObjectPropertyById(target.id);
-    else store().deleteDatatypePropertyById(target.id);
+    if (properties.some((p) => p.id === target.id)) store().deleteRelationById(target.id);
+    else store().deleteAttributeById(target.id);
   }
 }
 
@@ -227,8 +227,8 @@ describe('a fuzzed editing session', () => {
     const annotations = [
       ...model.annotations,
       ...model.classes.flatMap((entity) => entity.annotations),
-      ...model.objectProperties.flatMap((entity) => entity.annotations),
-      ...model.datatypeProperties.flatMap((entity) => entity.annotations),
+      ...model.relations.flatMap((entity) => entity.annotations),
+      ...model.attributes.flatMap((entity) => entity.annotations),
     ];
     expect(annotations.length, `seed ${seed} annotated nothing`).toBeGreaterThan(0);
     expect(
@@ -337,7 +337,7 @@ describe('destructive storms', () => {
   });
 
   it('keeps one property usable across many classes', () => {
-    const shared = store().createObjectProperty({ localName: 'isRelatedTo' });
+    const shared = store().createRelation({ localName: 'isRelatedTo' });
     const ids = Array.from({ length: 15 }, (_, index) =>
       store().createClass({ localName: `Node${index}` }),
     );
