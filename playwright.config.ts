@@ -14,6 +14,17 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
+  /*
+   * A test that fails and then passes on a retry is reported as "flaky", and by default the run
+   * still counts as a success. So an intermittent failure returning would appear as one line of
+   * text inside a green run, and nobody would be told about it.
+   *
+   * The retries stay, because a retried failure still records a trace and that is what makes it
+   * possible to diagnose later. What changes is that the run now fails, so the fact reaches
+   * someone. This matters here specifically: a WebKit flake was open for weeks and then stopped
+   * without anyone finding the cause, so the only defence against its return is being told.
+   */
+  failOnFlakyTests: Boolean(process.env.CI),
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   timeout: 30_000,
