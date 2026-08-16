@@ -23,11 +23,19 @@ import styles from './canvas.module.css';
 import { DOUBLE_TAP_MS, TAP_SLOP_PX } from '../designsystem';
 import { OWNS_DOUBLE_CLICK } from './gestures';
 import { NODE_TYPE, sameClassNode, sameRelationEdge, schemaEdges, schemaNodes } from './graphmodel';
-import { focusZoom, nextFreePosition } from './layout';
+import { CLASS_NODE_WIDTH, focusZoom, nextFreePosition } from './layout';
+import { provideViewCentre, viewCentre } from './viewcentre';
 
 /** How far the viewport may be pushed, including by a focus request. */
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
+
+/*
+ * Half the height of a class with nothing in it yet, so a new one is centred on the view rather
+ * than hanging below the middle. Approximate on purpose: it only decides where the box starts,
+ * and it is off by a row's worth at most once attributes are added.
+ */
+const NEW_CLASS_HALF_HEIGHT = 65;
 
 /** Distance between a touch and a point remembered from an earlier one. */
 const apart = (touch: { clientX: number; clientY: number }, from: { x: number; y: number }) =>
@@ -184,6 +192,20 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
       beginConnection({ subjectClassId: connection.source, objectClassId: connection.target });
     },
     [beginConnection],
+  );
+
+  /*
+   * Tell the palette where the middle of the view is, for as long as this canvas is on screen.
+   * The palette is rendered outside React Flow's provider and cannot work it out itself.
+   */
+  useEffect(
+    () =>
+      provideViewCentre(() => {
+        const box = surface.current?.getBoundingClientRect();
+        if (!box) return null;
+        return screenToFlowPosition({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+      }),
+    [screenToFlowPosition],
   );
 
   /*
@@ -442,7 +464,22 @@ export function usePaletteCreate() {
   const create = useCallback(
     (kind: 'class' | 'attribute') => {
       if (kind === 'class') {
-        createClass({ position: nextFreePosition(ontology.classes.map((e) => e.position)) });
+        /*
+         * Land where the user is looking. `nextFreePosition` still has the last word, so a class
+         * dropped onto an occupied middle steps aside rather than stacking -- it just starts
+         * counting from the view instead of from the top-left of an unbounded canvas, which is
+         * what used to walk new classes off the screen you were working on.
+         */
+        const centre = viewCentre();
+        const taken = ontology.classes.map((entity) => entity.position);
+        createClass({
+          position: centre
+            ? nextFreePosition(taken, {
+                x: centre.x - CLASS_NODE_WIDTH / 2,
+                y: centre.y - NEW_CLASS_HALF_HEIGHT,
+              })
+            : nextFreePosition(taken),
+        });
         return;
       }
       if (selectedClassId) createAttributeOn(selectedClassId);

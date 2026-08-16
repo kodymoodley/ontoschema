@@ -312,3 +312,54 @@ test('work survives a page reload', async ({ page }) => {
   await expect(page.locator('[data-class-name="Car"]')).toBeVisible();
   await expect(page.locator('[data-class-name="Car"] [data-attribute-name]')).toHaveCount(1);
 });
+
+/**
+ * A class created from the palette lands where you are looking.
+ *
+ * It used to go into the next free slot of a grid starting at the top left of an unbounded
+ * canvas, so on a schema of any size the new class appeared somewhere off screen and the palette
+ * seemed to do nothing at all.
+ */
+async function centreOffsetOf(page: Page, className: string) {
+  const node = await page.locator(`[data-class-name="${className}"]`).boundingBox();
+  const canvas = await page.getByTestId('schema-canvas').boundingBox();
+  if (!node || !canvas) throw new Error('could not measure');
+  return {
+    x: Math.abs(node.x + node.width / 2 - (canvas.x + canvas.width / 2)) / canvas.width,
+    y: Math.abs(node.y + node.height / 2 - (canvas.y + canvas.height / 2)) / canvas.height,
+  };
+}
+
+test('a class created from the palette lands in the middle of the view', async ({ page }) => {
+  await openApp(page);
+  await page.locator('[data-palette-kind="class"]').click();
+
+  const offset = await centreOffsetOf(page, 'NewClass');
+  expect(offset.x, 'horizontally centred').toBeLessThan(0.1);
+  expect(offset.y, 'vertically centred').toBeLessThan(0.1);
+});
+
+test('and follows the view after it has been panned', async ({ page }) => {
+  await openApp(page);
+  await page.locator('[data-palette-kind="class"]').click();
+  await renameClassOnCanvas(page, 'NewClass', 'First');
+
+  // Drag the canvas itself, so the middle of the view is somewhere else entirely.
+  const canvas = await page.getByTestId('schema-canvas').boundingBox();
+  if (!canvas) throw new Error('no canvas');
+  await page.mouse.move(canvas.x + canvas.width * 0.8, canvas.y + canvas.height * 0.8);
+  await page.mouse.down();
+  await page.mouse.move(canvas.x + canvas.width * 0.2, canvas.y + canvas.height * 0.2, {
+    steps: 12,
+  });
+  await page.mouse.up();
+
+  await page.locator('[data-palette-kind="class"]').click();
+
+  const offset = await centreOffsetOf(page, 'NewClass');
+  expect(offset.x, 'still centred after panning').toBeLessThan(0.1);
+  expect(offset.y, 'still centred after panning').toBeLessThan(0.1);
+
+  // The first class is left where it was rather than being shuffled aside.
+  await expect(page.locator('[data-class-name="First"]')).toHaveCount(1);
+});
