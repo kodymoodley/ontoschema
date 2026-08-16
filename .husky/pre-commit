@@ -3,6 +3,13 @@
 # Format and lint the staged files, then run the unit tests those files affect.
 # Integration and end-to-end suites are left to CI, so committing stays fast.
 npx lint-staged || exit 1
+
+# Formatting is all a prose commit needs. The tests and the typecheck below are about code, and
+# running them when no code changed is pure delay.
+# `|| true` because husky runs hooks under `set -e`, and grep exits 1 when it matches nothing,
+# which would abort the hook before the check below could act on the empty result.
+staged_code=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx)$' || true)
+[ -z "$staged_code" ] && exit 0
 npx vitest related --run --project unit $(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx)$' | tr '\n' ' ') || exit 1
 
 # Typecheck the whole project, not only what is staged. Types cross files, so a commit can

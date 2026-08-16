@@ -26,4 +26,14 @@ while read -r _local_ref local_sha _remote_ref _remote_sha; do
 done
 [ -z "$pushing_commits" ] && exit 0
 
+# Nor does prose. CI already skips Markdown-only changes with `paths-ignore`; without the same
+# rule here every roadmap edit paid half a minute of browser tests for nothing, which is how a
+# hook stops feeling worth keeping.
+changed=$(git diff --name-only origin/main...HEAD)
+if [ -n "$changed" ] && ! printf '%s
+' "$changed" | grep -qv '\.md$'; then
+  echo "Markdown only; skipping the end-to-end gate."
+  exit 0
+fi
+
 npm run test:e2e:fast || exit 1
