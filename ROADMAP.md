@@ -28,16 +28,14 @@ work resumes, and that stays open.
    label and every test that queries one, and each feature added first makes it bigger.
 3. **Multiple superclasses through the UI** — still the one modelling gap that is a defect rather
    than an addition.
-4. **Publish to GitHub Pages** — independent of everything else, and it puts the thing in front of
-   people, which changes what the next priorities should be.
-5. **Mermaid export** — outstanding from the original brief, and the cheapest route from a schema
+4. **Mermaid export** — outstanding from the original brief, and the cheapest route from a schema
    into a document.
-6. **Every ISO 639-1 language code**, then **palette and taxonomy as subtabs** — small, then the
+5. **Every ISO 639-1 language code**, then **palette and taxonomy as subtabs** — small, then the
    first step of the layout work.
-7. **Revamp the interface for small screens** — after the subtabs, which is a piece of it.
-8. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
+6. **Revamp the interface for small screens** — after the subtabs, which is a piece of it.
+7. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
    largest new dependency surface on the list.
-9. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
+8. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
    for opposite reasons: one risks the very legibility that makes the view worth having, the other
    is four features in a sentence and would invalidate the bundled examples.
 
@@ -305,9 +303,9 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 
 ## Shipping
 
-| Item                                                                                                                                                                                                                                                                                                                                                                     | Size |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- |
-| **Publish the app to GitHub Pages** — built in Actions and pushed to a public repository, the way `vichara` and `vichara-site` already work, so the source can stay private. Two consequences worth deciding on first: the app becomes public, and a public repository gets branch protection for free, which is the assumption the CI path filter rests on. _(todo 12)_ | M    |
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Size |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| ~~**Publish the app to GitHub Pages**~~ — _done, live at https://kodymoodley.github.io/ontoschema-site/._ Built on every push to `main` and pushed to a public repository, so the source stays private. One of the two consequences flagged here turned out not to apply: only the built output is public, so the source repository keeps its Free-plan limits and still has no branch protection — which is why the gate is a rule in `CONTRIBUTING.md` and a pre-push hook instead. The deploy refuses to publish if a source map reaches the output, since a map carries the original TypeScript. | —    |
 
 ## Deliberately not doing
 
@@ -407,19 +405,19 @@ constraint authoring belongs in this tool at all. See the note under
 Filed into the sections above, each entry tagged with its number so the two can be matched. The
 list as originally written is in the git history; ask and it comes back.
 
-| #   | Now lives in           | As                                                       | Size |
-| --- | ---------------------- | -------------------------------------------------------- | ---- |
-| 1   | Editing workflow       | Offer every ISO 639-1 language code                      | S    |
-| 2   | Editing workflow       | Move the "draw a relation" hint into a tooltip           | S    |
-| 3   | Editing workflow       | Palette and taxonomy tree as subtabs                     | M    |
-| 4   | Canvas and readability | Halve the minimap                                        | S    |
-| 5   | Canvas and readability | Give the class header more height                        | S    |
-| 6   | Editing workflow       | Revamp the interface for small screens                   | L    |
-| 7   | Canvas and readability | Put a new class in the middle of the canvas              | S    |
-| 8   | Editing workflow       | Say relations and attributes throughout the interface    | M    |
-| 9   | Modelling power        | Cap a schema at 7±2 per module                           | L    |
-| 10  | Export and interop     | Folded into the `owl:imports` item, plus read-only terms | L    |
-| 11  | Canvas and readability | Draw relation edges in the taxonomy view                 | M    |
-| 12  | Shipping               | Publish the app to GitHub Pages                          | M    |
+| #      | Now lives in           | As                                                       | Size |
+| ------ | ---------------------- | -------------------------------------------------------- | ---- |
+| 1      | Editing workflow       | Offer every ISO 639-1 language code                      | S    |
+| 2      | Editing workflow       | Move the "draw a relation" hint into a tooltip           | S    |
+| 3      | Editing workflow       | Palette and taxonomy tree as subtabs                     | M    |
+| 4      | Canvas and readability | Halve the minimap                                        | S    |
+| 5      | Canvas and readability | Give the class header more height                        | S    |
+| 6      | Editing workflow       | Revamp the interface for small screens                   | L    |
+| 7      | Canvas and readability | Put a new class in the middle of the canvas              | S    |
+| 8      | Editing workflow       | Say relations and attributes throughout the interface    | M    |
+| 9      | Modelling power        | Cap a schema at 7±2 per module                           | L    |
+| 10     | Export and interop     | Folded into the `owl:imports` item, plus read-only terms | L    |
+| 11     | Canvas and readability | Draw relation edges in the taxonomy view                 | M    |
+| ~~12~~ | Shipping               | ~~Publish the app to GitHub Pages~~ — done               | —    |
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
