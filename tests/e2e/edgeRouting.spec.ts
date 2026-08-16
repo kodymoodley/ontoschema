@@ -6,6 +6,7 @@ import {
   freePointOnClass,
   openApp,
   relate,
+  settled,
   settledViewport,
 } from './ontoschema';
 import { OWNS_DOUBLE_CLICK } from '../../src/canvas/gestures';
@@ -44,7 +45,20 @@ async function dragClassBy(page: Page, className: string, dx: number, dy: number
   await page.mouse.down();
   await page.mouse.move(x + dx, y + dy, { steps: 15 });
   await page.mouse.up();
-  await page.waitForTimeout(300);
+
+  /*
+   * Wait for the node to stop moving rather than guessing how long that takes. The position and
+   * the edge routing come out of the same store update, so once the node's transform has held
+   * still for an interval the edges beside it have been recomputed too, which is what the
+   * callers go on to measure.
+   */
+  await settled(
+    () =>
+      page
+        .locator(`[data-class-name="${className}"]`)
+        .evaluate((element) => element.closest('.react-flow__node')?.getAttribute('style') ?? ''),
+    `${className} never stopped moving after the drag`,
+  );
 }
 
 /**
