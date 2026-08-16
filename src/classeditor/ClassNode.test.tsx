@@ -76,16 +76,35 @@ describe('ClassNode double-click', () => {
     expect(store().focusRequest).toBeNull();
   });
 
-  it('renames rather than focusing when the header is double-clicked', async () => {
+  it('renames rather than focusing when the name is double-clicked', async () => {
     const user = userEvent.setup();
     const car = seed();
     renderNode(car);
 
     await user.dblClick(screen.getByTitle('Car'));
 
-    // The header keeps the rename gesture and stops it reaching the node.
+    // The name keeps the rename gesture and stops it reaching the node.
     expect(screen.getByLabelText('Class name')).toBeInTheDocument();
     expect(store().focusRequest).toBeNull();
+  });
+
+  it('focuses rather than renaming when the header beside the name is double-clicked', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+
+    const header = document.querySelector('header');
+    expect(header).not.toBeNull();
+    await user.dblClick(header as HTMLElement);
+
+    /*
+     * The gesture belongs to the name, not to the strip it sits in. Before this the whole header
+     * opened the editor, which left a class with almost nowhere to aim a double-click: the header
+     * renamed it, every attribute row renamed that property, and only the footer was free — a
+     * share that shrank as the class grew.
+     */
+    expect(screen.queryByLabelText('Class name')).not.toBeInTheDocument();
+    expect(store().focusRequest).toBe(car);
   });
 
   it('still renames from the header after a focus elsewhere on the node', async () => {

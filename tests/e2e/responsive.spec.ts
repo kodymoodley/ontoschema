@@ -103,7 +103,7 @@ test.describe('narrow', () => {
     await page.getByRole('button', { name: 'Entities' }).click();
     await page.locator('[data-palette-kind="class"]').click();
 
-    await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+    await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
     await page.getByLabel('Class name').fill('Car');
     await page.getByLabel('Class name').press('Enter');
 

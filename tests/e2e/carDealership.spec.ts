@@ -29,10 +29,10 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
   await expect(page.locator('[data-class-node-id]')).toHaveCount(2);
 
   // 2. Name them.
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
-  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').last().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Dealership');
   await page.getByLabel('Class name').press('Enter');
 
@@ -135,7 +135,7 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
 test('all four serializations download and agree with each other', async ({ page }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 240, y: 180 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
 
@@ -166,11 +166,11 @@ test('all four serializations download and agree with each other', async ({ page
 test('an object property stays off the canvas until it is used in a relation', async ({ page }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
   await dragFromPalette(page, 'class', { x: 380, y: 120 });
-  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').last().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Wheel');
   await page.getByLabel('Class name').press('Enter');
 
@@ -204,7 +204,7 @@ test('a datatype property must be dropped onto a class, not onto empty canvas', 
 }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
 
@@ -225,11 +225,11 @@ test('a datatype property is reused on a second class by dragging it from the li
 }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
   await dragFromPalette(page, 'class', { x: 380, y: 120 });
-  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').last().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Product');
   await page.getByLabel('Class name').press('Enter');
 

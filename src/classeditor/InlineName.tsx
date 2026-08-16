@@ -25,14 +25,26 @@ interface InlineNameProps {
   inputClassName: string | undefined;
   /** Shown beside the field while editing, to say how far a rename will reach. */
   hint?: string;
+  /**
+   * Opens the editor from a double-click on the text itself, for callers that want the gesture
+   * to belong to the name rather than to whatever the name sits in. Callers whose container
+   * already owns the gesture leave this out.
+   */
+  onTextDoubleClick?: (event: React.MouseEvent) => void;
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
 }
 
-export function InlineName({ value, textClassName, editing, ...editable }: InlineNameProps) {
+export function InlineName({
+  value,
+  textClassName,
+  editing,
+  onTextDoubleClick,
+  ...editable
+}: InlineNameProps) {
   if (!editing) {
     return (
-      <span className={textClassName} title={value}>
+      <span className={textClassName} title={value} onDoubleClick={onTextDoubleClick}>
         {value}
       </span>
     );

@@ -16,12 +16,12 @@ import {
 /** Two named classes on the canvas — the starting point for most of these workflows. */
 async function twoClasses(page: Page, first: string, second: string) {
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill(first);
   await page.getByLabel('Class name').press('Enter');
 
   await dragFromPalette(page, 'class', { x: 380, y: 120 });
-  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').last().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill(second);
   await page.getByLabel('Class name').press('Enter');
 }
@@ -32,7 +32,7 @@ test('a taxonomy is built in the hierarchy panel and laid out in the taxonomy vi
   await openApp(page);
   await twoClasses(page, 'Vehicle', 'Car');
   await dragFromPalette(page, 'class', { x: 60, y: 340 });
-  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').last().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Truck');
   await page.getByLabel('Class name').press('Enter');
 
@@ -75,7 +75,7 @@ test('a second root class becomes its own taxonomy module', async ({ page }) => 
   await openApp(page);
   await twoClasses(page, 'Vehicle', 'Car');
   await dragFromPalette(page, 'class', { x: 60, y: 340 });
-  await page.locator('[data-class-node-id]').last().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').last().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Organization');
   await page.getByLabel('Class name').press('Enter');
 
@@ -135,7 +135,7 @@ test('deleting a class removes its attributes and relations from the export', as
 test('a name field can be cleared and retyped, and flags itself while empty', async ({ page }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
   await selectClass(page, 'Car');
@@ -182,7 +182,7 @@ test('a name with characters illegal in an IRI is corrected rather than exported
 }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Used Car/Model #1');
   await page.getByLabel('Class name').press('Enter');
 
@@ -208,7 +208,7 @@ test('an empty ontology exports a valid document containing only its header', as
 test('annotations in two languages survive a round trip through the export', async ({ page }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
 
@@ -269,7 +269,7 @@ test('undo and redo step through the edit history', async ({ page }) => {
 test('projects are independent and can be switched between', async ({ page }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
   await page.getByLabel('Project name').fill('Automotive');
@@ -281,7 +281,7 @@ test('projects are independent and can be switched between', async ({ page }) =>
   // The new project starts empty rather than inheriting the previous ontology.
   await expect(page.locator('[data-class-node-id]')).toHaveCount(0);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Book');
   await page.getByLabel('Class name').press('Enter');
 
@@ -301,7 +301,7 @@ test('projects are independent and can be switched between', async ({ page }) =>
 test('work survives a page reload', async ({ page }) => {
   await openApp(page);
   await dragFromPalette(page, 'class', { x: 60, y: 120 });
-  await page.locator('[data-class-node-id]').first().locator('header').dblclick();
+  await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
   await page.getByLabel('Class name').fill('Car');
   await page.getByLabel('Class name').press('Enter');
   await selectClass(page, 'Car');

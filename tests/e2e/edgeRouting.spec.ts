@@ -26,7 +26,7 @@ test.beforeEach(async ({ page }) => {
 async function newClass(page: Page, name: string, x: number, y: number) {
   await dragFromPalette(page, 'class', { x, y });
   const node = page.locator('[data-class-node-id]').last();
-  await node.locator('header').dblclick();
+  await node.locator('header [title]').dblclick();
   const input = node.getByLabel('Class name');
   await input.fill(name);
   await input.press('Enter');
