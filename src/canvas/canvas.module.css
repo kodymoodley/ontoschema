@@ -30,6 +30,10 @@
 }
 
 .canvas :global(.react-flow__minimap) {
+  /* Half React Flow's default 200x150. It is an orientation aid, not a second canvas, and at
+     the default size it took a corner of the workspace worth more than the overview. */
+  width: 100px;
+  height: 75px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-base);
