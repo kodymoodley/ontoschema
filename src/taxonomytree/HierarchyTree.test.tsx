@@ -63,21 +63,21 @@ describe('HierarchyTree — classes', () => {
     const user = userEvent.setup();
     render(<HierarchyTree />);
 
-    await user.click(screen.getByRole('button', { name: '+ Root' }));
+    await user.click(screen.getByRole('button', { name: 'Add root class' }));
     expect(ontology().classes).toHaveLength(1);
 
-    await user.click(screen.getByRole('button', { name: '+ Child' }));
+    await user.click(screen.getByRole('button', { name: 'Add child class' }));
     expect(ontology().classes).toHaveLength(2);
     const child = ontology().classes[1];
     expect(child?.superClassIds).toEqual([ontology().classes[0]?.id]);
   });
 
-  it('disables + Child and Delete with nothing selected', () => {
+  it('disables adding a child and deleting with nothing selected', () => {
     store().createClass({ localName: 'Car' });
     store().select(null);
     render(<HierarchyTree />);
-    expect(screen.getByRole('button', { name: '+ Child' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add child class' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Delete selected class' })).toBeDisabled();
   });
 
   it('re-parents by dragging one row onto another', () => {
@@ -196,7 +196,7 @@ describe('HierarchyTree — datatype property pool', () => {
     await user.click(screen.getByRole('tab', { name: 'Data props' }));
 
     await user.click(poolRow('price') as HTMLElement);
-    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Delete datatype property' }));
     expect(ontology().datatypeProperties).toHaveLength(0);
     expect(ontology().usages).toHaveLength(0);
   });

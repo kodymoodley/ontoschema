@@ -17,6 +17,7 @@ import {
   useSelection,
 } from '../projectstore';
 import { Button, EmptyState, Tabs } from '../designsystem';
+import { AddChildIcon, AddRootIcon, DeleteIcon } from './icons';
 import styles from './taxonomytree.module.css';
 
 /**
@@ -97,6 +98,23 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'objectProperties' }) {
 
   const reparent = (childId: string, parentId: string | null) =>
     isClasses ? reparentClass(childId, parentId) : reparentObjectProperty(childId, parentId);
+
+  /*
+   * Named for the tree they belong to. This component renders both the class hierarchy and the
+   * object property hierarchy, and "Add child" alone would be ambiguous between them once the
+   * word is only in a tooltip.
+   *
+   * "selected" is in the delete labels to keep them distinct from the inspector's own "Delete
+   * class", which acts on the same thing from elsewhere. Two buttons answering to one name is a
+   * problem for anyone navigating by name, and it broke three tests that meant the other one.
+   */
+  const label = isClasses
+    ? { root: 'Add root class', child: 'Add child class', remove: 'Delete selected class' }
+    : {
+        root: 'Add root object property',
+        child: 'Add child object property',
+        remove: 'Delete selected object property',
+      };
 
   const addRoot = () => (isClasses ? createClass() : createObjectProperty());
 
@@ -201,15 +219,35 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'objectProperties' }) {
 
   return (
     <>
+      {/*
+        Icons rather than words, because three labelled buttons took most of a narrow panel. Each
+        keeps a name and a tooltip: an icon alone would leave the two "add" buttons looking like
+        the same button twice, and would say nothing at all to a screen reader.
+      */}
       <div className={styles.toolbar}>
-        <Button size="small" onClick={addRoot}>
-          + Root
+        <Button size="small" iconOnly onClick={addRoot} aria-label={label.root} title={label.root}>
+          <AddRootIcon />
         </Button>
-        <Button size="small" onClick={addChild} disabled={!hasSelection}>
-          + Child
+        <Button
+          size="small"
+          iconOnly
+          onClick={addChild}
+          disabled={!hasSelection}
+          aria-label={label.child}
+          title={label.child}
+        >
+          <AddChildIcon />
         </Button>
-        <Button size="small" variant="danger" onClick={removeSelected} disabled={!hasSelection}>
-          Delete
+        <Button
+          size="small"
+          iconOnly
+          variant="danger"
+          onClick={removeSelected}
+          disabled={!hasSelection}
+          aria-label={label.remove}
+          title={label.remove}
+        >
+          <DeleteIcon />
         </Button>
       </div>
 
@@ -257,11 +295,14 @@ function DatatypePropertyPool() {
       <div className={styles.toolbar}>
         <Button
           size="small"
+          iconOnly
           variant="danger"
           onClick={() => selected && deleteProperty(selected)}
           disabled={selected === null}
+          aria-label="Delete datatype property"
+          title="Delete datatype property"
         >
-          Delete
+          <DeleteIcon />
         </Button>
       </div>
 
