@@ -91,4 +91,15 @@ describe('a document written before relations and attributes were renamed', () =
   it('is refused through the file reader too, not only the store', () => {
     expect(projectFromFile(JSON.stringify({ version: 1, project: oldShape }))).toBeNull();
   });
+
+  /*
+   * Turned away by its stated version as well as by its keys. The version had never been read,
+   * so a file could claim anything; a document that says it predates the rename is now refused
+   * whatever it contains.
+   */
+  it('is refused on its version alone, whatever the keys say', () => {
+    const current = projectToFile(projectWithBoth());
+    const backdated = JSON.stringify({ ...JSON.parse(current), version: 1 });
+    expect(projectFromFile(backdated)).toBeNull();
+  });
 });
