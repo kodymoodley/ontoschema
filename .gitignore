@@ -22,3 +22,6 @@ playwright-report.zip
 .env
 .env.*
 !.env.example
+
+mutation/
+.stryker-tmp/

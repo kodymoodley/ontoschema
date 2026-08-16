@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Mutation testing, run by hand rather than in CI. Coverage says which lines ran; this says whether anything would notice if they were wrong. Scoped to the serializers because they are hand-written and tested mostly by example, which is the shape where a mutant survives. Run with `npm run mutation`.",
+  "packageManager": "npm",
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "vitest.mutation.config.ts"
+  },
+  "mutate": ["src/serialization/*.ts", "!src/serialization/*.test.ts"],
+  "reporters": ["json", "progress"],
+  "htmlReporter": {
+    "fileName": "mutation/index.html"
+  },
+  "coverageAnalysis": "perTest",
+  "timeoutMS": 20000,
+  "concurrency": 4,
+  "jsonReporter": {
+    "fileName": "mutation/report.json"
+  }
+}

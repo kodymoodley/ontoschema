@@ -311,3 +311,96 @@ describe('download descriptors', () => {
     expect(sanitizeFilename('my/project:v2')).toBe('my-project-v2');
   });
 });
+
+/**
+ * Escaping inside XML attributes, which is a different rule from escaping between tags.
+ *
+ * Text between tags escapes `<`, `>` and `&`. An attribute additionally escapes the quote that
+ * would otherwise close it early. The suite covered the first and not the second, so deleting
+ * the attribute rule left every test passing.
+ *
+ * Only the ampersand is reachable through the interface: the base IRI validator turns away a
+ * quote or an angle bracket, and every other attribute here holds a validated IRI, a two-letter
+ * language tag or an XSD datatype. The quote rule is therefore a second line of defence, and it
+ * is tested as one — the value has to be built directly, because the interface will not produce
+ * it. Worth keeping rather than deleting as unreachable: it is one line, and the thing it guards
+ * against is a file no parser will read.
+ */
+describe('XML attributes with characters that would break them', () => {
+  const withBaseIri = (iri: string) => {
+    const added = addClass(createEmptyOntology(iri, 'ex'), { localName: 'Car' });
+    return serializeRdfXml(added.ontology);
+  };
+
+  it('escapes an ampersand in a subject IRI, which a user can really type', async () => {
+    // `&` is legal in an IRI — query strings are full of them — and the validator allows it.
+    const xml = withBaseIri('https://example.org/a&b/');
+
+    expect(xml).toContain('&amp;');
+    const quads = await parseRdfXml(xml);
+    expect(quads.some((quad) => quad.subject.value.includes('&'))).toBe(true);
+  });
+
+  it('escapes a double quote rather than closing the attribute early', () => {
+    const xml = withBaseIri('https://example.org/a"b/');
+
+    expect(xml).toContain('&quot;');
+    // A bare quote between the opening one and the end of the tag means a broken attribute.
+    expect(xml).not.toMatch(/rdf:about="[^"]*"[^>]*"/);
+  });
+
+  it('escapes a quote in a namespace declaration, which is an attribute as well', () => {
+    const lines = withBaseIri('https://example.org/a"b/').split('\n');
+    const declaration = lines.find((line) => line.includes('xmlns:ex=')) ?? '';
+
+    expect(declaration).toContain('&quot;');
+    expect(declaration).not.toMatch(/xmlns:ex="[^"]*"./);
+  });
+});
+
+/**
+ * Stable output. A prefix table is a set, so the order it is written in carries no meaning and
+ * every isomorphism check above passes whatever order is used — which is exactly why removing
+ * the sort from two writers broke nothing.
+ *
+ * It matters because a file is not a set. People commit exported schemas, diff them and review
+ * them, and an export whose lines move about turns a one-line change into a whole-file diff.
+ */
+describe('output that does not move between runs', () => {
+  const namespaced = () => {
+    let model = createEmptyOntology('https://example.org/zebra/', 'zz');
+    model = addClass(model, { localName: 'Car' }).ontology;
+    model = addAnnotation(model, 'ontology', '', 'dcterms:title', 'Zebra', 'en');
+    model = addAnnotation(model, 'ontology', '', 'skos:definition', 'About cars', 'en');
+    return model;
+  };
+
+  it('declares prefixes in a fixed order in RDF/XML', () => {
+    const declarations = (xml: string) =>
+      xml
+        .split('\n')
+        .filter((line) => line.includes('xmlns:'))
+        .map((line) => line.trim());
+
+    const order = declarations(serializeRdfXml(namespaced()));
+    expect(order.length).toBeGreaterThan(2);
+    expect([...order].sort()).toEqual(order);
+  });
+
+  it('writes the JSON-LD context in a fixed order', () => {
+    const context = JSON.parse(serializeJsonLd(namespaced()))['@context'] as Record<string, string>;
+    const keys = Object.keys(context);
+
+    expect(keys.length).toBeGreaterThan(2);
+    expect([...keys].sort()).toEqual(keys);
+  });
+
+  it('produces byte-identical files when nothing has changed', () => {
+    // The property that makes a diff meaningful, stated directly rather than through the sorts.
+    for (const format of ['turtle', 'rdfxml', 'jsonld'] as const) {
+      const first = serialize(namespaced(), format).content;
+      const second = serialize(namespaced(), format).content;
+      expect(second, `${format} is not reproducible`).toBe(first);
+    }
+  });
+});

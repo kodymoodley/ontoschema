@@ -108,6 +108,24 @@ honours by dropping the drawer transition. That would remove one known source of
 suite, at the cost of no longer exercising the animated path. It is a trade rather than a fix, and
 it would not explain the Export tab at all.
 
+### Mutation testing, and the number to compare against
+
+Coverage says which lines ran. Mutation testing changes the code on purpose and asks whether any
+test notices, which is a different and harder question. It is scoped to `src/serialization` because
+those writers are hand-written and tested mostly by example, and it is run by hand with
+`npm run mutation` rather than in CI — it takes about 90 seconds and its answer changes slowly.
+
+**Baseline: 79.3%** — 211 mutants killed, 55 survived, on 2026-08-09. It was 71.7% when the tool was
+first pointed at the module; the two survivors worth fixing were quote escaping inside XML
+attributes and the sorting that keeps an export byte-stable, both now covered.
+
+The number is here to tell drift from noise, not to be maximised. The 55 that remain are format
+labels and human-readable descriptions that no test should assert, and equivalent mutants — changes
+no possible input can distinguish, such as `hash >= 0` against `hash > 0`. Writing assertions to kill
+those would make the suite worse, because each one couples a test to how the code is written rather
+than to what it must do. A run that comes back materially _below_ 79.3% means real coverage was
+lost; a run slightly above means someone tested something new. Neither is a target.
+
 ## Modelling power
 
 Everything here stays inside the TBox, which is the line the project has drawn from the start.

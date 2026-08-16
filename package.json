@@ -20,6 +20,7 @@
     "test:node": "vitest run",
     "test:e2e": "playwright test",
     "test:perf": "playwright test --config playwright.perf.config.ts",
+    "mutation": "stryker run",
     "test:e2e:install": "playwright install --with-deps chromium firefox webkit",
     "size": "npm run build && node scripts/checkBundleSize.mjs",
     "languages:refresh": "node scripts/generateLanguageCodes.mjs && prettier --write src/annotationvocabulary/iso639-1.ts",
@@ -37,6 +38,8 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.3",
