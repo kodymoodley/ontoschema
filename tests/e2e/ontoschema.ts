@@ -284,6 +284,34 @@ const ANIMATION_START_MS = 150;
 const ANIMATION_SAMPLE_MS = 100;
 
 /**
+ * Waits until something reads the same twice in a row, then returns it.
+ *
+ * This is what to use instead of guessing a duration. A fixed wait is either too long, and the
+ * suite pays for it on every run, or too short on a loaded machine, and the test fails for a
+ * reason that has nothing to do with the code.
+ *
+ * The seed is `undefined`, which no reading can equal, so the first comparison always fails and
+ * two readings are guaranteed to be a full interval apart. `expect.poll` runs its predicate once
+ * immediately, so seeding it with a real reading would compare two values taken in the same frame
+ * and call a moving thing settled.
+ */
+export async function settled<T>(read: () => Promise<T>, message: string): Promise<T> {
+  let previous: T | undefined;
+  await expect
+    .poll(
+      async () => {
+        const current = await read();
+        const same = current === previous;
+        previous = current;
+        return same;
+      },
+      { message, intervals: Array.from({ length: 12 }, () => ANIMATION_SAMPLE_MS) },
+    )
+    .toBe(true);
+  return read();
+}
+
+/**
  * The canvas viewport transform, once it has stopped moving.
  *
  * Focusing and fitting both animate for 400ms. Sleeping for a fixed period long enough to
@@ -298,25 +326,7 @@ export async function settledViewport(page: Page): Promise<string | null> {
   // readings are taken before anything has moved, and the pre-animation transform is reported
   // as the settled one.
   await page.waitForTimeout(ANIMATION_START_MS);
-
-  /*
-   * Seeded with `undefined`, which no reading can equal, so the first comparison always fails
-   * and two readings are guaranteed to be a full interval apart. `expect.poll` runs its
-   * predicate once immediately, so seeding this with a real reading would compare two values
-   * taken within the same frame and call a moving viewport settled.
-   */
-  let previous: string | null | undefined;
-  await expect
-    .poll(
-      async () => {
-        const current = await read();
-        const settled = current === previous;
-        previous = current;
-        return settled;
-      },
-      { intervals: Array.from({ length: 12 }, () => ANIMATION_SAMPLE_MS) },
-    )
-    .toBe(true);
+  await settled(read, 'the canvas viewport never stopped moving');
 
   return read();
 }
