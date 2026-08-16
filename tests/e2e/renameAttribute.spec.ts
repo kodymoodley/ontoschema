@@ -207,21 +207,39 @@ test('the row keeps its shape and selects the name, as the class header does', a
 test('the row keeps its height whatever font the platform resolves', async ({ page }) => {
   await classWithAttributes(page);
 
+  const make = row(page, 'make');
   const heights: number[] = [];
+
   for (const family of ['sans-serif', 'serif', 'monospace', 'cursive']) {
     await page.addStyleTag({ content: `:root { --font-sans: ${family}; }` });
+    // The override has to have taken effect before anything is measured. Without this the row
+    // can be measured in the previous font, and the test reports agreement it never tested.
+    await expect
+      .poll(() => make.evaluate((element) => getComputedStyle(element).fontFamily))
+      .toContain(family);
 
-    const idle = await row(page, 'make').boundingBox();
-    await row(page, 'make').dblclick();
-    const open = await page.locator('[data-usage-id]').first().boundingBox();
+    const idle = await make.boundingBox();
+    await make.dblclick();
+
+    /*
+     * Wait for the editor rather than measuring straight after the gesture, for two reasons.
+     * The obvious one is that the row is measured once it has changed rather than while it is
+     * changing. The other is that the row stops the double-click propagating precisely so the
+     * class does not zoom, so an open editor is also proof the gesture stayed where it was
+     * aimed: had it reached the node, the canvas would have zoomed and every screen measurement
+     * in this loop would be against a different scale.
+     */
+    await expect(nameField(page)).toBeVisible();
+    const open = await make.boundingBox();
 
     // Opening the editor must not resize the row, whatever the label is being drawn in.
     expect(Math.round(open!.height), `${family}: opening the editor`).toBe(
       Math.round(idle!.height),
     );
 
+    // Closed before the next font is measured, or the next reading is of a row still editing.
     await nameField(page).press('Escape');
-    await expect(row(page, 'make')).toBeVisible();
+    await expect(nameField(page)).toHaveCount(0);
     heights.push(Math.round(idle!.height));
   }
 
