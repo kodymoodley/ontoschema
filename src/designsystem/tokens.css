@@ -28,14 +28,18 @@
   --text-tertiary: #646b78;
   --text-inverse: #ffffff;
 
-  /* Semantic accents: one per entity kind, so the canvas is readable at a glance */
-  --accent-class: #3b5bdb;
-  --accent-class-soft: #eaefff;
-  --accent-class-border: #b9c6f5;
+  /*
+   * Semantic accents: one per entity kind, so the canvas is readable at a glance. The three
+   * follow Protege's convention, because anyone arriving from it already reads them that way:
+   * classes ochre, object properties blue, datatype properties green.
+   */
+  --accent-class: #a8762c;
+  --accent-class-soft: #faf1e0;
+  --accent-class-border: #e3cb9d;
 
-  --accent-relation: #6741d9;
-  --accent-relation-soft: #f0ebff;
-  --accent-relation-border: #c9baf5;
+  --accent-relation: #3b5bdb;
+  --accent-relation-soft: #eaefff;
+  --accent-relation-border: #b9c6f5;
 
   --accent-attribute: #0f9160;
   --accent-attribute-soft: #e6f6ef;
@@ -101,13 +105,13 @@
   --text-tertiary: #8891a0;
   --text-inverse: #14171d;
 
-  --accent-class: #7b93f5;
-  --accent-class-soft: #1e2740;
-  --accent-class-border: #33406a;
+  --accent-class: #d8a85a;
+  --accent-class-soft: #2e2617;
+  --accent-class-border: #5a4a2b;
 
-  --accent-relation: #a48bf7;
-  --accent-relation-soft: #241f3d;
-  --accent-relation-border: #3d3363;
+  --accent-relation: #7b93f5;
+  --accent-relation-soft: #1e2740;
+  --accent-relation-border: #33406a;
 
   --accent-attribute: #3fc494;
   --accent-attribute-soft: #122c23;
