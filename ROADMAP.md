@@ -31,12 +31,17 @@ what to do if it returns. Feature work resumes.
    than an addition.
 4. **Mermaid export** — outstanding from the original brief, and the cheapest route from a schema
    into a document.
-5. **Every ISO 639-1 language code**, then **palette and taxonomy as subtabs** — small, then the
-   first step of the layout work.
-6. **Revamp the interface for small screens** — after the subtabs, which is a piece of it.
-7. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
+5. **Palette and taxonomy as subtabs** — the first step of the layout work. _(The language-code
+   item that used to share this line is done; see the Editing workflow table.)_
+6. **Collect the file actions into one menu** — before the small-screen work rather than after,
+   because a crowded header is one of the things that makes the phone layout unusable, and it is
+   cheaper to fix once here than to design around twice.
+7. **Revamp the interface for small screens** — after the subtabs and the header, both of which
+   are pieces of it. Wants a design note before any code; it is the one item on this list that is
+   a decision rather than a fix.
+8. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
    largest new dependency surface on the list.
-8. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
+9. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
    for opposite reasons: one risks the very legibility that makes the view worth having, the other
    is four features in a sentence and would invalidate the bundled examples.
 
@@ -294,11 +299,12 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Duplicate a class** — with its attributes, as a starting point for a sibling.                                                                                                                                                                                                                                                          | S    |
 | **Schema diffing (given two loaded schemas) to compute and generate changelog entries using the Keep a Changelog standard** — governance for a vocabulary that other teams depend on. Sized up from S: it needs two ontologies loaded at once, a structural diff that survives renames, and a mapping from diff to changelog categories. | L    |
 
-| **Offer every ISO 639-1 language code** — the tag field is free text with a short list of suggestions behind it, so this is the list rather than the control: about 184 entries in place of fifteen. _(todo 1)_ | S |
+| ~~**Offer every ISO 639-1 language code**~~ — _done, and the control changed with it._ The entry assumed the list was the problem. It was not: the field was a text box with a `datalist`, and a datalist filters its suggestions by what is already typed, so with `en` in the box exactly one suggestion showed however long the list grew. It is a select now, carrying all 183 current two-letter codes, generated at build time because `Intl` recognises a different set in each browser engine. | — |
 | **Move the "draw a relation by dragging" hint into a tooltip** — it is a paragraph of standing text in the palette, and the space is worth more than the sentence. _(todo 2)_ | S |
 | **Make the palette and the taxonomy tree subtabs of the left panel** — they are stacked today, so both are cramped and neither is whole. _(todo 3)_ | M |
-| **Say relations and attributes throughout the interface** — rather than object properties and datatype properties. The exported RDF keeps `owl:ObjectProperty`, since that is what the vocabulary calls it; this is only what the user reads. Wide but shallow: every label, tab, aria-label and the tests that query by them. Cheaper the earlier it happens, because every later feature adds more labels to rename. _(todo 8)_ | M |
-| **Revamp the interface for small screens** — shrink the header items to fit, bring the canvas zoom controls into view, and give the palette and taxonomy tree sliding drawers of their own. Drawers exist for the two side panels already, so this extends a pattern rather than inventing one. First step is to confirm what is actually off-screen: nothing in the canvas stylesheet hides the controls at any width. _(todo 6)_ | L |
+| **Say relations and attributes throughout the interface** — rather than object properties and datatype properties. The exported RDF keeps `owl:ObjectProperty` either way, since that is what the vocabulary calls it. **Decide the depth before starting**, because it changes the size. The interface alone is wide but shallow — every label, tab, aria-label and the tests that query by them — and is the **M**. Carrying the same names into the code, so `datatypeProperty` becomes `attribute` across the model, the store, the serializers and the file names, is an **L**: it renames the domain vocabulary itself, touches every module, and is safe only because the suite is thorough. Doing the interface now and the code never would leave the two permanently out of step, which is its own cost. _(todos 8, 14)_ | M–L |
+| **Collect the file actions into one menu, and move export in with them** — save, open, delete and new each take a top-level button, and the header is the most crowded strip in the app. Folding them into one menu reclaims the room and makes the header read as one thing rather than a row of equals. Export belongs there too: it is the only inspector tab that has nothing to do with what is selected, which is why it sits oddly beside Details and Annotations. Moving it touches the tab set, the panel, and the `downloadExport` helper every export test goes through. _(todo 13)_ | M |
+| **Revamp the interface for small screens** — the layout fits on a phone without being usable on one. Observed in use: the canvas ends up too small to work in while the panels stay desktop-sized, the zoom sits too close, and the entities drawer covers the whole canvas — so creating an attribute hides the thing just created, which makes the drawer pattern actively wrong on a small screen rather than merely cramped. Landscape and portrait want different answers and this file has never said which. **Wants a design note before any code**, unlike the rest of this table: the other entries are fixes, and this is a decision about what the app is on a phone. _(todos 6, 15)_ | L |
 
 ## Housekeeping
 
@@ -414,19 +420,22 @@ constraint authoring belongs in this tool at all. See the note under
 Filed into the sections above, each entry tagged with its number so the two can be matched. The
 list as originally written is in the git history; ask and it comes back.
 
-| #      | Now lives in           | As                                                       | Size |
-| ------ | ---------------------- | -------------------------------------------------------- | ---- |
-| 1      | Editing workflow       | Offer every ISO 639-1 language code                      | S    |
-| 2      | Editing workflow       | Move the "draw a relation" hint into a tooltip           | S    |
-| 3      | Editing workflow       | Palette and taxonomy tree as subtabs                     | M    |
-| 4      | Canvas and readability | Halve the minimap                                        | S    |
-| 5      | Canvas and readability | Give the class header more height                        | S    |
-| 6      | Editing workflow       | Revamp the interface for small screens                   | L    |
-| 7      | Canvas and readability | Put a new class in the middle of the canvas              | S    |
-| 8      | Editing workflow       | Say relations and attributes throughout the interface    | M    |
-| 9      | Modelling power        | Cap a schema at 7±2 per module                           | L    |
-| 10     | Export and interop     | Folded into the `owl:imports` item, plus read-only terms | L    |
-| 11     | Canvas and readability | Draw relation edges in the taxonomy view                 | M    |
-| ~~12~~ | Shipping               | ~~Publish the app to GitHub Pages~~ — done               | —    |
+| #      | Now lives in           | As                                                                                        | Size |
+| ------ | ---------------------- | ----------------------------------------------------------------------------------------- | ---- |
+| ~~1~~  | Editing workflow       | ~~Offer every ISO 639-1 language code~~ — done                                            | —    |
+| 2      | Editing workflow       | Move the "draw a relation" hint into a tooltip                                            | S    |
+| 3      | Editing workflow       | Palette and taxonomy tree as subtabs                                                      | M    |
+| 4      | Canvas and readability | Halve the minimap                                                                         | S    |
+| 5      | Canvas and readability | Give the class header more height                                                         | S    |
+| 6      | Editing workflow       | Revamp the interface for small screens                                                    | L    |
+| 7      | Canvas and readability | Put a new class in the middle of the canvas                                               | S    |
+| 8      | Editing workflow       | Say relations and attributes throughout the interface                                     | M    |
+| 9      | Modelling power        | Cap a schema at 7±2 per module                                                            | L    |
+| 10     | Export and interop     | Folded into the `owl:imports` item, plus read-only terms                                  | L    |
+| 11     | Canvas and readability | Draw relation edges in the taxonomy view                                                  | M    |
+| ~~12~~ | Shipping               | ~~Publish the app to GitHub Pages~~ — done                                                | —    |
+| 13     | Editing workflow       | Collect the file actions into one menu, export with them                                  | M    |
+| 14     | Editing workflow       | Folded into the relations-and-attributes rename, which now asks how deep to go            | M–L  |
+| 15     | Editing workflow       | Folded into "Revamp the interface for small screens", which now wants a design note first | L    |
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
