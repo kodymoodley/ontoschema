@@ -232,7 +232,7 @@ test('resolves names that collide once sanitised', async ({ page }) => {
   expect(new Set(subjects).size).toBe(subjects.length);
 });
 
-test('reuses one datatype property across five classes', async ({ page }) => {
+test('reuses one attribute across five classes', async ({ page }) => {
   await openApp(page);
   await newClass(page, 'Car', 40, 120);
   await selectClass(page, 'Car');

@@ -18,7 +18,7 @@ import type { XsdDatatype } from '../../src/annotationvocabulary';
  * Vehicle
  *   +- Car (make, model, year, engine, price)  --offeredBy-->  Dealership
  *   +- Truck                                                   (Organization)
- * plus `hasPart`, an object property that exists but is not used anywhere.
+ * plus `hasPart`, an relation that exists but is not used anywhere.
  */
 export interface AutoOntology {
   ontology: Ontology;

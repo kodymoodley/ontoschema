@@ -29,7 +29,7 @@ export interface ClassSpec {
   definition?: string;
   /** Extra labels, for showing off language tags. */
   labels?: readonly LocalisedText[];
-  /** Datatype properties this class carries. */
+  /** Attributes this class carries. */
   attributes?: readonly (readonly [string, XsdDatatype])[];
 }
 
@@ -53,7 +53,7 @@ export interface ExampleSpec {
   classes: readonly ClassSpec[];
   relations: readonly RelationSpec[];
   /**
-   * Object properties declared but not drawn anywhere — they sit in the property list ready
+   * Relations declared but not drawn anywhere — they sit in the property list ready
    * to be used, which is the quickest way to see what an unused property looks like.
    */
   spareProperties?: readonly (readonly [string, string])[];

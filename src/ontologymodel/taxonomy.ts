@@ -106,7 +106,7 @@ export function relationForest(ontology: Ontology): TaxonomyNode<Relation>[] {
 }
 
 /**
- * Datatype properties are presented as a flat, alphabetical pool rather than a hierarchy.
+ * Attributes are presented as a flat, alphabetical pool rather than a hierarchy.
  * They are the attributes a class can carry, and arranging attributes into a taxonomy is
  * rarely meaningful — the useful question is only "which ones exist, and where are they
  * used".

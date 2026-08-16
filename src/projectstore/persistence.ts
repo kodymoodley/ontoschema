@@ -119,7 +119,7 @@ export function reviveProject(value: unknown): Project | null {
 }
 
 /**
- * Keys used before object properties became relations and datatype properties became attributes.
+ * Keys used before relations became relations and attributes became attributes.
  *
  * A document written then has to be refused rather than read. Nothing here throws on a missing
  * key -- an absent list simply revives as an empty one -- so an old document would otherwise open

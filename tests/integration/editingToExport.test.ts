@@ -119,7 +119,7 @@ describe('editing through the store reaches the model', () => {
     expect(ontology().usages).toHaveLength(before);
   });
 
-  it('reuses an existing object property rather than minting another one', () => {
+  it('reuses an existing relation rather than minting another one', () => {
     const ids = buildAutomotiveProject();
     const propertyCount = ontology().relations.length;
 
@@ -130,7 +130,7 @@ describe('editing through the store reaches the model', () => {
     expect(usagesOfProperty(ontology(), ids.hasPart)).toHaveLength(1);
   });
 
-  it('reuses a datatype property on a second class', () => {
+  it('reuses a attribute on a second class', () => {
     const ids = buildAutomotiveProject();
     store().attachPropertyToClass(ids.price, ids.truck);
 

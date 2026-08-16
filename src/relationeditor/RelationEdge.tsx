@@ -5,7 +5,7 @@ import { useProjectStore } from '../projectstore';
 import styles from './relationeditor.module.css';
 
 /**
- * One use of an object property between two classes, drawn as a directed edge from the
+ * One use of an relation between two classes, drawn as a directed edge from the
  * subject class to the object class. The arrow and the accent colour distinguish it from a
  * subclass link, which is grey and carries a hollow triangle.
  *
@@ -75,7 +75,7 @@ export function RelationEdge({
               type="button"
               className={styles.relationRemove}
               aria-label={`Remove this ${payload.property?.localName ?? 'relation'} relation`}
-              title="Remove this relation — the property stays in the list"
+              title="Remove this use — the relation stays in the list"
               onClick={(event) => {
                 event.stopPropagation();
                 detachUsage(id);

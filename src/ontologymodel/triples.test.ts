@@ -53,7 +53,7 @@ describe('axioms', () => {
     expect(has(triples, 'https://example.org/auto', RDF_TYPE, { value: OWL_ONTOLOGY })).toBe(true);
   });
 
-  it('types classes, object properties and datatype properties', () => {
+  it('types classes, relations and attributes', () => {
     expect(has(triples, `${AUTO}Car`, RDF_TYPE, { value: OWL_CLASS })).toBe(true);
     expect(has(triples, `${AUTO}offeredBy`, RDF_TYPE, { value: OWL_OBJECT_PROPERTY })).toBe(true);
     expect(has(triples, `${AUTO}price`, RDF_TYPE, { value: OWL_DATATYPE_PROPERTY })).toBe(true);
@@ -167,7 +167,7 @@ describe('a reused property cannot have an RDFS domain', () => {
   const { ontology } = buildReusedOntology();
   const triples = ontologyToTriples(ontology, { includeShapes: false });
 
-  it('omits rdfs:domain once a datatype property is used on two classes', () => {
+  it('omits rdfs:domain once a attribute is used on two classes', () => {
     // Repeating the domain would mean intersection: every Car is also a Product.
     expect(objectsOf(triples, `${AUTO}price`, RDFS_DOMAIN)).toHaveLength(0);
   });

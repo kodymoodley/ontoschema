@@ -1,7 +1,7 @@
 # OntoSchema
 
 OntoSchema is a lightweight, browser-based tool for building **schema-level ontologies** — classes,
-object properties and datatype properties arranged into taxonomies — on a drag-and-drop canvas, and
+relations and attributes arranged into taxonomies — on a drag-and-drop canvas, and
 exporting them to standard RDF. You drag classes onto a canvas, drop typed attributes onto them, draw
 relations between them, build subclass hierarchies in a Protégé-style tree, annotate everything with
 RDFS, OWL, Dublin Core, SKOS and PROV-O terms (with language tags), and download the result as Turtle,
@@ -28,13 +28,13 @@ PropertyUsage    { id, propertyId, subjectClassId, objectClassId? }
 A usage maps **1:1 onto a SHACL property shape**, which is per-class and keeps every pairing intact.
 Everything else falls out of that one concept:
 
-| Behaviour                                         | Why it works that way                                        |
-| ------------------------------------------------- | ------------------------------------------------------------ |
-| A datatype property can never float on the canvas | It exists only as a usage on some class                      |
-| An object property is invisible until used        | Zero usages means there is no edge to draw                   |
-| The same property is reused across classes        | Two usages of one property, pairing preserved                |
-| There is no "generic vs scoped" flag              | It is just a usage count: 0, 1, or many                      |
-| Exports never contradict themselves               | `rdfs:domain`/`range` only while a property is used **once** |
+| Behaviour                                  | Why it works that way                                        |
+| ------------------------------------------ | ------------------------------------------------------------ |
+| A attribute can never float on the canvas  | It exists only as a usage on some class                      |
+| An relation is invisible until used        | Zero usages means there is no edge to draw                   |
+| The same property is reused across classes | Two usages of one property, pairing preserved                |
+| There is no "generic vs scoped" flag       | It is just a usage count: 0, 1, or many                      |
+| Exports never contradict themselves        | `rdfs:domain`/`range` only while a property is used **once** |
 
 ## Two export layers
 
@@ -42,7 +42,7 @@ Both ride inside the same `.ttl`/`.rdf`/`.owl`/`.jsonld` files — SHACL is a vo
 serialization — and each can be switched off in the Export panel.
 
 - **OWL / RDFS axioms**: class and property declarations, subclass and subproperty hierarchies, and
-  `rdfs:domain`/`rdfs:range` only where a property is used exactly once. A datatype property's
+  `rdfs:domain`/`rdfs:range` only where a property is used exactly once. A attribute's
   `rdfs:range` is always emitted, because it is the same wherever the property is used.
 - **SHACL shapes**: one `sh:NodeShape` per class with usages, and one named `sh:PropertyShape` per
   (class, property). Several target classes on one path become a single `sh:or` rather than several
@@ -80,10 +80,10 @@ you are already working on is left alone.
    `Car` and `Dealership`.
 2. Select `Car`, and in the inspector's **Details** tab add attributes: `make` (string), `model`
    (string), `year` (integer), `engine` (string), `price` (decimal). They appear as typed rows inside
-   the class box. (Dragging **Datatype property** from the palette onto a class does the same; onto
+   the class box. (Dragging **Attribute** from the palette onto a class does the same; onto
    empty canvas it is refused, because an attribute has to belong to a class.)
 3. Drag from the dot on `Car`'s right edge to the dot on `Dealership`'s left edge, then pick which
-   object property this is — an existing one, or a new one called `offeredBy`.
+   relation this is — an existing one, or a new one called `offeredBy`.
 4. Open the **Annotations** tab and add `skos:prefLabel` twice, with language tags `en` and `nl`.
 5. In the **Ontology** tab, set the base IRI and prefix, and add `dcterms:title`.
 6. In the **Export** tab, choose whether to include axioms and/or SHACL shapes, then download `.ttl`,
@@ -94,14 +94,14 @@ list shows it used `2×`, and the export drops its `rdfs:domain` while gaining a
 
 ### Gestures on the canvas
 
-| Gesture                                             | What it does                                                       |
-| --------------------------------------------------- | ------------------------------------------------------------------ |
-| Drag from any edge of a class to another class      | Draws a relation, then asks which object property it is            |
-| **Double-click (or double-tap) a class**            | Brings it into focus: centred, filling about a third of the canvas |
-| **Double-click (or double-tap) empty canvas**       | Frames the whole schema again — the way back out of a focus        |
-| Double-click a class **header**                     | Renames it in place                                                |
-| Drag a datatype property from the pool onto a class | Reuses that property there                                         |
-| Delete / Backspace                                  | Removes the selection, unless a dialog is open or you are typing   |
+| Gesture                                        | What it does                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| Drag from any edge of a class to another class | Draws a relation, then asks which relation it is                   |
+| **Double-click (or double-tap) a class**       | Brings it into focus: centred, filling about a third of the canvas |
+| **Double-click (or double-tap) empty canvas**  | Frames the whole schema again — the way back out of a focus        |
+| Double-click a class **header**                | Renames it in place                                                |
+| Drag a attribute from the pool onto a class    | Reuses that property there                                         |
+| Delete / Backspace                             | Removes the selection, unless a dialog is open or you are typing   |
 
 Relations attach to whichever pair of sides the two classes actually face, so moving a class
 re-routes its edges rather than leaving them looping back on themselves. Subclass links stay
@@ -265,9 +265,9 @@ Two consequences worth calling out:
 
 ### The two canvas views
 
-- **Schema** — free-form. Class boxes carry their datatype properties as typed rows. Scoped object
+- **Schema** — free-form. Class boxes carry their attributes as typed rows. Scoped object
   properties are coloured, arrow-headed edges with a clickable label; the direction you draw sets
-  domain and range. Generic object properties are standalone pills with no domain or range.
+  domain and range. Generic relations are standalone pills with no domain or range.
 - **Taxonomy** — derived and auto-laid-out. Each root class becomes its own labelled bounding box
   containing a top-down dagre tree, so unrelated branches never cross and large ontologies stay
   legible. Subclass links are grey orthogonal lines ending in a hollow UML generalization triangle —

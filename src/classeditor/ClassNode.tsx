@@ -11,7 +11,7 @@ import styles from './classeditor.module.css';
 
 /**
  * The class shape on the schema canvas: a header carrying the local name, the superclass
- * it sits under, and its datatype properties rendered as typed rows inside the box.
+ * it sits under, and its attributes rendered as typed rows inside the box.
  *
  * Double-clicking the header renames in place; the full editing surface is the inspector.
  */
@@ -113,9 +113,7 @@ export function ClassNode({ data, selected }: NodeProps) {
 
       <div className={styles.attributes}>
         {attributes.length === 0 ? (
-          <p className={styles.emptyAttributes}>
-            Drop a datatype property here to add an attribute.
-          </p>
+          <p className={styles.emptyAttributes}>Drop a attribute here to add an attribute.</p>
         ) : (
           attributes.map((row) => (
             <AttributeItem
@@ -141,7 +139,7 @@ export function ClassNode({ data, selected }: NodeProps) {
 }
 
 /**
- * One datatype property inside a class box.
+ * One attribute inside a class box.
  *
  * A single click selects the property; a double-click renames it here rather than sending you
  * to the inspector. The gesture has to be stopped from reaching the node, which answers a

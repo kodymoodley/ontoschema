@@ -11,7 +11,7 @@ import { Badge, Button, Field, NameInput, Select } from '../designsystem';
 import styles from './relationeditor.module.css';
 
 /**
- * Inspector section for a selected object property: what it is, and every pair of classes
+ * Inspector section for a selected relation: what it is, and every pair of classes
  * it is drawn between.
  *
  * There is no "generic" flag any more — a property is simply used zero, one or many times.
@@ -51,10 +51,10 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
       <Field label="Local name">
         <NameInput
           value={entity.localName}
-          aria-label="Object property local name"
+          aria-label="Relation local name"
           onCommit={(value) => rename(propertyId, value)}
           validate={(value) =>
-            toPropertyLocalName(value) === '' ? 'A property needs a name.' : undefined
+            toPropertyLocalName(value) === '' ? 'A relation needs a name.' : undefined
           }
         />
       </Field>

@@ -100,7 +100,7 @@ export function createOntologyActions(
       editor.edit((ontology) => setSuperClass(ontology, childId, parentId));
     },
 
-    /* ------------------------------------------------ datatype properties */
+    /* ------------------------------------------------ attributes */
 
     createAttributeOn(classId, options = {}) {
       return editor.editReturning((ontology) => {
@@ -122,7 +122,7 @@ export function createOntologyActions(
       forgetIfSelected(id);
     },
 
-    /* -------------------------------------------------- object properties */
+    /* -------------------------------------------------- relations */
 
     createRelation(options = {}) {
       const id = editor.editReturning((ontology) => addRelation(ontology, options));

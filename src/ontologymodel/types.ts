@@ -31,7 +31,7 @@ export interface OntologyClass {
  * property may be used is a *local* fact about a class, not a global fact about the
  * property — see PropertyUsage.
  *
- * A datatype property's xsd range is the exception: `price` is a decimal wherever it is
+ * A attribute's xsd range is the exception: `price` is a decimal wherever it is
  * used, so the range lives on the property and is always safe to export as `rdfs:range`.
  */
 export interface Attribute {
