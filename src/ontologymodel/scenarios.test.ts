@@ -36,8 +36,8 @@ describe.each(allScenarios())('$name', ({ ontology }) => {
   it('gives every entity a distinct, legal IRI', () => {
     const names = [
       ...ontology.classes.map((e) => e.localName),
-      ...ontology.objectProperties.map((e) => e.localName),
-      ...ontology.datatypeProperties.map((e) => e.localName),
+      ...ontology.relations.map((e) => e.localName),
+      ...ontology.attributes.map((e) => e.localName),
     ];
     for (const name of names) {
       expect(validateLocalName(name).valid, `"${name}" is not a legal local name`).toBe(true);
@@ -84,8 +84,8 @@ describe.each(allScenarios())('$name', ({ ontology }) => {
 
     const live = new Set([
       ...ontology.classes.map((e) => entityIri(ontology.iri, e.localName)),
-      ...ontology.objectProperties.map((e) => entityIri(ontology.iri, e.localName)),
-      ...ontology.datatypeProperties.map((e) => entityIri(ontology.iri, e.localName)),
+      ...ontology.relations.map((e) => entityIri(ontology.iri, e.localName)),
+      ...ontology.attributes.map((e) => entityIri(ontology.iri, e.localName)),
     ]);
 
     /*
@@ -223,7 +223,7 @@ describe('adversarial names', () => {
   it('folds a case-only difference into the property naming convention, then deduplicates', () => {
     // Properties are lower-camel by convention, so `Label` and `label` are the same name.
     // Rather than silently overwriting, the second becomes a distinct `label2`.
-    const names = ontology.datatypeProperties.map((entity) => entity.localName);
+    const names = ontology.attributes.map((entity) => entity.localName);
     expect(names).toEqual(['label', 'label2']);
     expect(new Set(names).size).toBe(names.length);
   });
@@ -304,7 +304,7 @@ describe('at scale', () => {
 
   it('builds what was asked for', () => {
     expect(ontology.classes).toHaveLength(200);
-    expect(ontology.datatypeProperties).toHaveLength(200);
+    expect(ontology.attributes).toHaveLength(200);
     expect(ontology.usages).toHaveLength(399);
   });
 

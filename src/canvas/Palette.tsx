@@ -34,12 +34,12 @@ const DRAGGABLE: PaletteEntry[] = [
 interface PaletteProps {
   /** Click fallback for the draggable entries; the attribute needs a selected class. */
   onCreate: (kind: 'class' | 'attribute') => void;
-  onCreateObjectProperty: () => void;
+  onCreateRelation: () => void;
   /** A datatype property can only be created against a class. */
   canCreateAttribute: boolean;
 }
 
-export function Palette({ onCreate, onCreateObjectProperty, canCreateAttribute }: PaletteProps) {
+export function Palette({ onCreate, onCreateRelation, canCreateAttribute }: PaletteProps) {
   return (
     <div className={styles.palette}>
       {DRAGGABLE.map((entry) => {
@@ -80,9 +80,9 @@ export function Palette({ onCreate, onCreateObjectProperty, canCreateAttribute }
       <button
         type="button"
         className={styles.paletteItem}
-        data-palette-kind="objectProperty"
+        data-palette-kind="relation"
         aria-label="Add Object property"
-        onClick={onCreateObjectProperty}
+        onClick={onCreateRelation}
       >
         <span className={`${styles.swatch} ${styles.swatchGeneric}`} aria-hidden="true" />
         <span className={styles.paletteText}>

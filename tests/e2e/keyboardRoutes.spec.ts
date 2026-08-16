@@ -154,9 +154,9 @@ test('a datatype property is put on a second class with the keyboard', async ({ 
 
 test('an object property is re-parented with the keyboard', async ({ page }) => {
   await twoClasses(page);
-  await page.locator('[data-palette-kind="objectProperty"]').click();
+  await page.locator('[data-palette-kind="relation"]').click();
   await page.getByLabel('Object property local name').fill('partOf');
-  await page.locator('[data-palette-kind="objectProperty"]').click();
+  await page.locator('[data-palette-kind="relation"]').click();
   await page.getByLabel('Object property local name').fill('componentOf');
 
   await chooseByKeyboard(page, 'Superproperty', 'part');

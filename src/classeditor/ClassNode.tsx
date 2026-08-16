@@ -3,7 +3,7 @@ import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeCurie } from '../annotationvocabulary';
 import { toClassLocalName, toPropertyLocalName } from '../ontologymodel';
-import type { DatatypeProperty, OntologyClass } from '../ontologymodel';
+import type { Attribute, OntologyClass } from '../ontologymodel';
 import { useDoubleTap } from '../designsystem';
 import { useProjectStore } from '../projectstore';
 import { InlineName } from './InlineName';
@@ -18,7 +18,7 @@ import styles from './classeditor.module.css';
 
 interface AttributeRow {
   usageId: string;
-  property: DatatypeProperty;
+  property: Attribute;
   /** How many other classes carry this same property. */
   usedOnOtherClasses: number;
 }
@@ -159,7 +159,7 @@ interface AttributeItemProps {
 
 function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
   const select = useProjectStore((state) => state.select);
-  const renameProperty = useProjectStore((state) => state.renameDatatypePropertyById);
+  const renameProperty = useProjectStore((state) => state.renameAttributeById);
 
   /*
    * A double-tap has to be recognised by hand. A node is draggable, so React Flow calls
@@ -215,7 +215,7 @@ function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
       }
       onClick={(event) => {
         event.stopPropagation();
-        select({ kind: 'datatypeProperty', id: row.property.id });
+        select({ kind: 'attribute', id: row.property.id });
       }}
       onDoubleClick={(event) => {
         // The node zooms on a double-click; this one belongs to the row.

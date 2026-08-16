@@ -2,7 +2,7 @@ import {
   canSubproperty,
   entityIri,
   findClass,
-  findObjectProperty,
+  findRelation,
   toPropertyLocalName,
   usagesOfProperty,
 } from '../ontologymodel';
@@ -20,13 +20,13 @@ import styles from './relationeditor.module.css';
  */
 export function RelationDetails({ propertyId }: { propertyId: string }) {
   const ontology = useOntology();
-  const entity = findObjectProperty(ontology, propertyId);
+  const entity = findRelation(ontology, propertyId);
 
-  const rename = useProjectStore((state) => state.renameObjectPropertyById);
-  const reparent = useProjectStore((state) => state.reparentObjectProperty);
+  const rename = useProjectStore((state) => state.renameRelationById);
+  const reparent = useProjectStore((state) => state.reparentRelation);
   const setUsageTarget = useProjectStore((state) => state.setUsageTarget);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
-  const remove = useProjectStore((state) => state.deleteObjectPropertyById);
+  const remove = useProjectStore((state) => state.deleteRelationById);
   const select = useProjectStore((state) => state.select);
 
   if (!entity) return null;
@@ -129,7 +129,7 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
           onChange={(event) => reparent(propertyId, event.target.value || null)}
         >
           <option value="">— none —</option>
-          {ontology.objectProperties
+          {ontology.relations
             .filter(
               (candidate) =>
                 candidate.id !== propertyId && canSubproperty(ontology, propertyId, candidate.id),

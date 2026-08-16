@@ -159,8 +159,8 @@ export function ProjectSwitcher() {
                   <span className={styles.exampleTitle}>{example.title}</span>
                   <span className={styles.exampleSummary}>{example.summary}</span>
                   <span className={styles.exampleCounts}>
-                    {size.classes} classes · {size.objectProperties} object properties ·{' '}
-                    {size.datatypeProperties} datatype properties
+                    {size.classes} classes · {size.relations} object properties · {size.attributes}{' '}
+                    datatype properties
                   </span>
                 </button>
               </li>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { findClass, findDatatypeProperty, findObjectProperty } from '../ontologymodel';
+import { findClass, findAttribute, findRelation } from '../ontologymodel';
 import type { EntityRef } from '../ontologymodel';
 import { useOntology, useSelection } from '../projectstore';
 import { AttributeDetails, ClassDetails } from '../classeditor';
@@ -44,10 +44,10 @@ export function Inspector() {
     switch (ref.kind) {
       case 'class':
         return findClass(ontology, ref.id)?.localName ?? null;
-      case 'objectProperty':
-        return findObjectProperty(ontology, ref.id)?.localName ?? null;
-      case 'datatypeProperty':
-        return findDatatypeProperty(ontology, ref.id)?.localName ?? null;
+      case 'relation':
+        return findRelation(ontology, ref.id)?.localName ?? null;
+      case 'attribute':
+        return findAttribute(ontology, ref.id)?.localName ?? null;
       case 'ontology':
         return 'Ontology';
     }
@@ -106,21 +106,21 @@ function DetailsFor({ selection }: { selection: EntityRef | null }) {
     );
   }
   if (selection.kind === 'class') return <ClassDetails classId={selection.id} />;
-  if (selection.kind === 'objectProperty') return <RelationDetails propertyId={selection.id} />;
-  if (selection.kind === 'datatypeProperty') return <AttributeDetails propertyId={selection.id} />;
+  if (selection.kind === 'relation') return <RelationDetails propertyId={selection.id} />;
+  if (selection.kind === 'attribute') return <AttributeDetails propertyId={selection.id} />;
   return null;
 }
 
 function toneFor(ref: EntityRef): 'class' | 'relation' | 'attribute' | 'neutral' {
   if (ref.kind === 'class') return 'class';
-  if (ref.kind === 'objectProperty') return 'relation';
-  if (ref.kind === 'datatypeProperty') return 'attribute';
+  if (ref.kind === 'relation') return 'relation';
+  if (ref.kind === 'attribute') return 'attribute';
   return 'neutral';
 }
 
 function kindLabel(ref: EntityRef): string {
   if (ref.kind === 'class') return 'Class';
-  if (ref.kind === 'objectProperty') return 'Object property';
-  if (ref.kind === 'datatypeProperty') return 'Datatype property';
+  if (ref.kind === 'relation') return 'Object property';
+  if (ref.kind === 'attribute') return 'Datatype property';
   return 'Ontology';
 }

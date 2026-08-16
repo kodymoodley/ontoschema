@@ -284,7 +284,7 @@ describe('how widely an attribute is used', () => {
 
   it('counts a class once even if it holds the property twice', () => {
     const { ontology, ids } = rowsAfterSharingAcross(2);
-    const property = ontology.datatypeProperties[0]!;
+    const property = ontology.attributes[0]!;
     const twice = attachProperty(ontology, {
       propertyId: property.id,
       subjectClassId: ids[0]!,

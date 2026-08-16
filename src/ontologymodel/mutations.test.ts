@@ -4,18 +4,18 @@ import {
   addAnnotation,
   addAttributeToClass,
   addClass,
-  addObjectProperty,
+  addRelation,
   addRelationBetween,
   addSubClassOf,
   attachProperty,
   deleteClass,
-  deleteDatatypeProperty,
-  deleteObjectProperty,
+  deleteAttribute,
+  deleteRelation,
   detachUsage,
   removeAnnotation,
   renameClass,
-  renameObjectProperty,
-  setDatatypePropertyRange,
+  renameRelation,
+  setAttributeRange,
   setOntologyIri,
   setSuperClass,
   setUsageEndpoints,
@@ -25,7 +25,7 @@ import {
   attributeUsagesOfClass,
   createEmptyOntology,
   findClass,
-  findObjectProperty,
+  findRelation,
   relationUsagesTouchingClass,
   usagesOfProperty,
 } from './ontology';
@@ -77,8 +77,8 @@ describe('deleting a class', () => {
     expect(after.usages).toHaveLength(0);
 
     // The properties are a reusable pool; they were never owned by the class.
-    expect(after.datatypeProperties).toHaveLength(5);
-    expect(findObjectProperty(after, ids.offeredBy)).toBeDefined();
+    expect(after.attributes).toHaveLength(5);
+    expect(findRelation(after, ids.offeredBy)).toBeDefined();
   });
 
   it('removes relations pointing at the deleted class as well as from it', () => {
@@ -153,7 +153,7 @@ describe('datatype properties', () => {
       classId: withClass.id,
       localName: 'Engine Size',
     });
-    const property = added.ontology.datatypeProperties.find((p) => p.id === added.propertyId);
+    const property = added.ontology.attributes.find((p) => p.id === added.propertyId);
     expect(property?.localName).toBe('engineSize');
     expect(property?.range).toBe('string');
     expect(attributeUsagesOfClass(added.ontology, withClass.id)).toHaveLength(1);
@@ -161,19 +161,19 @@ describe('datatype properties', () => {
 
   it('carries one global range, since a property is the same datatype wherever it is used', () => {
     const { ontology, ids } = buildAutoOntology();
-    const after = setDatatypePropertyRange(ontology, ids.year, 'dateTime');
-    expect(after.datatypeProperties.find((p) => p.id === ids.year)?.range).toBe('dateTime');
+    const after = setAttributeRange(ontology, ids.year, 'dateTime');
+    expect(after.attributes.find((p) => p.id === ids.year)?.range).toBe('dateTime');
   });
 
   it('shares one namespace with object properties when deduplicating names', () => {
     const { ontology, ids } = buildAutoOntology();
     const added = addAttributeToClass(ontology, { classId: ids.truck, localName: 'offeredBy' });
-    expect(added.ontology.datatypeProperties.at(-1)?.localName).toBe('offeredBy2');
+    expect(added.ontology.attributes.at(-1)?.localName).toBe('offeredBy2');
   });
 
   it('deleting a property removes every usage of it', () => {
     const { ontology, ids } = buildAutoOntology();
-    const after = deleteDatatypeProperty(ontology, ids.price);
+    const after = deleteAttribute(ontology, ids.price);
     expect(usagesOfProperty(after, ids.price)).toHaveLength(0);
     expect(attributeUsagesOfClass(after, ids.car)).toHaveLength(4);
   });
@@ -181,21 +181,21 @@ describe('datatype properties', () => {
 
 describe('object properties', () => {
   it('is created unused, with nothing on the canvas to show for it', () => {
-    const { ontology, id } = addObjectProperty(createEmptyOntology(), { localName: 'isRelatedTo' });
+    const { ontology, id } = addRelation(createEmptyOntology(), { localName: 'isRelatedTo' });
     expect(usagesOfProperty(ontology, id)).toHaveLength(0);
     expect(ontology.usages).toHaveLength(0);
   });
 
   it('renames without touching its usages', () => {
     const { ontology, ids } = buildAutoOntology();
-    const after = renameObjectProperty(ontology, ids.offeredBy, 'sold by');
-    expect(findObjectProperty(after, ids.offeredBy)?.localName).toBe('soldBy');
+    const after = renameRelation(ontology, ids.offeredBy, 'sold by');
+    expect(findRelation(after, ids.offeredBy)?.localName).toBe('soldBy');
     expect(usagesOfProperty(after, ids.offeredBy)).toHaveLength(1);
   });
 
   it('deleting a property removes its relations but leaves both classes standing', () => {
     const { ontology, ids } = buildAutoOntology();
-    const after = deleteObjectProperty(ontology, ids.offeredBy);
+    const after = deleteRelation(ontology, ids.offeredBy);
     expect(findClass(after, ids.car)).toBeDefined();
     expect(findClass(after, ids.dealership)).toBeDefined();
     expect(usagesOfProperty(after, ids.offeredBy)).toHaveLength(0);
@@ -248,7 +248,7 @@ describe('usages', () => {
     const { ontology, ids, usageIds } = buildAutoOntology();
     const after = detachUsage(ontology, usageIds.offeredBy);
     expect(usagesOfProperty(after, ids.offeredBy)).toHaveLength(0);
-    expect(findObjectProperty(after, ids.offeredBy)).toBeDefined();
+    expect(findRelation(after, ids.offeredBy)).toBeDefined();
   });
 
   it('re-points one end of a relation', () => {
@@ -269,9 +269,9 @@ describe('usages', () => {
       objectClassId: ids.dealership,
     });
     expect(usagesOfProperty(created.ontology, created.propertyId)).toHaveLength(1);
-    expect(
-      created.ontology.objectProperties.find((p) => p.id === created.propertyId)?.localName,
-    ).toBe('servicedBy');
+    expect(created.ontology.relations.find((p) => p.id === created.propertyId)?.localName).toBe(
+      'servicedBy',
+    );
   });
 });
 

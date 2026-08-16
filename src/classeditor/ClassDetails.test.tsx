@@ -72,7 +72,7 @@ describe('ClassDetails', () => {
     await user.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(attributeUsagesOfClass(ontology(), car)).toHaveLength(1);
-    expect(ontology().datatypeProperties[0]).toMatchObject({ localName: 'year', range: 'integer' });
+    expect(ontology().attributes[0]).toMatchObject({ localName: 'year', range: 'integer' });
     expect(screen.getByLabelText('New attribute name')).toHaveValue('');
   });
 
@@ -108,7 +108,7 @@ describe('ClassDetails', () => {
     await user.click(screen.getByRole('button', { name: 'Remove make from Car' }));
 
     expect(attributeUsagesOfClass(ontology(), car)).toHaveLength(0);
-    expect(ontology().datatypeProperties).toHaveLength(1);
+    expect(ontology().attributes).toHaveLength(1);
   });
 
   it('offers only superclasses that would not close a cycle', async () => {
@@ -183,7 +183,7 @@ describe('AttributeDetails', () => {
     render(<AttributeDetails propertyId={price} />);
 
     await user.selectOptions(screen.getByLabelText('Attribute range'), 'decimal');
-    expect(ontology().datatypeProperties[0]?.range).toBe('decimal');
+    expect(ontology().attributes[0]?.range).toBe('decimal');
   });
 
   it('tells the user when a property is used nowhere', () => {

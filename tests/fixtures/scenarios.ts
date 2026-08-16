@@ -2,13 +2,13 @@ import {
   addAnnotation,
   addAttributeToClass,
   addClass,
-  addObjectProperty,
+  addRelation,
   addRelationBetween,
   addSubClassOf,
   attachProperty,
   createEmptyOntology,
   createId,
-  setSuperObjectProperty,
+  setSuperRelation,
 } from '../../src/ontologymodel';
 import type { Ontology } from '../../src/ontologymodel';
 
@@ -106,7 +106,7 @@ export function buildMultiTarget(): { ontology: Ontology; ids: Record<string, st
     ids[localName] = added.id;
   }
 
-  const hasPart = addObjectProperty(ontology, { localName: 'hasPart' });
+  const hasPart = addRelation(ontology, { localName: 'hasPart' });
   ontology = hasPart.ontology;
   ids.hasPart = hasPart.id;
 
@@ -227,7 +227,7 @@ export function buildPropertyHierarchy(): { ontology: Ontology; ids: Record<stri
   ontology = addSubClassOf(ontology, ids.Person!, ids.Agent!);
   ontology = addSubClassOf(ontology, ids.Organization!, ids.Agent!);
 
-  const related = addObjectProperty(ontology, { localName: 'isRelatedTo' });
+  const related = addRelation(ontology, { localName: 'isRelatedTo' });
   ontology = related.ontology;
   const knows = addRelationBetween(ontology, {
     localName: 'knows',
@@ -242,8 +242,8 @@ export function buildPropertyHierarchy(): { ontology: Ontology; ids: Record<stri
   });
   ontology = employs.ontology;
 
-  ontology = setSuperObjectProperty(ontology, knows.propertyId, related.id);
-  ontology = setSuperObjectProperty(ontology, employs.propertyId, related.id);
+  ontology = setSuperRelation(ontology, knows.propertyId, related.id);
+  ontology = setSuperRelation(ontology, employs.propertyId, related.id);
 
   ids.isRelatedTo = related.id;
   ids.knows = knows.propertyId;
@@ -298,7 +298,7 @@ export function buildLarge(classCount = 200): Ontology {
 export function buildDegenerate(): { ontology: Ontology; ids: Record<string, string> } {
   const base = createEmptyOntology('https://example.org/broken/', 'bad');
   const car = addClass(base, { localName: 'Car' });
-  const withProperty = addObjectProperty(car.ontology, { localName: 'sameAs' });
+  const withProperty = addRelation(car.ontology, { localName: 'sameAs' });
   const attached = attachProperty(withProperty.ontology, {
     propertyId: withProperty.id,
     subjectClassId: car.id,

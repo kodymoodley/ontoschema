@@ -78,7 +78,7 @@ export function ConnectionPicker() {
           onChange={(event) => setChoice(event.target.value)}
         >
           <option value="">— create a new property —</option>
-          {ontology.objectProperties.map((property) => {
+          {ontology.relations.map((property) => {
             const uses = usagesOfProperty(ontology, property.id).length;
             return (
               <option key={property.id} value={property.id}>
