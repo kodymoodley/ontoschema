@@ -13,6 +13,18 @@
 }
 
 .classNode {
+  /*
+   * How tall one line inside a class box is. Declared once because two things have to agree on
+   * it: an attribute row at rest, and the input that replaces the label while it is renamed. If
+   * they disagree the row changes height as you start typing.
+   *
+   * It has to be stated rather than inherited from the font. Left to `normal`, the line box is
+   * whatever the resolved font says -- 16px under Segoe UI, 14px under the fonts a Linux machine
+   * falls back to, since none of Inter, Segoe UI or Roboto is installed there. The layout is the
+   * app's decision, so the app makes it.
+   */
+  --line: 16px;
+
   width: 224px;
   border: 1px solid var(--accent-class-border);
   border-radius: var(--radius-md);
@@ -107,6 +119,8 @@
   gap: var(--space-2);
   width: 100%;
   padding: 3px var(--space-3);
+  /* Every child derives its box from this, so the row is the same height on every platform. */
+  line-height: var(--line);
   border: none;
   border-bottom: 1px solid var(--border-subtle);
   background: transparent;
@@ -234,8 +248,8 @@
 .attributeNameInput {
   flex: 1;
   min-width: 0;
-  /* Sized so the row keeps its height: the label's line box plus the row's own padding. */
-  height: 16px;
+  /* The same line the row is built from, so opening the editor cannot resize it. */
+  height: var(--line);
   padding: 0 2px;
   border: 1px solid var(--accent-attribute);
   border-radius: var(--radius-sm);
