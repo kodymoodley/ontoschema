@@ -26,21 +26,19 @@ The five small canvas and interface fixes are done, and so is the relations-and-
 — both the interface and the code beneath it, which turned out to be the larger half. The
 individual entries are struck through in the tables below.
 
-1. **Multiple superclasses through the UI** — still the one modelling gap that is a defect rather
-   than an addition.
-2. **Mermaid export** — outstanding from the original brief, and the cheapest route from a schema
+1. **Mermaid export** — outstanding from the original brief, and the cheapest route from a schema
    into a document.
-3. **Palette and taxonomy as subtabs** — the first step of the layout work. _(The language-code
+2. **Palette and taxonomy as subtabs** — the first step of the layout work. _(The language-code
    item that used to share this line is done; see the Editing workflow table.)_
-4. **Collect the file actions into one menu** — before the small-screen work rather than after,
+3. **Collect the file actions into one menu** — before the small-screen work rather than after,
    because a crowded header is one of the things that makes the phone layout unusable, and it is
    cheaper to fix once here than to design around twice.
-5. **Revamp the interface for small screens** — after the subtabs and the header, both of which
+4. **Revamp the interface for small screens** — after the subtabs and the header, both of which
    are pieces of it. Wants a design note before any code; it is the one item on this list that is
    a decision rather than a fix.
-6. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
+5. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
    largest new dependency surface on the list.
-7. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
+6. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
    for opposite reasons: one risks the very legibility that makes the view worth having, the other
    is four features in a sentence and would invalidate the bundled examples.
 
@@ -144,7 +142,7 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Size |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | **Cap a schema at 7±2 per module** — nine classes to a module, nine modules, so eighty-one classes; in-degree and out-degree of five, total degree six, and edges capped at 1.5× the node count. Refuse an import that breaks the limits, or offer to extract a sub-module that respects them, and say plainly that larger ontologies are meant to be several files joined later in a tool like Protégé. **Not one piece of work**, and the examples violate it today — the music schema alone has thirteen classes — so it needs a design note and a plan for them before any code. _(todo 9)_ | L    |
-| **Multiple superclasses in hierarchy and canvas** — _verified: the model allows it, the UI does not._ `OntologyClass.superClassIds` is a list, `addSubClassOf` appends, and the class node already renders `⊂ Vehicle, Asset`. But every UI path goes through `setSuperClass`, which **replaces** — both the inspector's single `<select>` and the hierarchy tree's drag-to-reparent. Needs a multi-value control in the inspector and an add-a-parent gesture in the tree distinct from move-a-parent.                                                                                         | M    |
+| ~~**Multiple superclasses in hierarchy and canvas**~~ — _done in the inspector._ The diagnosis here was right: every UI path went through `setSuperClass`, which replaces. The inspector lists parents now, each removable, with a select to add another. The tree still re-parents by replacing, which is the right gesture for a drag — moving a class is not the same as giving it a second parent — so the add-a-parent gesture in the tree was not built and is not missed.                                                                                                                | —    |
 
 ## Export and interop
 
