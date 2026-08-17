@@ -26,19 +26,17 @@ The five small canvas and interface fixes are done, and so is the relations-and-
 — both the interface and the code beneath it, which turned out to be the larger half. The
 individual entries are struck through in the tables below.
 
-1. **Mermaid export** — outstanding from the original brief, and the cheapest route from a schema
-   into a document.
-2. **Palette and taxonomy as subtabs** — the first step of the layout work. _(The language-code
+1. **Palette and taxonomy as subtabs** — the first step of the layout work. _(The language-code
    item that used to share this line is done; see the Editing workflow table.)_
-3. **Collect the file actions into one menu** — before the small-screen work rather than after,
+2. **Collect the file actions into one menu** — before the small-screen work rather than after,
    because a crowded header is one of the things that makes the phone layout unusable, and it is
    cheaper to fix once here than to design around twice.
-4. **Revamp the interface for small screens** — after the subtabs and the header, both of which
+3. **Revamp the interface for small screens** — after the subtabs and the header, both of which
    are pieces of it. Wants a design note before any code; it is the one item on this list that is
    a decision rather than a fix.
-5. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
+4. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
    largest new dependency surface on the list.
-6. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
+5. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
    for opposite reasons: one risks the very legibility that makes the view worth having, the other
    is four features in a sentence and would invalidate the bundled examples.
 
@@ -148,7 +146,7 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Size |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Mermaid diagram export** — asked for in the original brief and still not built. The subclass edge already draws the hollow triangle Mermaid uses, so the visual vocabulary matches. I love the neatness of the taxonomy diagram tab but no non-subclass edges are there which could be the reason they look so neat. _Split out from PlantUML and sized down: it is a text serializer over the model the four existing writers already share, and adds no dependency._                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | S    |
+| ~~**Mermaid diagram export**~~ — _done, `src/serialization/mermaid.ts`._ A class diagram: classes carrying typed members, the hollow triangle to a parent, one labelled arrow per relation use. The one export that is not RDF, so the descriptor says which kind it is rather than leaving the tests a list of exceptions. No new dependency, and the bundle did not move.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | —    |
 | **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S    |
 | **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. _Design settled: no proxy, and no fetch on the critical path — see [Resolving external vocabularies](#resolving-external-vocabularies) below._ **Imported terms are read-only**: an axiom or definition that came from PROV-O, PAV or DCAT cannot be edited or redefined here, or the schema quietly disagrees with the vocabulary it claims to import. Note the tension to settle first — SKOS appears on the todo list as something to import, and is excluded above as a modelling vocabulary. _(todo 10)_ | L    |
 | ~~**SHACL conversion and export**~~ — _already built._ Every usage becomes a named `sh:PropertyShape`, several targets on one path become a single `sh:or`, and the Export panel can switch the OWL/RDFS axioms off. Unticking axioms and downloading `.ttl` already gives a shapes-only Turtle file. See [Two export layers](README.md#two-export-layers). What is missing is not the export but the **vocabulary of constraints** — see the note below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | —    |
@@ -377,11 +375,9 @@ additions that finish what is already started.
    `LeaseAgreement` is a `Contract` and a `FinancialInstrument` — and the interface silently
    replaces one parent with the other. The model, the exporters and the class node already handle
    several parents, so this widens nothing; it finishes something.
-3. **Mermaid export** (S) — the outstanding item from the original brief, a text serializer over
-   the model the four existing writers already share, and no new dependency. Small enough to fit
-   in the hardening phase if it stalls. The observation in the table is worth acting on: the
-   taxonomy tab reads cleanly because it draws one edge kind, and a Mermaid class diagram has the
-   same property.
+3. ~~**Mermaid export**~~ (S) — _done._ A text serializer over the model, no new dependency, and
+   the bundle did not move. The observation in the table held: the taxonomy tab reads cleanly
+   because it draws one edge kind, and a class diagram has the same property.
 4. **Subschema filter** (M) — the first thing that bites when a schema passes about thirty
    classes, which the insurance and finance cases will. Cheaper and more effective than any amount
    of auto-layout, because hiding is the only thing that actually scales. Do this before the
@@ -421,20 +417,20 @@ list as originally written is in the git history; ask and it comes back.
 | #      | Now lives in           | As                                                                                        | Size |
 | ------ | ---------------------- | ----------------------------------------------------------------------------------------- | ---- |
 | ~~1~~  | Editing workflow       | ~~Offer every ISO 639-1 language code~~ — done                                            | —    |
-| 2      | Editing workflow       | Move the "draw a relation" hint into a tooltip                                            | S    |
+| ~~2~~  | Editing workflow       | ~~Move the "draw a relation" hint into a tooltip~~ — done                                 | —    |
 | 3      | Editing workflow       | Palette and taxonomy tree as subtabs                                                      | M    |
-| 4      | Canvas and readability | Halve the minimap                                                                         | S    |
-| 5      | Canvas and readability | Give the class header more height                                                         | S    |
+| ~~4~~  | Canvas and readability | ~~Halve the minimap~~ — done                                                              | —    |
+| ~~5~~  | Canvas and readability | ~~Give the class header more height~~ — done                                              | —    |
 | 6      | Editing workflow       | Revamp the interface for small screens                                                    | L    |
-| 7      | Canvas and readability | Put a new class in the middle of the canvas                                               | S    |
+| ~~7~~  | Canvas and readability | ~~Put a new class in the middle of the canvas~~ — done                                    | —    |
 | ~~8~~  | Editing workflow       | ~~Say relations and attributes throughout the interface~~ — done                          | —    |
 | 9      | Modelling power        | Cap a schema at 7±2 per module                                                            | L    |
 | 10     | Export and interop     | Folded into the `owl:imports` item, plus read-only terms                                  | L    |
 | 11     | Canvas and readability | Draw relation edges in the taxonomy view                                                  | M    |
 | ~~12~~ | Shipping               | ~~Publish the app to GitHub Pages~~ — done                                                | —    |
 | 13     | Editing workflow       | Collect the file actions into one menu, export with them                                  | M    |
-| 14     | Editing workflow       | Folded into the relations-and-attributes rename, which now asks how deep to go            | M–L  |
+| ~~14~~ | Editing workflow       | ~~Folded into the relations-and-attributes rename, which now asks how deep to go~~ — done | —    |
 | 15     | Editing workflow       | Folded into "Revamp the interface for small screens", which now wants a design note first | L    |
-| 16     | Editing workflow       | Icons instead of words on the taxonomy buttons                                            | S    |
+| ~~16~~ | Editing workflow       | ~~Icons instead of words on the taxonomy buttons~~ — done                                 | —    |
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
