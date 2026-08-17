@@ -22,27 +22,25 @@ twenty-five consecutive parallel runs — see [What was known about the WebKit
 flake](#what-was-known-about-the-webkit-flake) for why that is evidence rather than luck, and for
 what to do if it returns. Feature work resumes.
 
-1. **The five small canvas and interface fixes** — halve the minimap, taller class header, hint
-   into a tooltip, new class in the middle of the view, icons on the taxonomy buttons. All S, all
-   independent, one pull request each. The icons carry an accessibility decision the other four
-   do not, so that one is small but not thoughtless.
-2. **Say relations and attributes throughout the interface** — early on purpose. It touches every
-   label and every test that queries one, and each feature added first makes it bigger.
-3. **Multiple superclasses through the UI** — still the one modelling gap that is a defect rather
+The five small canvas and interface fixes are done, and so is the relations-and-attributes rename
+— both the interface and the code beneath it, which turned out to be the larger half. The
+individual entries are struck through in the tables below.
+
+1. **Multiple superclasses through the UI** — still the one modelling gap that is a defect rather
    than an addition.
-4. **Mermaid export** — outstanding from the original brief, and the cheapest route from a schema
+2. **Mermaid export** — outstanding from the original brief, and the cheapest route from a schema
    into a document.
-5. **Palette and taxonomy as subtabs** — the first step of the layout work. _(The language-code
+3. **Palette and taxonomy as subtabs** — the first step of the layout work. _(The language-code
    item that used to share this line is done; see the Editing workflow table.)_
-6. **Collect the file actions into one menu** — before the small-screen work rather than after,
+4. **Collect the file actions into one menu** — before the small-screen work rather than after,
    because a crowded header is one of the things that makes the phone layout unusable, and it is
    cheaper to fix once here than to design around twice.
-7. **Revamp the interface for small screens** — after the subtabs and the header, both of which
+5. **Revamp the interface for small screens** — after the subtabs and the header, both of which
    are pieces of it. Wants a design note before any code; it is the one item on this list that is
    a decision rather than a fix.
-8. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
+6. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
    largest new dependency surface on the list.
-9. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
+7. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
    for opposite reasons: one risks the very legibility that makes the view worth having, the other
    is four features in a sentence and would invalidate the bundled examples.
 
@@ -287,9 +285,9 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                                                                                                                                                                          | M    |
 | **Stepped / orthogonal edges as an option** — now that each edge picks a side, right-angled routing is a small step and reads better for dense schemas.                                                                                                                                                                                           | S    |
 
-| **Halve the minimap** — it takes more of the canvas than it earns. Pure CSS. _(todo 4)_ | S |
-| **Give the class header more height** — a bigger target for the double-click that focuses. Worth knowing it is a preference rather than a fix: the gesture failing on a new class was a timing race, since corrected, and the header is already 37px. _(todo 5)_ | S |
-| **Put a new class in the middle of the canvas** — clicking the palette currently drops one in the next free grid slot, which walks away from where you are looking. It should land in the middle of the current view. _(todo 7)_ | S |
+| ~~**Halve the minimap**~~ — _done._ 100x75 rather than React Flow's 200x150. | — |
+| ~~**Give the class header more height**~~ — _done, differently, and the entry had the wrong problem._ Height was never the issue: every part of a class already answered a double-click with something else, so the only place left to aim the zoom was the footer, a share that shrank as the class grew. Renaming now belongs to the name itself rather than the whole header strip, which frees most of the header. | — |
+| ~~**Put a new class in the middle of the canvas**~~ — _done._ It lands in the middle of the current view; `nextFreePosition` still steps it aside if the middle is taken. | — |
 | **Draw relation edges in the taxonomy view** — it shows only subclass links today. Worth pausing on: that is _why_ the taxonomy tab reads cleanly, as noted against the Mermaid item, so this trades legibility for completeness. A toggle may be the answer rather than always drawing them. _(todo 11)_ | M |
 
 ## Editing workflow
@@ -301,10 +299,10 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Schema diffing (given two loaded schemas) to compute and generate changelog entries using the Keep a Changelog standard** — governance for a vocabulary that other teams depend on. Sized up from S: it needs two ontologies loaded at once, a structural diff that survives renames, and a mapping from diff to changelog categories. | L    |
 
 | ~~**Offer every ISO 639-1 language code**~~ — _done, and the control changed with it._ The entry assumed the list was the problem. It was not: the field was a text box with a `datalist`, and a datalist filters its suggestions by what is already typed, so with `en` in the box exactly one suggestion showed however long the list grew. It is a select now, carrying all 183 current two-letter codes, generated at build time because `Intl` recognises a different set in each browser engine. | — |
-| **Move the "draw a relation by dragging" hint into a tooltip** — it is a paragraph of standing text in the palette, and the space is worth more than the sentence. _(todo 2)_ | S |
-| **Icons instead of words on the taxonomy buttons** — `+ Root`, `+ Child` and `Delete` are text today and take more of a narrow panel than three controls should. Protege is the obvious reference and the obvious trap: its glyphs are legible but dated, so take the arrangement and not the drawing. Three things decide whether this works. The buttons need real accessible names rather than an icon and nothing — `aria-label="Add root class"` and the like — which means the component tests that query `+ Root` and `+ Child` get better names, not broken ones. They need tooltips, because root-versus-child is a relationship and no icon says that on its own. And they should be inline SVG: three glyphs do not justify an icon dependency, and everything else here is self-contained. Check the second `Delete` further down the same file so the two do not diverge. _(todo 16)_ | S |
+| ~~**Move the "draw a relation by dragging" hint into a tooltip**~~ — _done by deletion._ Put behind a question mark first, then removed outright: the palette entries already say what each thing is. | — |
+| ~~**Icons instead of words on the taxonomy buttons**~~ — _done._ With names and tooltips, since no drawing tells adding a root from adding a child. | — |
 | **Make the palette and the taxonomy tree subtabs of the left panel** — they are stacked today, so both are cramped and neither is whole. _(todo 3)_ | M |
-| **Say relations and attributes throughout the interface** — rather than object properties and datatype properties. The exported RDF keeps `owl:ObjectProperty` either way, since that is what the vocabulary calls it. **Decide the depth before starting**, because it changes the size. The interface alone is wide but shallow — every label, tab, aria-label and the tests that query by them — and is the **M**. Carrying the same names into the code, so `datatypeProperty` becomes `attribute` across the model, the store, the serializers and the file names, is an **L**: it renames the domain vocabulary itself, touches every module, and is safe only because the suite is thorough. Doing the interface now and the code never would leave the two permanently out of step, which is its own cost. _(todos 8, 14)_ | M–L |
+| ~~**Say relations and attributes throughout the interface**~~ — _done, both halves, and the code was the larger one._ 43 files: `objectProperty` became `relation` and `datatypeProperty` became `attribute` across the model, the store, the serializers and their tests, then every label, tab and aria-label a user reads. The exported RDF still says `owl:ObjectProperty`, which belongs to OWL rather than to this app. Documents written before it are refused rather than read: the reviver is forgiving by design, so an absent list revives as an empty one, and an old document would otherwise have opened with its classes intact and every relation and attribute silently gone. The file version is 2 now, and is actually checked. | — |
 | **Collect the file actions into one menu, and move export in with them** — save, open, delete and new each take a top-level button, and the header is the most crowded strip in the app. Folding them into one menu reclaims the room and makes the header read as one thing rather than a row of equals. Export belongs there too: it is the only inspector tab that has nothing to do with what is selected, which is why it sits oddly beside Details and Annotations. Moving it touches the tab set, the panel, and the `downloadExport` helper every export test goes through. _(todo 13)_ | M |
 | **Revamp the interface for small screens** — the layout fits on a phone without being usable on one. Observed in use: the canvas ends up too small to work in while the panels stay desktop-sized, the zoom sits too close, and the entities drawer covers the whole canvas — so creating an attribute hides the thing just created, which makes the drawer pattern actively wrong on a small screen rather than merely cramped. Landscape and portrait want different answers and this file has never said which. **Wants a design note before any code**, unlike the rest of this table: the other entries are fixes, and this is a decision about what the app is on a phone. _(todos 6, 15)_ | L |
 
@@ -431,7 +429,7 @@ list as originally written is in the git history; ask and it comes back.
 | 5      | Canvas and readability | Give the class header more height                                                         | S    |
 | 6      | Editing workflow       | Revamp the interface for small screens                                                    | L    |
 | 7      | Canvas and readability | Put a new class in the middle of the canvas                                               | S    |
-| 8      | Editing workflow       | Say relations and attributes throughout the interface                                     | M    |
+| ~~8~~  | Editing workflow       | ~~Say relations and attributes throughout the interface~~ — done                          | —    |
 | 9      | Modelling power        | Cap a schema at 7±2 per module                                                            | L    |
 | 10     | Export and interop     | Folded into the `owl:imports` item, plus read-only terms                                  | L    |
 | 11     | Canvas and readability | Draw relation edges in the taxonomy view                                                  | M    |
