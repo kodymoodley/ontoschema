@@ -74,11 +74,30 @@ describe('ExportPanel', () => {
     expect(await screen.findByText(/auto:Automobile/)).toBeInTheDocument();
   });
 
-  it('offers all four downloads', () => {
+  it('offers a download for every format', () => {
     carWithAttribute();
     render(<ExportPanel />);
-    for (const extension of ['ttl', 'rdf', 'owl', 'jsonld']) {
+    for (const extension of ['ttl', 'rdf', 'owl', 'jsonld', 'mmd']) {
       expect(screen.getByTestId(`download-${extension}`)).toBeInTheDocument();
     }
+  });
+
+  /*
+   * The diagram is offered beside the RDF, so the panel has to be clear that it is not RDF. It
+   * is the one export you cannot load back into a triple store.
+   */
+  it('says the diagram is a picture rather than RDF', () => {
+    carWithAttribute();
+    render(<ExportPanel />);
+    expect(screen.getByText(/a picture, not RDF/i)).toBeInTheDocument();
+  });
+
+  it('previews the diagram when it is chosen', async () => {
+    const user = userEvent.setup();
+    carWithAttribute();
+    render(<ExportPanel />);
+
+    await user.selectOptions(screen.getByLabelText('Preview format'), 'mermaid');
+    expect(screen.getByTestId('export-preview').textContent).toContain('classDiagram');
   });
 });
