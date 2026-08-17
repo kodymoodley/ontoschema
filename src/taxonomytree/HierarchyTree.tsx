@@ -45,11 +45,6 @@ export function HierarchyTree() {
     <>
       <Tabs options={TABS} value={tab} onChange={setTab} ariaLabel="Ontology entities" />
       {tab === 'attributes' ? <AttributePool /> : <HierarchyFor kind={tab} key={tab} />}
-      <p className={styles.hint}>
-        {tab === 'attributes'
-          ? 'Drag a property onto a class on the canvas to use it there. The same property can be used on any number of classes.'
-          : 'Drag an item onto another to make it a subclass; drop it on empty space to promote it to a root.'}
-      </p>
     </>
   );
 }
