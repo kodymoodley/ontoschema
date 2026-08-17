@@ -366,3 +366,41 @@ test('double-clicking an edge label still opens it rather than fitting the view'
 
   expect(await page.locator('.react-flow__viewport').getAttribute('style')).toBe(before);
 });
+
+/**
+ * A relation between two distant classes parks its label at the midpoint of the edge, which is
+ * wherever the middle happens to be — often on top of an unrelated class. The label layer used to
+ * be lifted above every node, so it covered that class and swallowed gestures aimed at it.
+ */
+test('a relation label passing over a class does not cover it', async ({ page }) => {
+  await openApp(page);
+  // Kept well inside the canvas: a node past its edge is still in the DOM, and the drag that
+  // draws the relation would silently miss the handle.
+  await newClass(page, 'Car', 40, 240);
+  await newClass(page, 'Middle', 400, 240);
+  await newClass(page, 'Dealership', 760, 240);
+  await relate(page, 'Car', 'Dealership', 'offeredBy');
+
+  const label = await page.locator('[data-relation-name="offeredBy"]').first().boundingBox();
+  const middle = await page.locator('[data-class-name="Middle"]').boundingBox();
+  if (!label || !middle) throw new Error('could not measure');
+
+  // The case only exists when the label really does land over the class.
+  const centre = { x: label.x + label.width / 2, y: label.y + label.height / 2 };
+  expect(centre.x, 'label should overlap Middle horizontally').toBeGreaterThan(middle.x);
+  expect(centre.x).toBeLessThan(middle.x + middle.width);
+  expect(centre.y).toBeGreaterThan(middle.y);
+  expect(centre.y).toBeLessThan(middle.y + middle.height);
+
+  const covering = await page.evaluate((at) => {
+    const top = document.elementFromPoint(at.x, at.y);
+    return {
+      insideTheClass: Boolean(top?.closest('[data-class-name="Middle"]')),
+      insideTheLabel: Boolean(top?.closest('[data-relation-name]')),
+      what: `${top?.tagName}.${top?.getAttribute('class') ?? ''}`.slice(0, 80),
+    };
+  }, centre);
+
+  expect(covering.insideTheLabel, `on top: ${covering.what}`).toBe(false);
+  expect(covering.insideTheClass, `on top: ${covering.what}`).toBe(true);
+});

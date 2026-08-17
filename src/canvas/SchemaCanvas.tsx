@@ -390,7 +390,6 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
         // zoom would shift the shape out from under the pointer mid-gesture.
         zoomOnDoubleClick={false}
         nodesConnectable
-        elevateEdgesOnSelect
       >
         <Background
           variant={BackgroundVariant.Dots}
