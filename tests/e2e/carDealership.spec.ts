@@ -12,6 +12,7 @@ import {
   openApp,
   openInspectorTab,
   relate,
+  renameClassOnCanvas,
   selectClass,
 } from './ontoschema';
 
@@ -259,4 +260,31 @@ test('a attribute is reused on a second class by dragging it from the list', asy
   expect(paths).toHaveLength(2);
   expect(turtle).toContain('Car_price');
   expect(turtle).toContain('Product_price');
+});
+
+/**
+ * The Mermaid export is the only one that is not RDF: a picture of the schema for pasting into a
+ * document. It is checked here because a diagram that will not render is indistinguishable from
+ * a correct one until something tries to draw it.
+ */
+test('the schema downloads as a Mermaid class diagram', async ({ page }) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 60, y: 120 });
+  await renameClassOnCanvas(page, 'NewClass', 'Car');
+  await selectClass(page, 'Car');
+  await addAttribute(page, 'make', 'string');
+
+  await dragFromPalette(page, 'class', { x: 420, y: 120 });
+  await renameClassOnCanvas(page, 'NewClass', 'Dealership');
+  await relate(page, 'Car', 'Dealership', 'offeredBy');
+
+  const diagram = await downloadExport(page, 'mmd');
+
+  expect(diagram.split('\n')[0]).toBe('classDiagram');
+  expect(diagram).toContain('class Car {');
+  expect(diagram).toContain('+string make');
+  expect(diagram).toContain('Car --> Dealership : offeredBy');
+  // No RDF leaks into the picture: it has no namespaces, prefixes or triples.
+  expect(diagram).not.toContain('@prefix');
+  expect(diagram).not.toContain('owl:');
 });

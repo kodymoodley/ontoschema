@@ -2,6 +2,7 @@ import type { Ontology, SerializationOptions } from '../ontologymodel';
 import { serializeTurtle } from './turtle';
 import { serializeRdfXml } from './rdfxml';
 import { serializeJsonLd } from './jsonld';
+import { serializeMermaid } from './mermaid';
 
 /**
  * Public face of the serialization layer.
@@ -9,10 +10,16 @@ import { serializeJsonLd } from './jsonld';
  * `.rdf` and `.owl` are the same RDF/XML bytes under two file extensions, because both are
  * in common use and tools differ on which they expect.
  */
-export type SerializationFormat = 'turtle' | 'rdfxml' | 'owl' | 'jsonld';
+export type SerializationFormat = 'turtle' | 'rdfxml' | 'owl' | 'jsonld' | 'mermaid';
 
 export interface SerializationDescriptor {
   format: SerializationFormat;
+  /**
+   * `rdf` writers all render the same triples, so they can be checked against one another and
+   * against a real parser. A `diagram` is a picture of the model and cannot be, which is worth
+   * saying in the type rather than leaving to a list of exceptions in the tests.
+   */
+  kind: 'rdf' | 'diagram';
   label: string;
   extension: string;
   mimeType: string;
@@ -22,6 +29,7 @@ export interface SerializationDescriptor {
 export const SERIALIZATION_FORMATS: readonly SerializationDescriptor[] = [
   {
     format: 'turtle',
+    kind: 'rdf',
     label: 'Turtle',
     extension: 'ttl',
     mimeType: 'text/turtle',
@@ -29,6 +37,7 @@ export const SERIALIZATION_FORMATS: readonly SerializationDescriptor[] = [
   },
   {
     format: 'rdfxml',
+    kind: 'rdf',
     label: 'RDF/XML',
     extension: 'rdf',
     mimeType: 'application/rdf+xml',
@@ -36,6 +45,7 @@ export const SERIALIZATION_FORMATS: readonly SerializationDescriptor[] = [
   },
   {
     format: 'owl',
+    kind: 'rdf',
     label: 'RDF/XML (.owl)',
     extension: 'owl',
     mimeType: 'application/rdf+xml',
@@ -43,10 +53,19 @@ export const SERIALIZATION_FORMATS: readonly SerializationDescriptor[] = [
   },
   {
     format: 'jsonld',
+    kind: 'rdf',
     label: 'JSON-LD',
     extension: 'jsonld',
     mimeType: 'application/ld+json',
     description: 'RDF as JSON, for web APIs',
+  },
+  {
+    format: 'mermaid',
+    kind: 'diagram',
+    label: 'Mermaid',
+    extension: 'mmd',
+    mimeType: 'text/vnd.mermaid',
+    description: 'A class diagram to paste into a document — a picture, not RDF',
   },
 ];
 
@@ -75,7 +94,9 @@ export function serialize(
       ? serializeTurtle(ontology, options)
       : format === 'jsonld'
         ? serializeJsonLd(ontology, options)
-        : serializeRdfXml(ontology, options);
+        : format === 'mermaid'
+          ? serializeMermaid(ontology)
+          : serializeRdfXml(ontology, options);
 
   return {
     format,

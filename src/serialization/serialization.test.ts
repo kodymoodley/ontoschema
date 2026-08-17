@@ -297,8 +297,30 @@ describe('SHACL shapes travel inside the same documents', () => {
 });
 
 describe('download descriptors', () => {
-  it('offers all four formats with distinct extensions', () => {
-    expect(SERIALIZATION_FORMATS.map((f) => f.extension)).toEqual(['ttl', 'rdf', 'owl', 'jsonld']);
+  it('offers every format with a distinct extension', () => {
+    expect(SERIALIZATION_FORMATS.map((f) => f.extension)).toEqual([
+      'ttl',
+      'rdf',
+      'owl',
+      'jsonld',
+      'mmd',
+    ]);
+  });
+
+  /*
+   * The RDF writers can be checked against one another because they render the same triples.
+   * Mermaid cannot, so it says which it is rather than leaving the tests to keep a list of
+   * exceptions that drifts.
+   */
+  it('says which formats are RDF and which are a picture', () => {
+    const kinds = Object.fromEntries(SERIALIZATION_FORMATS.map((f) => [f.extension, f.kind]));
+    expect(kinds).toEqual({
+      ttl: 'rdf',
+      rdf: 'rdf',
+      owl: 'rdf',
+      jsonld: 'rdf',
+      mmd: 'diagram',
+    });
   });
 
   it('names the file after the project and its format', () => {
