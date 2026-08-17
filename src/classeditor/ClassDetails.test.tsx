@@ -117,9 +117,55 @@ describe('ClassDetails', () => {
     store().reparentClass(car, vehicle);
     render(<ClassDetails classId={vehicle} />);
 
-    const picker = screen.getByLabelText('Superclass');
+    const picker = screen.getByLabelText('Add a superclass');
     // Car sits below Vehicle, so it cannot also be its parent.
     expect(within(picker).queryByRole('option', { name: 'Car' })).not.toBeInTheDocument();
+  });
+
+  /*
+   * A class is often two things at once. This control used to be a single select that replaced
+   * one parent with the other, which quietly discarded a modelling decision the model, the
+   * exporters and the taxonomy view had always supported.
+   */
+  it('keeps both parents when a second is added', async () => {
+    const user = userEvent.setup();
+    const contract = store().createClass({ localName: 'Contract' });
+    const instrument = store().createClass({ localName: 'FinancialInstrument' });
+    const lease = store().createClass({ localName: 'LeaseAgreement' });
+    render(<ClassDetails classId={lease} />);
+
+    await user.selectOptions(screen.getByLabelText('Add a superclass'), contract);
+    await user.selectOptions(screen.getByLabelText('Add a superclass'), instrument);
+
+    expect(findClass(ontology(), lease)?.superClassIds).toEqual([contract, instrument]);
+  });
+
+  it('drops one parent and leaves the other', async () => {
+    const user = userEvent.setup();
+    const contract = store().createClass({ localName: 'Contract' });
+    const instrument = store().createClass({ localName: 'FinancialInstrument' });
+    const lease = store().createClass({ localName: 'LeaseAgreement' });
+    store().addSuperClass(lease, contract);
+    store().addSuperClass(lease, instrument);
+    render(<ClassDetails classId={lease} />);
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Remove Contract as a superclass of LeaseAgreement',
+      }),
+    );
+
+    expect(findClass(ontology(), lease)?.superClassIds).toEqual([instrument]);
+  });
+
+  it('does not offer a parent the class already has', async () => {
+    const contract = store().createClass({ localName: 'Contract' });
+    const lease = store().createClass({ localName: 'LeaseAgreement' });
+    store().addSuperClass(lease, contract);
+    render(<ClassDetails classId={lease} />);
+
+    const picker = screen.getByLabelText('Add a superclass');
+    expect(within(picker).queryByRole('option', { name: 'Contract' })).not.toBeInTheDocument();
   });
 
   it('deletes the class and everything attached to it', async () => {

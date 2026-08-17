@@ -113,7 +113,7 @@ test('a class is re-parented with the keyboard, the drag being only a shortcut',
   await twoClasses(page);
   await selectClass(page, 'Car');
 
-  await chooseByKeyboard(page, 'Superclass', 'Vehicle');
+  await chooseByKeyboard(page, 'Add a superclass', 'Vehicle');
 
   await expect(page.locator('[data-class-name="Car"]')).toContainText('⊂ Vehicle');
   const turtle = await downloadExport(page, 'ttl');
@@ -123,12 +123,16 @@ test('a class is re-parented with the keyboard, the drag being only a shortcut',
 test('a class is promoted back to a root with the keyboard', async ({ page }) => {
   await twoClasses(page);
   await selectClass(page, 'Car');
-  await page.getByLabel('Superclass').selectOption({ label: 'Vehicle' });
+  await page.getByLabel('Add a superclass').selectOption({ label: 'Vehicle' });
   await expect(page.locator('[data-class-name="Car"]')).toContainText('⊂ Vehicle');
 
-  // The same control carries the "no parent" option the drag-to-empty-space gesture gives.
-  await tabTo(page, 'Superclass');
-  await page.keyboard.press('Home');
+  /*
+   * Dropping the last parent is what the drag-to-empty-space gesture does. It used to be the
+   * "no parent" option on a single select; now that a class may have several parents, each is
+   * removed on its own and a class with none left is a root again.
+   */
+  await tabTo(page, 'Remove Vehicle as a superclass of Car');
+  await page.keyboard.press('Enter');
 
   await expect(page.locator('[data-class-name="Car"]')).not.toContainText('⊂');
 });

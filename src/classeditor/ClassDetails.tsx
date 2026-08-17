@@ -24,7 +24,8 @@ export function ClassDetails({ classId }: { classId: string }) {
   const entity = findClass(ontology, classId);
 
   const renameClass = useProjectStore((state) => state.renameClassById);
-  const reparentClass = useProjectStore((state) => state.reparentClass);
+  const addSuperClass = useProjectStore((state) => state.addSuperClass);
+  const removeSuperClass = useProjectStore((state) => state.removeSuperClass);
   const deleteClass = useProjectStore((state) => state.deleteClassById);
   const createAttributeOn = useProjectStore((state) => state.createAttributeOn);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
@@ -37,7 +38,9 @@ export function ClassDetails({ classId }: { classId: string }) {
 
   const attributeUsages = attributeUsagesOfClass(ontology, classId);
   const relationUsages = relationUsagesTouchingClass(ontology, classId);
-  const superClassId = entity.superClassIds[0] ?? '';
+  const superClasses = entity.superClassIds
+    .map((id) => findClass(ontology, id))
+    .filter((parent): parent is NonNullable<typeof parent> => parent !== undefined);
 
   const addAttribute = () => {
     const name = attributeName.trim();
@@ -63,20 +66,53 @@ export function ClassDetails({ classId }: { classId: string }) {
         <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
       </Field>
 
+      {/*
+        Several parents, not one. A class is often two things at once -- a LeaseAgreement is a
+        Contract and a FinancialInstrument -- and the model, the exporters and the taxonomy view
+        have always allowed it. Only this control did not, and it silently replaced one parent
+        with the other. Listed rather than multi-selected, so the same list-and-remove shape as
+        the attributes and relations below it, which also works by touch and by keyboard.
+      */}
       <Field
-        label="Superclass"
-        hint="A class may sit under one parent here; use the hierarchy panel for more."
+        label={`Superclasses (${superClasses.length})`}
+        hint={superClasses.length === 0 ? 'No parent, so this is a root class.' : undefined}
       >
+        {superClasses.length > 0 ? (
+          <ul className={styles.list}>
+            {superClasses.map((parent) => (
+              <li key={parent.id} className={styles.row}>
+                <button
+                  type="button"
+                  className={styles.linkButton}
+                  onClick={() => select({ kind: 'class', id: parent.id })}
+                >
+                  {parent.localName}
+                </button>
+                <button
+                  type="button"
+                  className={styles.removeButton}
+                  aria-label={`Remove ${parent.localName} as a superclass of ${entity.localName}`}
+                  title="Stop this class being a subclass of that one"
+                  onClick={() => removeSuperClass(classId, parent.id)}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <Select
-          value={superClassId}
-          aria-label="Superclass"
-          onChange={(event) => reparentClass(classId, event.target.value || null)}
+          value=""
+          aria-label="Add a superclass"
+          onChange={(event) => event.target.value && addSuperClass(classId, event.target.value)}
         >
-          <option value="">— none (root class) —</option>
+          <option value="">— add a superclass —</option>
           {ontology.classes
             .filter(
               (candidate) =>
-                candidate.id !== classId && canSubclass(ontology, classId, candidate.id),
+                candidate.id !== classId &&
+                !entity.superClassIds.includes(candidate.id) &&
+                canSubclass(ontology, classId, candidate.id),
             )
             .map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
