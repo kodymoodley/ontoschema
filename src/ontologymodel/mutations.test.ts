@@ -7,6 +7,7 @@ import {
   addRelation,
   addRelationBetween,
   addSubClassOf,
+  removeSubClassOf,
   attachProperty,
   deleteClass,
   deleteAttribute,
@@ -104,6 +105,26 @@ describe('deleting a class', () => {
 });
 
 describe('subclass links', () => {
+  it('keeps every parent a class is given', () => {
+    const { ontology, ids } = buildAutoOntology();
+    const both = addSubClassOf(addSubClassOf(ontology, ids.car, ids.vehicle), ids.car, ids.truck);
+    expect(findClass(both, ids.car)?.superClassIds).toEqual([ids.vehicle, ids.truck]);
+  });
+
+  it('drops only the parent named, leaving the rest', () => {
+    const { ontology, ids } = buildAutoOntology();
+    const both = addSubClassOf(addSubClassOf(ontology, ids.car, ids.vehicle), ids.car, ids.truck);
+    const one = removeSubClassOf(both, ids.car, ids.vehicle);
+    expect(findClass(one, ids.car)?.superClassIds).toEqual([ids.truck]);
+  });
+
+  it('leaves a class alone when told to drop a parent it does not have', () => {
+    const { ontology, ids } = buildAutoOntology();
+    const before = findClass(ontology, ids.car)?.superClassIds;
+    const after = removeSubClassOf(ontology, ids.car, ids.truck);
+    expect(findClass(after, ids.car)?.superClassIds).toEqual(before);
+  });
+
   it('refuses to make a class its own superclass', () => {
     const { ontology, ids } = buildAutoOntology();
     expect(addSubClassOf(ontology, ids.car, ids.car)).toBe(ontology);

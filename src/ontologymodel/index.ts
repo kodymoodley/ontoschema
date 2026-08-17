@@ -75,6 +75,7 @@ export {
   addRelation,
   addRelationBetween,
   addSubClassOf,
+  removeSubClassOf,
   attachProperty,
   deleteClass,
   deleteAttribute,

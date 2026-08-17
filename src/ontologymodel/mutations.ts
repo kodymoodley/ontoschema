@@ -94,6 +94,20 @@ export function addSubClassOf(ontology: Ontology, childId: string, parentId: str
   };
 }
 
+/**
+ * Drops one parent, leaving any others. A class with no parents left becomes a root, which is
+ * the same state it would have reached by never having had one.
+ */
+export function removeSubClassOf(ontology: Ontology, childId: string, parentId: string): Ontology {
+  return {
+    ...ontology,
+    classes: mapById(ontology.classes, childId, (entity) => ({
+      ...entity,
+      superClassIds: entity.superClassIds.filter((id) => id !== parentId),
+    })),
+  };
+}
+
 /** Re-parenting in the tree panel: replaces all parents with the single new one (or none). */
 export function setSuperClass(
   ontology: Ontology,

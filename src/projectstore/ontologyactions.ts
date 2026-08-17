@@ -16,6 +16,8 @@ import {
   setAttributeRange,
   setOntologyIri,
   setOntologyPrefix,
+  addSubClassOf,
+  removeSubClassOf,
   setSuperClass,
   setSuperRelation,
   setUsageEndpoints,
@@ -38,6 +40,13 @@ export interface OntologyActions {
   moveClassById(id: string, position: Position): void;
   deleteClassById(id: string): void;
   reparentClass(childId: string, parentId: string | null): void;
+  /**
+   * Adds a parent alongside any the class already has, rather than replacing them. A class is
+   * often two things at once -- a LeaseAgreement is a Contract and a FinancialInstrument -- and
+   * the model, the exporters and the taxonomy view have always allowed it.
+   */
+  addSuperClass(childId: string, parentId: string): void;
+  removeSuperClass(childId: string, parentId: string): void;
 
   createAttributeOn(classId: string, options?: { localName?: string; range?: XsdDatatype }): string;
   renameAttributeById(id: string, localName: string): void;
@@ -98,6 +107,12 @@ export function createOntologyActions(
     },
     reparentClass(childId, parentId) {
       editor.edit((ontology) => setSuperClass(ontology, childId, parentId));
+    },
+    addSuperClass(childId, parentId) {
+      editor.edit((ontology) => addSubClassOf(ontology, childId, parentId));
+    },
+    removeSuperClass(childId, parentId) {
+      editor.edit((ontology) => removeSubClassOf(ontology, childId, parentId));
     },
 
     /* ------------------------------------------------ attributes */

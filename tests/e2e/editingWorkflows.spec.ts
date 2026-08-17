@@ -363,3 +363,43 @@ test('and follows the view after it has been panned', async ({ page }) => {
   // The first class is left where it was rather than being shuffled aside.
   await expect(page.locator('[data-class-name="First"]')).toHaveCount(1);
 });
+
+/**
+ * A class is often two things at once — a LeaseAgreement is a Contract and a
+ * FinancialInstrument — and the exporters have always written one `rdfs:subClassOf` per parent.
+ * The inspector was the only thing that could not say so: a single select that replaced one
+ * parent with the other, discarding the modelling decision without a word.
+ */
+test('a class can have two superclasses, and both are exported', async ({ page }) => {
+  await openApp(page);
+  // Dropped at known spots rather than clicked from the palette, which stacks them around the
+  // middle of the view and left the third one obscured on Firefox and WebKit.
+  const spots: [string, number, number][] = [
+    ['Contract', 40, 40],
+    ['FinancialInstrument', 40, 220],
+    ['LeaseAgreement', 40, 400],
+  ];
+  for (const [name, x, y] of spots) {
+    await dragFromPalette(page, 'class', { x, y });
+    await renameClassOnCanvas(page, 'NewClass', name);
+  }
+
+  await selectClass(page, 'LeaseAgreement');
+  await page.getByLabel('Add a superclass').selectOption({ label: 'Contract' });
+  await page.getByLabel('Add a superclass').selectOption({ label: 'FinancialInstrument' });
+
+  await expect(page.getByLabel(/Remove Contract as a superclass/)).toBeVisible();
+  await expect(page.getByLabel(/Remove FinancialInstrument as a superclass/)).toBeVisible();
+
+  const turtle = await downloadExport(page, 'ttl');
+  const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
+  const parents = quads
+    .filter(
+      (quad) =>
+        quad.subject.value.endsWith('/LeaseAgreement') &&
+        quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
+    )
+    .map((quad) => quad.object.value.split('/').pop());
+
+  expect(parents.sort()).toEqual(['Contract', 'FinancialInstrument']);
+});
