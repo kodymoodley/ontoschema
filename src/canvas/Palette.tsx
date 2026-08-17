@@ -20,13 +20,13 @@ const DRAGGABLE: PaletteEntry[] = [
   {
     kind: 'class',
     name: 'Class',
-    hint: 'A kind of thing e.g., Car, Dealership. Drag onto canvas.',
+    hint: 'A kind of thing e.g., Car, Dealership. Click or drag to drop onto canvas.',
     swatch: styles.swatchClass ?? '',
   },
   {
     kind: 'attribute',
     name: 'Attribute',
-    hint: 'An attribute with an xsd range e.g., make, year. Must be dropped onto a class.',
+    hint: 'Attribute with literal value e.g., make, year. Click or drag onto selected class.',
     swatch: styles.swatchAttribute ?? '',
   },
 ];
@@ -84,8 +84,7 @@ export function Palette({ onCreate, onCreateRelation, canCreateAttribute }: Pale
         <span className={styles.paletteText}>
           <span className={styles.paletteName}>Relation</span>
           <span className={styles.paletteHint}>
-            Reusable e.g., hasPart, isRelatedTo. Added to the property list; draw it between two
-            classes to use it.
+            Property relating entities e.g., hasPart, isRelatedTo. Draw between two classes.
           </span>
         </span>
       </button>
