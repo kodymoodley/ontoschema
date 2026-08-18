@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { openApp, selectClass } from './ontoschema';
+import { openApp, selectClass, settled } from './ontoschema';
 
 /**
  * The shell is a three-column grid, which crushes the canvas on a laptop and overflows on
@@ -14,6 +14,24 @@ const NARROW = { width: 820, height: 800 };
 
 const entities = (page: Page) => page.getByRole('complementary', { name: 'Palette and hierarchy' });
 const inspector = (page: Page) => page.getByRole('complementary', { name: 'Inspector' });
+
+/**
+ * Opens the entities drawer and waits for it to finish sliding.
+ *
+ * The drawer moves on a 180ms transform, so a box measured straight after the click is of a panel
+ * still on its way in — which reads as a drawer a tenth of its real width.
+ */
+async function openedDrawer(page: Page) {
+  await page.getByRole('button', { name: 'Entities', exact: true }).click();
+  const drawer = page.locator('[aria-label="Palette and hierarchy"]');
+  await settled(
+    () => drawer.evaluate((element) => element.getBoundingClientRect().x),
+    'the entities drawer never stopped moving',
+  );
+  const box = await drawer.boundingBox();
+  if (!box) throw new Error('no drawer');
+  return box;
+}
 
 test.describe('wide', () => {
   test.use({ viewport: WIDE });
@@ -125,5 +143,30 @@ test.describe('narrow', () => {
       return getComputedStyle(panel).visibility !== 'hidden';
     });
     expect(reachable).toBe(false);
+  });
+
+  /*
+   * The drawer is half the width it once was, so the canvas stays visible beside it and a newly
+   * created attribute is not hidden behind the panel that created it. Anything inside has to fit
+   * that width: a tab strip wider than its container does not scroll or clip visibly, it paints
+   * outside and looks like it ends, leaving the last tab present, clickable and invisible.
+   */
+  test('leaves the canvas visible beside it', async ({ page }) => {
+    await openApp(page);
+    const drawer = await openedDrawer(page);
+    expect(drawer.width / NARROW.width, 'share of the screen covered').toBeLessThan(0.5);
+  });
+
+  test('keeps every entity tab inside itself', async ({ page }) => {
+    await openApp(page);
+    const drawer = await openedDrawer(page);
+
+    for (const name of ['Classes', 'Relations', 'Attributes']) {
+      const tab = await page.getByRole('tab', { name, exact: true }).boundingBox();
+      if (!tab) throw new Error(`no ${name} tab`);
+      expect(tab.x + tab.width, `${name} runs past the drawer`).toBeLessThanOrEqual(
+        drawer.x + drawer.width,
+      );
+    }
   });
 });
