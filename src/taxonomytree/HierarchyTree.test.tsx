@@ -139,7 +139,7 @@ describe('HierarchyTree — relations', () => {
     store().createRelation({ localName: 'hasPart' });
     render(<HierarchyTree />);
 
-    await user.click(screen.getByRole('tab', { name: 'Relations' }));
+    await user.click(screen.getByRole('tab', { name: 'Relation' }));
     expect(item('hasPart')).toHaveTextContent('unused');
   });
 
@@ -151,7 +151,7 @@ describe('HierarchyTree — relations', () => {
     store().attachPropertyToClass(hasPart, car, wheel);
     render(<HierarchyTree />);
 
-    await user.click(screen.getByRole('tab', { name: 'Relations' }));
+    await user.click(screen.getByRole('tab', { name: 'Relation' }));
     expect(item('hasPart')).toHaveTextContent('1×');
   });
 });
@@ -164,7 +164,7 @@ describe('HierarchyTree — attribute pool', () => {
     store().createAttributeOn(car, { localName: 'make', range: 'string' });
     render(<HierarchyTree />);
 
-    await user.click(screen.getByRole('tab', { name: 'Attributes' }));
+    await user.click(screen.getByRole('tab', { name: 'Attribute' }));
     const names = [...document.querySelectorAll('[data-datatype-property]')].map((element) =>
       element.getAttribute('data-datatype-property'),
     );
@@ -178,7 +178,7 @@ describe('HierarchyTree — attribute pool', () => {
     const car = store().createClass({ localName: 'Car' });
     const price = store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
     render(<HierarchyTree />);
-    await user.click(screen.getByRole('tab', { name: 'Attributes' }));
+    await user.click(screen.getByRole('tab', { name: 'Attribute' }));
 
     const payloads: Record<string, string> = {};
     fireEvent.dragStart(poolRow('price') as HTMLElement, dragData(payloads));
@@ -193,7 +193,7 @@ describe('HierarchyTree — attribute pool', () => {
     const car = store().createClass({ localName: 'Car' });
     store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
     render(<HierarchyTree />);
-    await user.click(screen.getByRole('tab', { name: 'Attributes' }));
+    await user.click(screen.getByRole('tab', { name: 'Attribute' }));
 
     await user.click(poolRow('price') as HTMLElement);
     await user.click(screen.getByRole('button', { name: 'Delete attribute' }));
@@ -204,7 +204,7 @@ describe('HierarchyTree — attribute pool', () => {
   it('explains itself when there are no attributes yet', async () => {
     const user = userEvent.setup();
     render(<HierarchyTree />);
-    await user.click(screen.getByRole('tab', { name: 'Attributes' }));
+    await user.click(screen.getByRole('tab', { name: 'Attribute' }));
     expect(screen.getByText(/No attributes yet/i)).toBeInTheDocument();
   });
 });
