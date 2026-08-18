@@ -134,6 +134,26 @@
       visibility 180ms;
   }
 
+  /*
+   * The whole drawer scrolls, not just the tree inside it. On a desktop the palette is a fixed
+   * block at the top and the tree takes the rest and scrolls within it; in a drawer on a phone
+   * that leaves the tree a sliver, and the taxonomy below the fold cannot be reached at all.
+   */
+  .left,
+  .right {
+    overflow-y: auto;
+  }
+
+  /*
+   * Named through the drawer rather than on its own. The base `.scroll` rule appears later in
+   * this file, and a media query adds no specificity, so a bare `.scroll` here would lose to it.
+   */
+  .left .scroll,
+  .right .scroll {
+    flex: none;
+    overflow-y: visible;
+  }
+
   .left {
     left: 0;
   }
