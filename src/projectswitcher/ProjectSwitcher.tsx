@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useActiveProject, useProjectStore, useProjects } from '../projectstore';
 import { EXAMPLES, exampleSize } from '../examplelibrary';
-import { Button, Field, Modal, TextInput } from '../designsystem';
+import { Button, Menu, Field, Modal, TextInput } from '../designsystem';
 import styles from './projectswitcher.module.css';
 
 /**
@@ -64,26 +64,45 @@ export function ProjectSwitcher() {
         ))}
       </select>
 
-      <Button size="small" onClick={() => setCreating(true)} data-testid="new-project">
-        New
-      </Button>
-      <Button size="small" onClick={() => setBrowsingExamples(true)} data-testid="open-examples">
-        Examples
-      </Button>
-      <Button size="small" onClick={saveToFile} title="Save this project as a file">
-        Save
-      </Button>
-      <Button size="small" onClick={() => fileInput.current?.click()} title="Open a project file">
-        Open
-      </Button>
-      <Button
-        size="small"
-        variant="danger"
-        onClick={() => setConfirmingDelete(true)}
-        disabled={!active}
-      >
-        Delete
-      </Button>
+      {/*
+        One menu rather than five buttons. The header was the most crowded strip in the app and
+        the first thing to run out of room on a phone, and these five are all the same kind of
+        thing -- what to do with the project as a whole -- so they read better gathered than
+        spread. The project selector stays outside, because switching project is navigation
+        rather than an action and is used far more often than any of these.
+      */}
+      <Menu label="Project actions" triggerLabel="File" data-testid="file-menu">
+        <Button
+          size="small"
+          variant="subtle"
+          onClick={() => setCreating(true)}
+          data-testid="new-project"
+        >
+          New project
+        </Button>
+        <Button
+          size="small"
+          variant="subtle"
+          onClick={() => setBrowsingExamples(true)}
+          data-testid="open-examples"
+        >
+          Examples
+        </Button>
+        <Button size="small" variant="subtle" onClick={saveToFile}>
+          Save to file
+        </Button>
+        <Button size="small" variant="subtle" onClick={() => fileInput.current?.click()}>
+          Open a file
+        </Button>
+        <Button
+          size="small"
+          variant="danger"
+          onClick={() => setConfirmingDelete(true)}
+          disabled={!active}
+        >
+          Delete project
+        </Button>
+      </Menu>
 
       <input
         ref={fileInput}

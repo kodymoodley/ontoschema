@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { Parser } from 'n3';
-import { downloadExport, openApp, openInspectorTab, selectClass } from './ontoschema';
+import { downloadExport, openApp, openExamples, openInspectorTab, selectClass } from './ontoschema';
 
 /**
  * The examples are most people's first contact with the editor, so these check the thing
@@ -9,7 +9,7 @@ import { downloadExport, openApp, openInspectorTab, selectClass } from './ontosc
  */
 
 async function openExample(page: Page, title: string) {
-  await page.getByTestId('open-examples').click();
+  await openExamples(page);
   await expect(page.getByRole('dialog', { name: 'Open an example' })).toBeVisible();
   await page.getByText(title, { exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);

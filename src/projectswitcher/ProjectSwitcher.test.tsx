@@ -13,7 +13,13 @@ const ontology = () => {
   return project.ontology;
 };
 
+/** The project actions live behind one menu now, so reaching any of them starts here. */
+async function openFileMenu(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByTestId('file-menu'));
+}
+
 async function openExamples(user: ReturnType<typeof userEvent.setup>) {
+  await openFileMenu(user);
   await user.click(screen.getByTestId('open-examples'));
   return screen.getByRole('dialog', { name: 'Open an example' });
 }

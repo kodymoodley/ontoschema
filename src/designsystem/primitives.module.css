@@ -352,3 +352,44 @@
   height: 20px;
   background: var(--border-subtle);
 }
+
+/* ------------------------------------------------------------------ menu */
+
+.menu {
+  position: relative;
+  display: inline-flex;
+}
+
+/*
+ * Right-aligned, because the trigger sits at the end of a header: opening leftwards keeps the
+ * panel on screen where opening rightwards would push it off a narrow one. The z-index clears
+ * the canvas, whose edge labels sit at 1100.
+ */
+/*
+ * Fixed, and placed in the document body rather than beside its trigger: the header scrolls
+ * sideways on a narrow screen, and a scrolling element clips whatever hangs out of it. The
+ * coordinates come from the trigger each time the panel opens.
+ */
+.menuPanel {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 168px;
+  padding: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+}
+
+/*
+ * Actions fill the panel and read as a list rather than as a row of chips. `text-align` matters
+ * because the button primitive centres its label, which looks wrong in a stack.
+ */
+.menuPanel button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}

@@ -259,6 +259,22 @@ export async function addAnnotation(page: Page, term: string, value: string, lan
   if (language !== undefined) await row.getByLabel(`${term} language tag`).selectOption(language);
 }
 
+/**
+ * Opens the project actions menu and picks one of them.
+ *
+ * New, Examples, Save, Open and Delete live behind a single trigger now, so every one of them
+ * takes two steps. Named here rather than repeated at each call site, since the last gesture
+ * change had to be edited in twenty-eight places for exactly that reason.
+ */
+export async function chooseProjectAction(page: Page, testId: string) {
+  await page.getByTestId('file-menu').click();
+  await page.getByTestId(testId).click();
+}
+
+export async function openExamples(page: Page) {
+  await chooseProjectAction(page, 'open-examples');
+}
+
 export async function openInspectorTab(page: Page, name: string) {
   await page.getByRole('tab', { name }).click();
 }
