@@ -30,16 +30,6 @@
     gap: var(--space-2);
     overflow-x: auto;
   }
-
-  .brand {
-    border-right: none;
-    padding-right: 0;
-  }
-
-  .brandName,
-  .viewHint {
-    display: none;
-  }
 }
 
 .brand {
@@ -48,6 +38,18 @@
   gap: var(--space-2);
   padding-right: var(--space-2);
   border-right: 1px solid var(--border-subtle);
+}
+
+/*
+ * Placed after the base rules rather than in the media query near the top of this file. A media
+ * query adds no specificity, so an override written before the rule it means to beat quietly
+ * loses to it -- which is how the brand went on showing beside the toggle that replaced it.
+ */
+@media (max-width: 1024px) {
+  .brand,
+  .viewHint {
+    display: none;
+  }
 }
 
 .brandName {
@@ -232,6 +234,17 @@
 
 .sectionBody {
   padding: var(--space-3);
+}
+
+/*
+ * After the rule it overrides, not before: a media query adds no specificity. 12px each side is
+ * a seventh of a 160px drawer, and it was the four pixels that pushed the entity tabs onto a
+ * second row.
+ */
+@media (max-width: 1024px) {
+  .sectionBody {
+    padding: var(--space-2);
+  }
 }
 
 .selectionHeader {
