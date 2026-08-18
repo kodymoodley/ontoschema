@@ -14,6 +14,7 @@ import {
 } from './graphRenderers';
 import { useThemePreference } from './useThemePreference';
 import { useFullscreen } from './useFullscreen';
+import { EntitiesIcon } from './icons';
 import styles from './appshell.module.css';
 
 /**
@@ -70,8 +71,15 @@ export function App() {
           aria-expanded={drawer === 'entities'}
           aria-controls="ontoschema-entities"
           onClick={() => setDrawer((current) => (current === 'entities' ? 'none' : 'entities'))}
+          aria-label="Entities"
+          title="Entities"
         >
-          Entities
+          {/*
+            An icon rather than the word, since this button only exists on the narrow layout where
+            the header has least room. The name stays on the button for anyone who cannot see the
+            drawing, and as a tooltip for anyone who can but does not recognise it.
+          */}
+          <EntitiesIcon />
         </Button>
         <ProjectNameField />
         <Spacer />
@@ -143,7 +151,19 @@ export function App() {
           </div>
         </aside>
 
-        <main className={styles.center}>
+        {/*
+          Touching the canvas puts a drawer away. A drawer covers the thing being worked on, so
+          reaching past it to the canvas is a clear enough signal that it is no longer wanted --
+          and having to find the toggle again to dismiss it is the sort of small tax that makes an
+          interface feel stubborn. Captured on the way down so the canvas still receives the same
+          gesture: this closes the drawer, it does not swallow the click.
+        */}
+        <main
+          className={styles.center}
+          onPointerDownCapture={() => {
+            if (drawer !== 'none') setDrawer('none');
+          }}
+        >
           <Toolbar className={styles.canvasToolbar}>
             <Tabs options={VIEW_TABS} value={view} onChange={setView} ariaLabel="Canvas view" />
             <span className={styles.viewHint}>
