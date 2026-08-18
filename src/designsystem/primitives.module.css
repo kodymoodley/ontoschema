@@ -173,8 +173,14 @@
 
 /* ------------------------------------------------------------------- tabs */
 
+/*
+ * Wraps rather than overflowing. A strip of tabs wider than what holds it does not scroll or
+ * clip visibly — it paints outside and looks like it ends, so the last tab is there, clickable,
+ * and invisible. Wrapping costs a second row on a narrow panel and never hides a tab.
+ */
 .tabs {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 2px;
   padding: 2px;
   border-radius: var(--radius-md);
