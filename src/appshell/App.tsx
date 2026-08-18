@@ -13,6 +13,7 @@ import {
   taxonomyNodeTypes,
 } from './graphRenderers';
 import { useThemePreference } from './useThemePreference';
+import { useFullscreen } from './useFullscreen';
 import styles from './appshell.module.css';
 
 /**
@@ -35,6 +36,7 @@ export function App() {
   const createRelation = useProjectStore((state) => state.createRelation);
   const { create, canCreateAttribute } = usePaletteCreate();
   const { theme, toggleTheme } = useThemePreference();
+  const fullscreen = useFullscreen();
   // Which side panel is showing when the viewport is too narrow for three columns.
   const [drawer, setDrawer] = useState<'none' | 'entities' | 'inspector'>('none');
 
@@ -85,6 +87,23 @@ export function App() {
         >
           Inspector
         </Button>
+        {/*
+          Only drawn where it can work. Safari on iOS allows fullscreen for video and nothing
+          else, and an app launched from the home screen has no chrome left to hide; in both
+          cases the button would be present and inert, which misleads rather than merely fails.
+        */}
+        {fullscreen.offered ? (
+          <Button
+            size="small"
+            variant="subtle"
+            onClick={fullscreen.toggle}
+            aria-pressed={fullscreen.active}
+            aria-label={fullscreen.active ? 'Leave full screen' : 'Fill the screen'}
+            title={fullscreen.active ? 'Leave full screen' : 'Fill the screen'}
+          >
+            {fullscreen.active ? '⤡' : '⤢'}
+          </Button>
+        ) : null}
         <Button
           size="small"
           variant="subtle"

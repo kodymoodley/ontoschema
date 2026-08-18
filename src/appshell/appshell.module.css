@@ -3,14 +3,23 @@
   display: grid;
   grid-template-rows: var(--header-height) 1fr;
   height: 100%;
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--surface-canvas);
 }
 
+/*
+ * Once the browser chrome is gone -- full screen, or launched from the home screen -- the page
+ * reaches the physical edges of the display, including under a notch and around rounded corners.
+ * `env(safe-area-inset-*)` is what the device reports for those areas, and is zero everywhere
+ * else, so this costs nothing on a screen that has none. It needs `viewport-fit=cover` in the
+ * page's viewport meta to be anything other than zero.
+ */
 .header {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 0 var(--space-3);
+  padding: 0 max(var(--space-3), env(safe-area-inset-right)) 0
+    max(var(--space-3), env(safe-area-inset-left));
   border-bottom: 1px solid var(--border-subtle);
   background: var(--surface-base);
 }
