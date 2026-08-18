@@ -14,7 +14,7 @@ import {
 } from './graphRenderers';
 import { useThemePreference } from './useThemePreference';
 import { useFullscreen } from './useFullscreen';
-import { EntitiesIcon } from './icons';
+import { AppMark, EntitiesIcon } from './icons';
 import styles from './appshell.module.css';
 
 /**
@@ -53,9 +53,7 @@ export function App() {
 
       <header className={styles.header}>
         <div className={styles.brand}>
-          <span className={styles.logo} aria-hidden="true">
-            OS
-          </span>
+          <AppMark />
           <span className={styles.brandName}>OntoSchema</span>
         </div>
 
