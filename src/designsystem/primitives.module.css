@@ -203,6 +203,16 @@
     color 120ms ease;
 }
 
+/*
+ * Tighter tabs where the panels are drawers. 12px each side is a desktop measurement; in a 160px
+ * drawer it is a fifth of the room, spent on nothing.
+ */
+@media (max-width: 1024px) {
+  .tab {
+    padding: 0 var(--space-1);
+  }
+}
+
 .tab:hover {
   color: var(--text-primary);
 }

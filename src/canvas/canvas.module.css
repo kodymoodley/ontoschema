@@ -1,3 +1,17 @@
+/*
+ * The canvas keeps the desktop type scale on every screen. `tokens.css` shrinks the scale below
+ * the three-column breakpoint for the panels, which get narrower there; a class box does not --
+ * it is 224px wide whatever the screen -- so its text has the same room and reads worse smaller.
+ */
+@media (max-width: 1024px) {
+  .canvas {
+    --text-xs: 11px;
+    --text-sm: 12px;
+    --text-md: 13px;
+    --text-lg: 15px;
+  }
+}
+
 .canvas {
   position: relative;
   flex: 1;
@@ -153,6 +167,30 @@
   font-size: var(--text-xs);
   line-height: 1.4;
   color: var(--text-tertiary);
+}
+
+/*
+ * In a drawer the swatch and the gaps leave the description about 90px, which breaks a sentence
+ * into six lines of two words. `display: contents` dissolves the text wrapper so the name and the
+ * description become grid items in their own right: the name sits beside the swatch, and the
+ * description drops below and takes the whole width.
+ */
+@media (max-width: 1024px) {
+  .paletteItem {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: var(--space-2);
+    align-items: center;
+  }
+
+  .paletteText {
+    display: contents;
+  }
+
+  .paletteHint {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+  }
 }
 
 /* --------------------------------------------------------- taxonomy view */

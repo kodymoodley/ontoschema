@@ -130,6 +130,24 @@
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%), 0 2px 6px rgb(0 0 0 / 35%);
 }
 
+/*
+ * Smaller type below the three-column breakpoint, where the side panels become drawers and the
+ * left one is 160px wide. At the desktop scale a palette description broke into six lines of two
+ * words and the entity tabs wrapped onto three rows.
+ *
+ * The canvas opts back out in `canvas.module.css`. A class box is a fixed 224px whatever the
+ * screen, so its text has exactly as much room on a phone as on a desktop and shrinking it would
+ * make the diagram harder to read for no gain.
+ */
+@media (max-width: 1024px) {
+  :root {
+    --text-xs: 10px;
+    --text-sm: 11px;
+    --text-md: 12px;
+    --text-lg: 14px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
