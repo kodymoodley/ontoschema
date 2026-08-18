@@ -59,7 +59,7 @@
     "jsonld-streaming-parser": "^5.0.1",
     "lint-staged": "^16.2.6",
     "prettier": "^3.6.2",
-    "rdfxml-streaming-parser": "^3.2.0",
+    "rdfxml-streaming-parser": "^3.3.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.67.0",
     "vite": "^8.2.1",
