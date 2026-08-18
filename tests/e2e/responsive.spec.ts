@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { openApp, selectClass, settled } from './ontoschema';
+import { chooseProjectAction, openApp, selectClass, settled } from './ontoschema';
 
 /**
  * The shell is a three-column grid, which crushes the canvas on a laptop and overflows on
@@ -168,5 +168,53 @@ test.describe('narrow', () => {
         drawer.x + drawer.width,
       );
     }
+  });
+
+  /*
+   * The drawer scrolls as one. On a desktop the palette is a fixed block and the tree scrolls in
+   * what is left; in a drawer that leaves the tree a sliver, and the taxonomy below the fold
+   * cannot be reached at all.
+   */
+  test('scrolls to reach the taxonomy below the fold', async ({ page }) => {
+    /*
+     * A phone rather than this block's 820x800, which is tall enough that the question does not
+     * arise. The height is what matters here, and a real phone has less of it than this: the
+     * browser's own address bar takes about 90px that a headless viewport does not model.
+     */
+    await page.setViewportSize({ width: 390, height: 640 });
+    await openApp(page);
+    await chooseProjectAction(page, 'open-examples');
+    await page.getByText('Music library', { exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await openedDrawer(page);
+
+    const drawer = page.locator('[aria-label="Palette and hierarchy"]');
+    const overflowing = await drawer.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+    expect(overflowing, 'a schema of this size should not fit the drawer').toBe(true);
+
+    await drawer.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    expect(await drawer.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  });
+
+  /*
+   * Reaching past a drawer to the canvas says plainly enough that the drawer is no longer wanted.
+   * Having to find the toggle again to dismiss it is the sort of small tax that makes an interface
+   * feel stubborn.
+   */
+  test('closes when the canvas is touched', async ({ page }) => {
+    await openApp(page);
+    await openedDrawer(page);
+
+    const canvas = await page.getByTestId('schema-canvas').boundingBox();
+    if (!canvas) throw new Error('no canvas');
+    await page.mouse.click(canvas.x + canvas.width - 40, canvas.y + canvas.height / 2);
+
+    await expect(page.locator('[aria-label="Palette and hierarchy"]')).toBeHidden();
+  });
+
+  /* Icon-only on this layout, so the name has to come from somewhere other than the label. */
+  test('names the entities button even though it shows an icon', async ({ page }) => {
+    await openApp(page);
+    await expect(page.getByRole('button', { name: 'Entities', exact: true })).toBeVisible();
   });
 });
