@@ -302,7 +302,81 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Make the palette and the taxonomy tree subtabs of the left panel** — they are stacked today, so both are cramped and neither is whole. _(todo 3)_ | M |
 | ~~**Say relations and attributes throughout the interface**~~ — _done, both halves, and the code was the larger one._ 43 files: `objectProperty` became `relation` and `datatypeProperty` became `attribute` across the model, the store, the serializers and their tests, then every label, tab and aria-label a user reads. The exported RDF still says `owl:ObjectProperty`, which belongs to OWL rather than to this app. Documents written before it are refused rather than read: the reviver is forgiving by design, so an absent list revives as an empty one, and an old document would otherwise have opened with its classes intact and every relation and attribute silently gone. The file version is 2 now, and is actually checked. | — |
 | **Collect the file actions into one menu, and move export in with them** — save, open, delete and new each take a top-level button, and the header is the most crowded strip in the app. Folding them into one menu reclaims the room and makes the header read as one thing rather than a row of equals. Export belongs there too: it is the only inspector tab that has nothing to do with what is selected, which is why it sits oddly beside Details and Annotations. Moving it touches the tab set, the panel, and the `downloadExport` helper every export test goes through. _(todo 13)_ | M |
-| **Revamp the interface for small screens** — the layout fits on a phone without being usable on one. Observed in use: the canvas ends up too small to work in while the panels stay desktop-sized, the zoom sits too close, and the entities drawer covers the whole canvas — so creating an attribute hides the thing just created, which makes the drawer pattern actively wrong on a small screen rather than merely cramped. Landscape and portrait want different answers and this file has never said which. **Wants a design note before any code**, unlike the rest of this table: the other entries are fixes, and this is a decision about what the app is on a phone. _(todos 6, 15)_ | L |
+| **Revamp the interface for small screens** — the layout fits on a phone without being usable on one. Observed in use: the canvas ends up too small to work in while the panels stay desktop-sized, the zoom sits too close, and the entities drawer covers the whole canvas — so creating an attribute hides the thing just created, which makes the drawer pattern actively wrong on a small screen rather than merely cramped. Landscape and portrait want different answers and this file has never said which. The design note it wanted is written: [Small screens](#small-screens-what-the-app-should-be-on-a-phone). _(todos 6, 15)_ | L |
+
+### Small screens: what the app should be on a phone
+
+Written before any code, because this is the one item on the list that is a decision rather than
+a fix. Every number below was measured in Chromium at the stated viewport, opening the Music
+library example.
+
+|                  | Viewport   | Canvas        | Class box | Entities drawer                   |
+| ---------------- | ---------- | ------------- | --------- | --------------------------------- |
+| Phone, portrait  | 390 x 844  | 390 x 710     | 224 x 177 | 320px wide, **82% of the screen** |
+| Phone, landscape | 844 x 390  | 844 x **271** | 224 x 177 | 320px, 38%                        |
+| Tablet, portrait | 768 x 1024 | 768 x 905     | 224 x 177 | 320px, 42%                        |
+
+**Four things, and none of them is "the panels are a bit cramped".**
+
+**The drawer is a fixed width.** 320px whatever the screen, which is 82% of a portrait phone. That
+is why creating an attribute appears to do nothing: the thing that was just created is behind the
+panel that created it. The palette already closes the drawer on use, so the pattern is half
+established; the fix is not a narrower drawer but deciding what the drawer is for.
+
+**The class box is a fixed width too.** 224px, which is 57% of a portrait phone. Two classes cannot
+sit side by side at any zoom that leaves the text readable, so the schema view — the thing the app
+is for — cannot show a relationship in portrait without zooming out past legibility.
+
+**Landscape has no height.** 271px of canvas, after a 48px header, the view tabs and the footer
+counts. A class with five attributes is 177px, which is 65% of it. Landscape is not the easier
+orientation; it is a different problem.
+
+**Opening an example never fits the view — on any size.** Desktop shows 8 classes of 13 at 100%
+zoom, a portrait phone shows 4. This was assumed to be a small-screen bug and is not: it is
+general, and a phone is merely where it becomes obvious. Worth fixing on its own, before any of
+the above, since it is cheap and helps every user.
+
+**Portrait and landscape want opposite things.** Portrait has width to spare vertically and none
+horizontally: a drawer that slides from the side is the wrong shape, and a sheet that rises from
+the bottom leaves the canvas visible above it. Landscape has the opposite problem: the chrome
+rows are the enemy, and the drawer at 38% is tolerable while the header, tabs and footer are not.
+
+#### The question underneath
+
+Not "how do we fit the desktop layout onto a phone" but **what is this app on a phone at all**.
+Three honest answers:
+
+1. **Full parity.** Everything the desktop does. Expensive, and probably bad: drawing a relation
+   by dragging between two 224px boxes on a 390px screen is not a gesture that becomes good with
+   effort.
+2. **Review and light editing.** Open a schema, read it, navigate the taxonomy, rename things,
+   add an annotation, export. Authoring the graph — drawing relations, arranging the canvas —
+   stays a desktop activity.
+3. **Read-only.** A viewer, with editing disabled.
+
+**Option 2 is the recommendation.** It matches what the tool is for: a schema is authored in a
+sitting at a desk and then reviewed, discussed and shared far more often than it is drawn. It also
+costs least, because it means removing things from the phone layout rather than inventing mobile
+equivalents of drag and drop.
+
+It has a consequence worth stating plainly: **the schema canvas stops being the centre of the app
+on a phone.** The taxonomy tree is a better default there — it is a list, lists work at 390px, and
+it already exists.
+
+#### What follows from that
+
+Ordered, and the first is worth doing regardless of which option is chosen.
+
+1. **Fit the view when a schema is opened.** Cheap, general, and it is why a phone appears to open
+   on an arbitrary two classes. **S**
+2. **Make the entities panel a bottom sheet in portrait**, sized to leave the canvas visible above
+   it, and close it on any action that changes the canvas — which the palette already does. **M**
+3. **Default to the taxonomy tab below some width**, rather than the schema canvas. One line, and
+   it decides what the app opens as on a phone. **S**
+4. **Reclaim the landscape chrome**: fold the footer counts away and shrink the header, which the
+   file-actions menu item already covers. **S**
+5. **Only then** consider whether the schema canvas needs anything else in portrait, with the
+   answer possibly being "no, and that is fine".
 
 ## Housekeeping
 
