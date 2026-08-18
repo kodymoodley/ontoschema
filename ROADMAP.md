@@ -310,6 +310,28 @@ Written before any code, because this is the one item on the list that is a deci
 a fix. Every number below was measured in Chromium at the stated viewport, opening the Music
 library example.
 
+#### The order to do this in
+
+Decided by the owner after reading the rest of this note, and it takes precedence over the
+sequence proposed further down. Three changes, then stop and ask.
+
+1. **A full-screen button, to be rid of the browser address bar.** The bar is on screen in both
+   orientations and costs real estate that nothing else here can win back. **Do this first, then
+   pause for testing:** if it is enough, several of the suggestions below stop being worth making.
+2. **Fold the header actions into one dropdown menu.** Not a sliding strip along the top — one
+   menu, holding as many of the actions as sensibly fit. This is the item already on the roadmap
+   as _Collect the file actions into one menu_, brought forward.
+3. **Halve the width of the entities panel on mobile.** From 320px to about half that, so the
+   canvas stays visible beside it.
+
+**Then stop.** Treat mobile as done at that point and ask before going further.
+
+> **A correction to the measurements below, which point 1 exposes.** The table was taken in a
+> headless browser, which has no address bar, so the canvas heights are the best case rather than
+> the real one. A portrait phone loses roughly 90px of the 844 to browser chrome and a landscape
+> one loses a similar slice of an already short 390. The instinct behind point 1 is right, and the
+> figures below understate the problem rather than overstating it.
+
 |                  | Viewport   | Canvas        | Class box | Entities drawer                   |
 | ---------------- | ---------- | ------------- | --------- | --------------------------------- |
 | Phone, portrait  | 390 x 844  | 390 x 710     | 224 x 177 | 320px wide, **82% of the screen** |
@@ -365,7 +387,8 @@ it already exists.
 
 #### What follows from that
 
-Ordered, and the first is worth doing regardless of which option is chosen.
+Written before the order above was decided, and kept because the reasoning still holds. These come
+after those three, if they are wanted at all.
 
 1. **Fit the view when a schema is opened.** Cheap, general, and it is why a phone appears to open
    on an arbitrary two classes. **S**
