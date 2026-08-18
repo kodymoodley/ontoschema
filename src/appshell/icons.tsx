@@ -48,19 +48,24 @@ export function AppMark() {
 }
 
 /**
- * A panel hinged off the left edge, for the button that slides one in and out.
+ * Undo and redo: an arrow curving back on itself, the shape every editor uses for these.
  *
- * Deliberately not the app mark, which this used to be. The header now shows that mark as the
- * logo, and the same drawing twice in one strip reads as a mistake rather than as a theme. A
- * sidebar is also the more honest picture: the button does not stand for the entities, it stands
- * for the panel they live in.
+ * Mirrored rather than drawn twice, so the pair cannot drift apart. The arrowhead is part of the
+ * path rather than a separate marker, which keeps the stroke weight even at 16px.
  */
-export function EntitiesIcon() {
+function CurvedArrow({ flip }: { flip: boolean }) {
   return (
-    <svg {...common}>
-      <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.75" />
-      <path d="M6.25 2.75v10.5" />
-      <path d="M3.5 6h1.25M3.5 8.5h1.25" />
+    <svg {...common} style={flip ? { transform: 'scaleX(-1)' } : undefined}>
+      <path d="M3 8.5a5 5 0 0 1 9.5 2.2" />
+      <path d="M2.5 4.75V8.5h3.75" />
     </svg>
   );
+}
+
+export function UndoIcon() {
+  return <CurvedArrow flip={false} />;
+}
+
+export function RedoIcon() {
+  return <CurvedArrow flip />;
 }
