@@ -23,9 +23,18 @@ const ASSETS = fileURLToPath(new URL('../dist/assets/', import.meta.url));
  * visitor's cache of React, the canvas engine and the RDF writer.
  */
 const BUDGETS = {
-  // Our own application code. Raised from 35 for the canvas focus and fit-view gestures,
-  // which brought their own touch handling.
-  'index.js': 36,
+  /*
+   * Our own application code. Raised from 35 for the canvas focus and fit-view gestures, which
+   * brought their own touch handling, and from 36 for the work that got the browser chrome out of
+   * the way on a phone.
+   *
+   * Measured rather than guessed at, so the next person can tell drift from a real import: 35.70
+   * before that work, 35.96 with the full-screen hook and the manifest, 36.43 with the menu the
+   * project actions moved into. No dependency was added -- the growth is a portal-positioned menu
+   * primitive and a fullscreen hook, both ours, and the check exists to catch an accidental import
+   * of something enormous rather than to argue over half a kilobyte.
+   */
+  'index.js': 38,
   'react.js': 65,
   'canvas.js': 80, // @xyflow/react and dagre
   'rdf.js': 55, // n3
