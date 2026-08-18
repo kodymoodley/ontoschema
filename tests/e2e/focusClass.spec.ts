@@ -22,14 +22,44 @@ async function measure(page: Page, className: string) {
   const canvas = await page.getByTestId('schema-canvas').boundingBox();
   if (!node || !canvas) throw new Error('could not measure');
 
+  /*
+   * The zoom the viewport actually settled at, and the node's size in the coordinates the app
+   * places it in. Carried so a failure says why rather than only that it happened: this test has
+   * failed twice on WebKit at 0.289 and 0.297 against a floor of 0.30, has never reproduced on
+   * a developer machine, and the numbers below separate the two candidate explanations. A zoom
+   * short of what `focusZoom` would return means the animation was measured before it finished;
+   * a correct zoom over an unexpected node size means the app framed a box of the wrong height.
+   */
+  const zoom = Number(
+    /scale\(([\d.]+)\)/.exec(
+      (await page.locator('.react-flow__viewport').getAttribute('style')) ?? '',
+    )?.[1] ?? NaN,
+  );
+
   return {
     node,
     canvas,
+    zoom,
+    /** The node as the model holds it, with the viewport's scale taken back out. */
+    unscaled: { width: node.width / zoom, height: node.height / zoom },
     areaShare: (node.width * node.height) / (canvas.width * canvas.height),
     /** How far the node's centre sits from the canvas centre, as a share of canvas size. */
     offCentreX: Math.abs(node.x + node.width / 2 - (canvas.x + canvas.width / 2)) / canvas.width,
     offCentreY: Math.abs(node.y + node.height / 2 - (canvas.y + canvas.height / 2)) / canvas.height,
   };
+}
+
+/** Everything a failed area assertion needs to be diagnosed from a CI log alone. */
+function explain(className: string, m: Awaited<ReturnType<typeof measure>>): string {
+  const ideal = Math.sqrt(
+    (0.35 * m.canvas.width * m.canvas.height) / (m.unscaled.width * m.unscaled.height),
+  );
+  return (
+    `${className}: area ${m.areaShare.toFixed(4)} at zoom ${m.zoom.toFixed(4)} ` +
+    `(focusZoom would ask for ${ideal.toFixed(4)}); ` +
+    `node ${Math.round(m.unscaled.width)}x${Math.round(m.unscaled.height)} unscaled, ` +
+    `canvas ${Math.round(m.canvas.width)}x${Math.round(m.canvas.height)}`
+  );
 }
 
 async function transform(page: Page) {
@@ -68,8 +98,8 @@ test('works for a small class and a large one alike', async ({ page }) => {
     await doubleClickClass(page, className);
     const after = await measure(page, className);
 
-    expect(after.areaShare, `${className} area`).toBeGreaterThanOrEqual(0.3);
-    expect(after.areaShare, `${className} area`).toBeLessThanOrEqual(0.4);
+    expect(after.areaShare, explain(className, after)).toBeGreaterThanOrEqual(0.3);
+    expect(after.areaShare, explain(className, after)).toBeLessThanOrEqual(0.4);
     expect(after.offCentreX, `${className} x`).toBeLessThan(0.03);
   }
 });
