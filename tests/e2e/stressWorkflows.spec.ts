@@ -96,7 +96,7 @@ test('builds a diamond and keeps both inheritance paths', async ({ page }) => {
   await setSuperclass(page, 'Amphibious', 'Car');
 
   // The picker sets a single parent; the tree panel is where a second one is added.
-  await page.getByRole('tab', { name: 'Classes' }).click();
+  await page.getByRole('tab', { name: 'Class' }).click();
   await expect(page.locator('[data-tree-item="Amphibious"]')).toBeVisible();
 
   await page.getByRole('tab', { name: 'Taxonomy' }).click();

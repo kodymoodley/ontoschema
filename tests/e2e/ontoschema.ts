@@ -31,7 +31,7 @@ export async function dragFromPalette(
 
 /** Drags an existing attribute out of the pool and onto a class, to reuse it. */
 export async function dragPropertyOntoClass(page: Page, propertyName: string, className: string) {
-  await page.getByRole('tab', { name: 'Attributes' }).click();
+  await page.getByRole('tab', { name: 'Attribute' }).click();
   await dragOntoCanvas(page, page.locator(`[data-datatype-property="${propertyName}"]`), {
     onClass: className,
   });

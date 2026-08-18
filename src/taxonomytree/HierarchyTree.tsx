@@ -33,9 +33,13 @@ import styles from './taxonomytree.module.css';
 type PanelTab = 'classes' | 'relations' | 'attributes';
 
 const TABS = [
-  { value: 'classes' as const, label: 'Classes' },
-  { value: 'relations' as const, label: 'Relations' },
-  { value: 'attributes' as const, label: 'Attributes' },
+  /*
+   * Singular. A tab names the kind of thing it lists rather than counting them, and the shorter
+   * words also fit: in a 160px drawer the plurals wrapped onto a second row.
+   */
+  { value: 'classes' as const, label: 'Class' },
+  { value: 'relations' as const, label: 'Relation' },
+  { value: 'attributes' as const, label: 'Attribute' },
 ];
 
 export function HierarchyTree() {

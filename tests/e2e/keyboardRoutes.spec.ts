@@ -165,7 +165,7 @@ test('an relation is re-parented with the keyboard', async ({ page }) => {
 
   await chooseByKeyboard(page, 'Superproperty', 'part');
 
-  await page.getByRole('tab', { name: 'Relations' }).click();
+  await page.getByRole('tab', { name: 'Relation' }).click();
   await expect(page.getByRole('tree', { name: 'Relation hierarchy' })).toContainText('componentOf');
 });
 

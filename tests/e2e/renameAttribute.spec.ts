@@ -105,7 +105,7 @@ test('the rename reaches every class holding the property, and says so first', a
   await page.getByLabel('Class name').press('Enter');
 
   await openDrawer(page, 'Entities');
-  await page.getByRole('tab', { name: 'Attributes' }).click();
+  await page.getByRole('tab', { name: 'Attribute' }).click();
   const box = await page.locator('[data-class-name="Van"]').boundingBox();
   const transfer = await page.evaluateHandle(() => new DataTransfer());
   const source = page.locator('[data-datatype-property="make"]');

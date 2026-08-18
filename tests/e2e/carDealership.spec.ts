@@ -178,7 +178,7 @@ test('an relation stays off the canvas until it is used in a relation', async ({
   await createRelation(page, 'hasPart');
 
   // It exists in the property list, marked unused, and nothing is drawn for it.
-  await page.getByRole('tab', { name: 'Relations' }).click();
+  await page.getByRole('tab', { name: 'Relation' }).click();
   await expect(page.locator('[data-tree-item="hasPart"]')).toBeVisible();
   await expect(page.locator('[data-tree-item="hasPart"]')).toContainText('unused');
   await expect(page.locator('[data-relation-name]')).toHaveCount(0);

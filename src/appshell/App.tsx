@@ -14,7 +14,7 @@ import {
 } from './graphRenderers';
 import { useThemePreference } from './useThemePreference';
 import { useFullscreen } from './useFullscreen';
-import { EntitiesIcon } from './icons';
+import { AppMark, RedoIcon, UndoIcon } from './icons';
 import styles from './appshell.module.css';
 
 /**
@@ -53,9 +53,7 @@ export function App() {
 
       <header className={styles.header}>
         <div className={styles.brand}>
-          <span className={styles.logo} aria-hidden="true">
-            OS
-          </span>
+          <AppMark />
           <span className={styles.brandName}>OntoSchema</span>
         </div>
 
@@ -75,11 +73,11 @@ export function App() {
           title="Entities"
         >
           {/*
-            An icon rather than the word, since this button only exists on the narrow layout where
-            the header has least room. The name stays on the button for anyone who cannot see the
-            drawing, and as a tooltip for anyone who can but does not recognise it.
+            The mark itself is the button on this layout. It was a separate control beside the
+            logo, and once the logo became the app's own mark the two sat inches apart looking
+            almost the same. One of them had to go, and the one carrying meaning is the mark.
           */}
-          <EntitiesIcon />
+          <AppMark />
         </Button>
         <ProjectNameField />
         <Spacer />
@@ -172,11 +170,25 @@ export function App() {
                 : 'Laid out automatically — one module per root class, superclasses above.'}
             </span>
             <Spacer />
-            <Button size="small" variant="subtle" onClick={undo} title="Undo (Ctrl+Z)">
-              Undo
+            <Button
+              size="small"
+              variant="subtle"
+              iconOnly
+              onClick={undo}
+              aria-label="Undo"
+              title="Undo (Ctrl+Z)"
+            >
+              <UndoIcon />
             </Button>
-            <Button size="small" variant="subtle" onClick={redo} title="Redo (Ctrl+Shift+Z)">
-              Redo
+            <Button
+              size="small"
+              variant="subtle"
+              iconOnly
+              onClick={redo}
+              aria-label="Redo"
+              title="Redo (Ctrl+Shift+Z)"
+            >
+              <RedoIcon />
             </Button>
           </Toolbar>
 
