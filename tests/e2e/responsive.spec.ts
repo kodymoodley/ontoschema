@@ -157,11 +157,33 @@ test.describe('narrow', () => {
     expect(drawer.width / NARROW.width, 'share of the screen covered').toBeLessThan(0.5);
   });
 
+  /*
+   * One row, and nothing cut off. Sized to their labels the three tabs came within a pixel or
+   * two of the room available, so they share it instead: whatever the labels say, there is one
+   * row of three.
+   */
+  test('fits the entity tabs on one row without clipping a label', async ({ page }) => {
+    await openApp(page);
+    await openedDrawer(page);
+
+    const tabs = await page.evaluate(() => {
+      const strip = document.querySelector('[aria-label="Ontology entities"]');
+      const buttons = [...(strip?.querySelectorAll('button') ?? [])] as HTMLElement[];
+      return {
+        rows: new Set(buttons.map((b) => Math.round(b.getBoundingClientRect().top))).size,
+        clipped: buttons.filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent),
+      };
+    });
+
+    expect(tabs.rows, 'the tabs should not wrap').toBe(1);
+    expect(tabs.clipped, 'no label should be cut off').toEqual([]);
+  });
+
   test('keeps every entity tab inside itself', async ({ page }) => {
     await openApp(page);
     const drawer = await openedDrawer(page);
 
-    for (const name of ['Classes', 'Relations', 'Attributes']) {
+    for (const name of ['Class', 'Relation', 'Attribute']) {
       const tab = await page.getByRole('tab', { name, exact: true }).boundingBox();
       if (!tab) throw new Error(`no ${name} tab`);
       expect(tab.x + tab.width, `${name} runs past the drawer`).toBeLessThanOrEqual(

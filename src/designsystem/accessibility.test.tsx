@@ -75,7 +75,7 @@ describe('panels have no axe violations', () => {
     const { container } = render(<HierarchyTree />);
     await expectNoAxeViolations(container);
 
-    for (const tab of ['Relations', 'Attributes']) {
+    for (const tab of ['Relation', 'Attribute']) {
       await user.click(screen.getByRole('tab', { name: tab }));
       await expectNoAxeViolations(container);
     }
