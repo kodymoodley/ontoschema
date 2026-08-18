@@ -5,6 +5,7 @@ import {
   doubleClickClass,
   dragFromPalette,
   openApp,
+  openExamples,
   selectClass,
   settledViewport,
 } from './ontoschema';
@@ -37,7 +38,7 @@ async function transform(page: Page) {
 
 async function schemaWithTwoClasses(page: Page) {
   await openApp(page);
-  await page.getByTestId('open-examples').click();
+  await openExamples(page);
   await page.getByText('Music library', { exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.locator('.react-flow__controls-fitview').click();

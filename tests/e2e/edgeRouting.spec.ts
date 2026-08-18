@@ -5,6 +5,7 @@ import {
   dragFromPalette,
   freePointOnClass,
   openApp,
+  openExamples,
   relate,
   settled,
   settledViewport,
@@ -258,7 +259,7 @@ test('a subclass link stays vertical when the child is dragged above its parent'
 
 test('double-clicking bare canvas frames the whole schema again', async ({ page }) => {
   await openApp(page);
-  await page.getByTestId('open-examples').click();
+  await openExamples(page);
   await page.locator('[data-example="music"]').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
@@ -285,7 +286,7 @@ test.describe('on a touch device', () => {
 
   test('double-tapping bare canvas frames the whole schema again', async ({ page }) => {
     await openApp(page);
-    await page.getByTestId('open-examples').click();
+    await openExamples(page);
     await page.locator('[data-example="music"]').click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
@@ -301,7 +302,7 @@ test.describe('on a touch device', () => {
 
   test('leaves the view alone for taps that are not a double-tap', async ({ page }) => {
     await openApp(page);
-    await page.getByTestId('open-examples').click();
+    await openExamples(page);
     await page.locator('[data-example="music"]').click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
@@ -336,7 +337,7 @@ test.describe('on a touch device', () => {
 
 test('double-clicking a class still focuses it rather than fitting the view', async ({ page }) => {
   await openApp(page);
-  await page.getByTestId('open-examples').click();
+  await openExamples(page);
   await page.locator('[data-example="music"]').click();
   await page.locator('.react-flow__controls-fitview').click();
   await settledViewport(page);

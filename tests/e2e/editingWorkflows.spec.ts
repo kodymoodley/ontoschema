@@ -4,8 +4,9 @@ import { Parser } from 'n3';
 import {
   addAnnotation,
   addAttribute,
-  dragFromPalette,
+  chooseProjectAction,
   downloadExport,
+  dragFromPalette,
   openApp,
   openInspectorTab,
   relate,
@@ -274,7 +275,7 @@ test('projects are independent and can be switched between', async ({ page }) =>
   await page.getByLabel('Class name').press('Enter');
   await page.getByLabel('Project name').fill('Automotive');
 
-  await page.getByTestId('new-project').click();
+  await chooseProjectAction(page, 'new-project');
   await page.getByLabel('New project name').fill('Library');
   await page.getByTestId('confirm-new-project').click();
 
