@@ -172,8 +172,12 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > schema-diffing item would do anyway.
 >
 > **What "schema-level" means on import.** Classes and their `rdfs:subClassOf` hierarchy. All
-> annotations. Attributes, but only where the range is an `xsd` datatype — a property ranged on
-> `rdfs:Literal` or a custom datatype is skipped rather than defaulted. Relations, but only where
+> annotations. Attributes, whatever their range: an `xsd` datatype is kept as it is, and anything
+> else — `rdfs:Literal`, a custom datatype — becomes `xsd:string`, so the attribute arrives with its
+> name and its class rather than being dropped for a detail this tool does not model. Worth knowing
+> that this is the one import rule that **rewrites** rather than discards: export the file again and
+> it will assert `xsd:string` where the original said something else, so a foreign ontology opened
+> and saved here comes back changed. Relations, but only where
 > **both** a domain and a range are known. Property hierarchies are imported, and a subproperty
 > qualifies if it has both itself **or inherits both from an ancestor**. The ontology IRI and
 > prefix if stated. Everything else is dropped: individuals, restrictions, unions, property
