@@ -32,11 +32,13 @@ struck through in the tables below.
 2. **Move export into the file menu** — the half of the menu work left undone, and small. It has
    nothing to do with the RDF save format it is currently written beside, so it does not wait on
    that decision.
-3. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
-   largest new dependency surface on the list.
-4. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
+3. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
    for opposite reasons: one risks the very legibility that makes the view worth having, the other
    is four features in a sentence and would invalidate the bundled examples.
+4. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
+   size. It is the largest new dependency surface on the list, and the only item that makes this
+   tool depend on vocabularies it does not control; everything above it improves what is already
+   here.
 
 Two more are filed and deliberately not sequenced, because each waits on a decision rather than on
 a slot: **saving and opening standard RDF** (todo 17), which needs the class-positions question
