@@ -32,18 +32,22 @@ struck through in the tables below.
 2. **Move export into the file menu** — the half of the menu work left undone, and small. It has
    nothing to do with the RDF save format it is currently written beside, so it does not wait on
    that decision.
-3. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
+3. **Save and open standard RDF rather than a private format** — the questions that kept it out
+   of this list are answered: positions go in one annotation on the ontology, and what counts as
+   schema-level is written down. One is still open, and it decides whether the round trip works at
+   all: whether import reads the SHACL shapes this app already writes. The part that handles
+   foreign terms waits on the import item below; the rest does not.
+4. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
    for opposite reasons: one risks the very legibility that makes the view worth having, the other
    is four features in a sentence and would invalidate the bundled examples.
-4. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
+5. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
    size. It is the largest new dependency surface on the list, and the only item that makes this
    tool depend on vocabularies it does not control; everything above it improves what is already
    here.
 
-Two more are filed and deliberately not sequenced, because each waits on a decision rather than on
-a slot: **saving and opening standard RDF** (todo 17), which needs the class-positions question
-answered first, and **plain words in the interface** (todo 18). Neither is a commitment until it
-appears in the list above.
+One more is filed and deliberately not sequenced: **plain words in the interface** (todo 18). It
+waits on a decision rather than a slot — how far past the annotations tab it reaches — and is not a
+commitment until it appears in the list above.
 
 The reasoning is in [Proposed running order](#proposed-running-order) at the foot of the file.
 
@@ -152,28 +156,43 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Size |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | ~~**Mermaid diagram export**~~ — _done, `src/serialization/mermaid.ts`._ A class diagram: classes carrying typed members, the hollow triangle to a parent, one labelled arrow per relation use. The one export that is not RDF, so the descriptor says which kind it is rather than leaving the tests a list of exceptions. No new dependency, and the bundle did not move.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | —    |
-| **Save and open standard RDF rather than a private format** — save writes `.ttl` or RDF/XML and open reads them back, so a schema leaves this app in a form every other tool understands and the private project `.json` goes away. Import keeps only the schema-level portion and drops the rest rather than failing on it — individuals, restrictions, unions, property chains, and anything else this tool does not model. Export then means only what RDF cannot express: Mermaid now, PlantUML if it earns its place — a shortening of the list, once the menu it lives in already exists (todo 19, which does not wait on any of this). `.trig` follows if the 7±2 work gives each subgraph a named graph. **Three things to settle before starting: see the note below.** _(todo 17)_                                                                                                                                                                                                                                                                                                                                                          | L    |
+| **Save and open standard RDF rather than a private format** — save writes `.ttl` or RDF/XML and open reads them back, so a schema leaves this app in a form every other tool understands and the private project `.json` goes away. Import keeps only the schema-level portion and drops the rest rather than failing on it — individuals, restrictions, unions, property chains, and anything else this tool does not model. Export then means only what RDF cannot express: Mermaid now, PlantUML if it earns its place — a shortening of the list, once the menu it lives in already exists (todo 19, which does not wait on any of this). `.trig` follows if the 7±2 work gives each subgraph a named graph. **Decided in detail below**, bar one question. _(todo 17)_                                                                                                                                                                                                                                                                                                                                                                           | L    |
 | **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S    |
 | **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. _Design settled: no proxy, and no fetch on the critical path — see [Resolving external vocabularies](#resolving-external-vocabularies) below._ **Imported terms are read-only**: an axiom or definition that came from PROV-O, PAV or DCAT cannot be edited or redefined here, or the schema quietly disagrees with the vocabulary it claims to import. Note the tension to settle first — SKOS appears on the todo list as something to import, and is excluded above as a modelling vocabulary. _(todo 10)_ | L    |
 | ~~**SHACL conversion and export**~~ — _already built._ Every usage becomes a named `sh:PropertyShape`, several targets on one path become a single `sh:or`, and the Export panel can switch the OWL/RDFS axioms off. Unticking axioms and downloading `.ttl` already gives a shapes-only Turtle file. See [Two export layers](README.md#two-export-layers). What is missing is not the export but the **vocabulary of constraints** — see the note below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | —    |
 
-> **Settle these before writing any of it.**
+> **Decided, in the owner's words, and what each costs.**
 >
-> **Where do the class positions go?** They are the one thing the private format carries that RDF
-> does not: nothing in Turtle describes where a box sits on a canvas, and no writer here emits
-> them. Two honest answers. Invent a small private namespace and write them as ordinary triples,
-> which keeps the file valid RDF that other tools ignore, and keeps a saved diagram looking like
-> the one that was left. Or accept that opening a file lays the schema out afresh, which is
-> cheaper, loses arrangement work, and is only tolerable once auto-layout is good. Deciding this
-> late means discovering it after the first save-and-reopen.
+> **Class positions go in one annotation on the ontology**, not on each class. A single custom
+> `owl:AnnotationProperty` in this app's own namespace, carrying every position, keyed by entity
+> **IRI** — internal ids never reach the file, so they cannot be the key. Declare the property in
+> the document so it stays valid OWL, and place a class with no entry the way a new one is placed.
+> The cost is that any move rewrites the whole line, so a textual diff of a saved `.ttl` shows all
+> of it changed; a triple-level diff sees one annotation and can ignore it by predicate, which the
+> schema-diffing item would do anyway.
+>
+> **What "schema-level" means on import.** Classes and their `rdfs:subClassOf` hierarchy. All
+> annotations. Attributes, but only where the range is an `xsd` datatype — a property ranged on
+> `rdfs:Literal` or a custom datatype is skipped rather than defaulted. Relations, but only where
+> **both** a domain and a range are known. Property hierarchies are imported, and a subproperty
+> qualifies if it has both itself **or inherits both from an ancestor**. The ontology IRI and
+> prefix if stated. Everything else is dropped: individuals, restrictions, unions, property
+> chains. Foreign terms arrive through `owl:imports` rather than dangling without context, which
+> ties this to the import item — the last thing in the running order — so either that part waits
+> or the two are done together.
+>
+> **The open question: does import read the SHACL shapes this app writes?** It matters more than
+> it sounds. `rdfs:domain` and `rdfs:range` are written _only_ for a property used in exactly one
+> place, because a reused property cannot state them truthfully — repeating a domain means
+> intersection, and a union loses which domain pairs with which range. The pairings live in the
+> `sh:PropertyShape` per usage instead. So with the rule above and no shape reading, **every
+> reused property is dropped when reopening this app's own export**, and reuse is the feature that
+> makes the model worth having. Reading the shapes is the only way `save` then `open` returns the
+> schema that was saved.
 >
 > **One project per file.** A workspace holds several projects; a Turtle document is one ontology.
 > Saving as RDF is per project by construction, so the whole-workspace round trip needs its own
 > answer or has to be dropped.
->
-> **What "schema-level" means, written as a list**, and what happens to everything else. Silently
-> dropping two thirds of an imported vocabulary is the kind of helpfulness people do not forgive:
-> someone who imports FIBO and gets a fraction of it should be told what was left behind and why.
 
 > **Decided: deferred, not rejected.** A richer SHACL constraint vocabulary — `sh:minCount`,
 > `sh:maxCount`, `sh:pattern`, `sh:in`, datatype facets — is real and would be useful, but adding
