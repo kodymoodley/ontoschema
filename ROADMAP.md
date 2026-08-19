@@ -23,22 +23,31 @@ flake](#what-was-known-about-the-webkit-flake) for why that is evidence rather t
 what to do if it returns. Feature work resumes.
 
 The five small canvas and interface fixes are done, and so is the relations-and-attributes rename
-— both the interface and the code beneath it, which turned out to be the larger half. The
-individual entries are struck through in the tables below.
+— both the interface and the code beneath it, which turned out to be the larger half. So is the
+file menu, and the small-screen work as far as it was agreed to go. The individual entries are
+struck through in the tables below.
 
 1. **Palette and taxonomy as subtabs** — the first step of the layout work. _(The language-code
    item that used to share this line is done; see the Editing workflow table.)_
-2. **Collect the file actions into one menu** — before the small-screen work rather than after,
-   because a crowded header is one of the things that makes the phone layout unusable, and it is
-   cheaper to fix once here than to design around twice.
-3. **Revamp the interface for small screens** — after the subtabs and the header, both of which
-   are pieces of it. Wants a design note before any code; it is the one item on this list that is
-   a decision rather than a fix.
-4. **`owl:imports`, term reuse and read-only imported terms** — the interoperability item, and the
-   largest new dependency surface on the list.
-5. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
+2. **Move export into the file menu** — the half of the menu work left undone, and small. It has
+   nothing to do with the RDF save format it is currently written beside, so it does not wait on
+   that decision.
+3. **Save and open standard RDF rather than a private format** — the questions that kept it out
+   of this list are answered: positions go in one annotation on the ontology, and what counts as
+   schema-level is written down, shapes move to a file of their own, and a reused property states
+   its domain and range as a union so the ontology file carries enough to be read back. The part
+   that handles foreign terms waits on the import item below; the rest does not.
+4. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
    for opposite reasons: one risks the very legibility that makes the view worth having, the other
    is four features in a sentence and would invalidate the bundled examples.
+5. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
+   size. It is the largest new dependency surface on the list, and the only item that makes this
+   tool depend on vocabularies it does not control; everything above it improves what is already
+   here.
+
+One more is filed and deliberately not sequenced: **plain words in the interface** (todo 18). It
+waits on a decision rather than a slot — how far past the annotations tab it reaches — and is not a
+commitment until it appears in the list above.
 
 The reasoning is in [Proposed running order](#proposed-running-order) at the foot of the file.
 
@@ -147,28 +156,59 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Size |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | ~~**Mermaid diagram export**~~ — _done, `src/serialization/mermaid.ts`._ A class diagram: classes carrying typed members, the hollow triangle to a parent, one labelled arrow per relation use. The one export that is not RDF, so the descriptor says which kind it is rather than leaving the tests a list of exceptions. No new dependency, and the bundle did not move.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | —    |
-| **Save and open standard RDF rather than a private format** — save writes `.ttl` or RDF/XML and open reads them back, so a schema leaves this app in a form every other tool understands and the private project `.json` goes away. Import keeps only the schema-level portion and drops the rest rather than failing on it — individuals, restrictions, unions, property chains, and anything else this tool does not model. Export then means only what RDF cannot express: Mermaid now, PlantUML if it earns its place. It also moves out of the inspector into the file menu, where the other file actions already are — Export is the one inspector tab that never described the current selection. The menu's trigger becomes three stacked lines rather than the word _File_. `.trig` follows if the 7±2 work gives each subgraph a named graph. **Three things to settle before starting: see the note below.** _(todo 17)_                                                                                                                                                                                                                   | L    |
+| **Save and open standard RDF rather than a private format** — save writes `.ttl` or RDF/XML and open reads them back, so a schema leaves this app in a form every other tool understands and the private project `.json` goes away. Import keeps only the schema-level portion and drops the rest rather than failing on it — individuals, restrictions, unions, property chains, and anything else this tool does not model. Export then means only what RDF cannot express: Mermaid now, PlantUML if it earns its place — a shortening of the list, once the menu it lives in already exists (todo 19, which does not wait on any of this). `.trig` follows if the 7±2 work gives each subgraph a named graph. **Decided in detail below.** _(todo 17)_                                                                                                                                                                                                                                                                                                                                                                                             | L    |
 | **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S    |
 | **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. _Design settled: no proxy, and no fetch on the critical path — see [Resolving external vocabularies](#resolving-external-vocabularies) below._ **Imported terms are read-only**: an axiom or definition that came from PROV-O, PAV or DCAT cannot be edited or redefined here, or the schema quietly disagrees with the vocabulary it claims to import. Note the tension to settle first — SKOS appears on the todo list as something to import, and is excluded above as a modelling vocabulary. _(todo 10)_ | L    |
 | ~~**SHACL conversion and export**~~ — _already built._ Every usage becomes a named `sh:PropertyShape`, several targets on one path become a single `sh:or`, and the Export panel can switch the OWL/RDFS axioms off. Unticking axioms and downloading `.ttl` already gives a shapes-only Turtle file. See [Two export layers](README.md#two-export-layers). What is missing is not the export but the **vocabulary of constraints** — see the note below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | —    |
 
-> **Settle these before writing any of it.**
+> **Decided, in the owner's words, and what each costs.**
 >
-> **Where do the class positions go?** They are the one thing the private format carries that RDF
-> does not: nothing in Turtle describes where a box sits on a canvas, and no writer here emits
-> them. Two honest answers. Invent a small private namespace and write them as ordinary triples,
-> which keeps the file valid RDF that other tools ignore, and keeps a saved diagram looking like
-> the one that was left. Or accept that opening a file lays the schema out afresh, which is
-> cheaper, loses arrangement work, and is only tolerable once auto-layout is good. Deciding this
-> late means discovering it after the first save-and-reopen.
+> **Class positions go in one annotation on the ontology**, not on each class. A single custom
+> `owl:AnnotationProperty` in this app's own namespace, carrying every position, keyed by entity
+> **IRI** — internal ids never reach the file, so they cannot be the key. Declare the property in
+> the document so it stays valid OWL, and place a class with no entry the way a new one is placed.
+> The cost is that any move rewrites the whole line, so a textual diff of a saved `.ttl` shows all
+> of it changed; a triple-level diff sees one annotation and can ignore it by predicate, which the
+> schema-diffing item would do anyway.
+>
+> **What "schema-level" means on import.** Classes and their `rdfs:subClassOf` hierarchy. All
+> annotations. Attributes, whatever their range: an `xsd` datatype is kept as it is, and anything
+> else — `rdfs:Literal`, a custom datatype — becomes `xsd:string`, so the attribute arrives with its
+> name and its class rather than being dropped for a detail this tool does not model. Worth knowing
+> that this is the one import rule that **rewrites** rather than discards: export the file again and
+> it will assert `xsd:string` where the original said something else, so a foreign ontology opened
+> and saved here comes back changed. Relations, but only where
+> **both** a domain and a range are known. Property hierarchies are imported, and a subproperty
+> qualifies if it has both itself **or inherits both from an ancestor**. The ontology IRI and
+> prefix if stated. Everything else is dropped: individuals, restrictions, unions, property
+> chains. Foreign terms arrive through `owl:imports` rather than dangling without context, which
+> ties this to the import item — the last thing in the running order — so either that part waits
+> or the two are done together.
+>
+> **Shapes leave the ontology file, and a reused property states its domain as a union.** Three
+> parts, and they only make sense together.
+>
+> The shapes are exported to a file of their own rather than mixed into the ontology, and import
+> never reads them — not from a shapes file, not from an ontology that happens to contain some.
+>
+> That leaves the ontology file having to carry enough on its own, and today it does not: a
+> property used in more than one place is written with no `rdfs:domain` at all, because RDFS
+> cannot state the truth. Repeating the domain means intersection — that anything using the
+> property is a Company _and_ a School — which is false. So the writer changes: a reused property
+> gets `rdfs:domain [ owl:unionOf (…) ]` and the same for its range. That is true, merely weaker
+> than the pairing it came from, and it is what makes the property survive a round trip at all.
+>
+> **What that recovers, and what it does not.** An attribute usage is a class and a property, so a
+> union domain names every class it sits on and the attribute comes back exactly as it was. A
+> relation usage is a subject, a property and an object; a union gives back both sets but not
+> which subject went with which object, so a relation drawn `Car → Dealership` and
+> `Wheel → Garage` reopens permitting `Car → Garage` as well. The loss is confined to relations
+> used with more than one distinct pairing. Reading the shapes file on import would close it, and
+> can be added later without changing anything decided here.
 >
 > **One project per file.** A workspace holds several projects; a Turtle document is one ontology.
 > Saving as RDF is per project by construction, so the whole-workspace round trip needs its own
 > answer or has to be dropped.
->
-> **What "schema-level" means, written as a list**, and what happens to everything else. Silently
-> dropping two thirds of an imported vocabulary is the kind of helpfulness people do not forgive:
-> someone who imports FIBO and gets a fraction of it should be told what was left behind and why.
 
 > **Decided: deferred, not rejected.** A richer SHACL constraint vocabulary — `sh:minCount`,
 > `sh:maxCount`, `sh:pattern`, `sh:in`, datatype facets — is real and would be useful, but adding
@@ -319,8 +359,9 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Plain words in the interface, with the vocabulary behind a switch** — the tool asks people to know `rdfs:label`, `skos:prefLabel` and `dcterms:description` in order to fill in what are, to them, a name, another name and a description. The annotations tab should read like an ordinary form: a labelled field per common term, in plain words, with the term names out of sight. Experts lose nothing — a toggle reveals the vocabulary and lets any term be chosen, remembered per person the way the theme is. Save and export keep their format names, since anyone downloading a file does need to know what a `.ttl` is. **Decided for the datatypes**: every xsd type stays on offer, and each is shown as the part after the prefix — `string`, `integer`, `boolean` — rather than renamed to _Text_ or _Whole number_. The prefix is the jargon; the type names themselves are ordinary words, and translating them would cost an expert the ability to recognise what they are choosing while gaining a beginner very little. _(todo 18)_ | M |
 | **Make the palette and the taxonomy tree subtabs of the left panel** — they are stacked today, so both are cramped and neither is whole. _(todo 3)_ | M |
 | ~~**Say relations and attributes throughout the interface**~~ — _done, both halves, and the code was the larger one._ 43 files: `objectProperty` became `relation` and `datatypeProperty` became `attribute` across the model, the store, the serializers and their tests, then every label, tab and aria-label a user reads. The exported RDF still says `owl:ObjectProperty`, which belongs to OWL rather than to this app. Documents written before it are refused rather than read: the reviver is forgiving by design, so an absent list revives as an empty one, and an old document would otherwise have opened with its classes intact and every relation and attribute silently gone. The file version is 2 now, and is actually checked. | — |
-| **Collect the file actions into one menu, and move export in with them** — save, open, delete and new each take a top-level button, and the header is the most crowded strip in the app. Folding them into one menu reclaims the room and makes the header read as one thing rather than a row of equals. Export belongs there too: it is the only inspector tab that has nothing to do with what is selected, which is why it sits oddly beside Details and Annotations. Moving it touches the tab set, the panel, and the `downloadExport` helper every export test goes through. _(todo 13)_ | M |
-| **Revamp the interface for small screens** — the layout fits on a phone without being usable on one. Observed in use: the canvas ends up too small to work in while the panels stay desktop-sized, the zoom sits too close, and the entities drawer covers the whole canvas — so creating an attribute hides the thing just created, which makes the drawer pattern actively wrong on a small screen rather than merely cramped. Landscape and portrait want different answers and this file has never said which. The design note it wanted is written: [Small screens](#small-screens-what-the-app-should-be-on-a-phone). _(todos 6, 15)_ | L |
+| ~~**Collect the file actions into one menu**~~ — _done._ New, Examples, Save, Open and Delete sit behind one trigger, on both layouts. A disclosure rather than an ARIA menu, and the panel is portalled to the body because the header scrolls sideways on a narrow screen and a scrolling element clips what hangs out of it. _(todo 13)_ | — |
+| **Move export into the file menu, and make the trigger a hamburger** — the half of the above left undone. Export is the only inspector tab that has nothing to do with what is selected, which is why it sits oddly beside Details and Annotations; moved, the inspector is three tabs that all describe the selection. The trigger becomes three stacked lines rather than the word _File_. Touches the tab set, the panel and the `downloadExport` helper every export test goes through. **Independent of the RDF save format**, which only later shortens the list of formats offered. _(todo 19)_ | S–M |
+| ~~**Revamp the interface for small screens**~~ — _done as far as it was agreed to go, and stopped there deliberately._ The three changes the owner ordered are in: a full-screen button and a web app manifest, the file menu, and an entities drawer at half its width. Smaller type off the canvas, a drawer that scrolls as one, dismissal by touching the canvas, and the app's own mark as the toggle came with them. What the design note suggests beyond that — a bottom sheet in portrait, the taxonomy as the default tab, reclaiming the landscape chrome — is unbuilt on purpose: see [Small screens](#small-screens-what-the-app-should-be-on-a-phone). _(todos 6, 15)_ | — |
 
 ### Small screens: what the app should be on a phone
 
@@ -538,18 +579,19 @@ list as originally written is in the git history; ask and it comes back.
 | 3      | Editing workflow       | Palette and taxonomy tree as subtabs                                                      | M    |
 | ~~4~~  | Canvas and readability | ~~Halve the minimap~~ — done                                                              | —    |
 | ~~5~~  | Canvas and readability | ~~Give the class header more height~~ — done                                              | —    |
-| 6      | Editing workflow       | Revamp the interface for small screens                                                    | L    |
+| ~~6~~  | Editing workflow       | ~~Revamp the interface for small screens~~ — done as agreed, stopped there                | —    |
 | ~~7~~  | Canvas and readability | ~~Put a new class in the middle of the canvas~~ — done                                    | —    |
 | ~~8~~  | Editing workflow       | ~~Say relations and attributes throughout the interface~~ — done                          | —    |
 | 9      | Modelling power        | Cap a schema at 7±2 per module                                                            | L    |
 | 10     | Export and interop     | Folded into the `owl:imports` item, plus read-only terms                                  | L    |
 | 11     | Canvas and readability | Draw relation edges in the taxonomy view                                                  | M    |
 | ~~12~~ | Shipping               | ~~Publish the app to GitHub Pages~~ — done                                                | —    |
-| 13     | Editing workflow       | Collect the file actions into one menu, export with them                                  | M    |
+| ~~13~~ | Editing workflow       | ~~Collect the file actions into one menu~~ — done; export split out as 19                 | —    |
 | ~~14~~ | Editing workflow       | ~~Folded into the relations-and-attributes rename, which now asks how deep to go~~ — done | —    |
-| 15     | Editing workflow       | Folded into "Revamp the interface for small screens", which now wants a design note first | L    |
+| ~~15~~ | Editing workflow       | ~~Folded into the small-screens work~~ — done as agreed                                   | —    |
 | ~~16~~ | Editing workflow       | ~~Icons instead of words on the taxonomy buttons~~ — done                                 | —    |
 | 17     | Export and interop     | Save and open standard RDF rather than a private format                                   | L    |
 | 18     | Editing workflow       | Plain words in the interface, with the vocabulary behind a switch                         | M    |
+| 19     | Editing workflow       | Move export into the file menu, and make the trigger a hamburger                          | S–M  |
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
