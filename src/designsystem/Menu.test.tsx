@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button } from './Primitives';
-import { Menu } from './Menu';
+import { HamburgerIcon, Menu } from './Menu';
 
 /**
  * The disclosure, not the actions inside it.
@@ -101,5 +101,34 @@ describe('reaching it without a mouse', () => {
     expect(action()).toBeInTheDocument();
     await user.tab();
     expect(action()).toHaveFocus();
+  });
+});
+
+describe('a trigger with no words on it', () => {
+  /*
+   * The app's file menu wears a hamburger. A picture is not a name, so the label has to reach the
+   * button itself rather than only the panel it opens -- otherwise the one control that holds
+   * every file action announces itself as "button".
+   */
+  it('is still named by its label', () => {
+    render(
+      <Menu label="File" triggerLabel={<HamburgerIcon />} data-testid="file-menu">
+        <Button onClick={vi.fn()}>Save to file</Button>
+      </Menu>,
+    );
+
+    expect(screen.getByRole('button', { name: 'File' })).toBe(screen.getByTestId('file-menu'));
+  });
+
+  it('draws the icon without letting a screen reader read it as content', () => {
+    render(
+      <Menu label="File" triggerLabel={<HamburgerIcon />} data-testid="file-menu">
+        <Button onClick={vi.fn()}>Save to file</Button>
+      </Menu>,
+    );
+
+    const icon = screen.getByTestId('file-menu').querySelector('svg');
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute('aria-hidden', 'true');
   });
 });

@@ -279,14 +279,23 @@ export async function openInspectorTab(page: Page, name: string) {
   await page.getByRole('tab', { name }).click();
 }
 
+/** Opens the export dialog from the file menu. Leaves it open. */
+export async function openExport(page: Page) {
+  await chooseProjectAction(page, 'open-export');
+  await page.getByRole('dialog', { name: 'Export' }).waitFor();
+}
+
 /** Clicks an export button and returns the downloaded file's contents. */
 export async function downloadExport(page: Page, extension: string): Promise<string> {
-  await openInspectorTab(page, 'Export');
+  await openExport(page);
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByTestId(`download-${extension}`).click(),
   ]);
-  return readDownload(download);
+  const content = await readDownload(download);
+  // The dialog covers the canvas, so leaving it open would break whatever the test does next.
+  await page.getByRole('button', { name: 'Close' }).click();
+  return content;
 }
 
 export async function readDownload(download: Download): Promise<string> {

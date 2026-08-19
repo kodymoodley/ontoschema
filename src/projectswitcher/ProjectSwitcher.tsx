@@ -1,8 +1,20 @@
 import { useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useActiveProject, useProjectStore, useProjects } from '../projectstore';
 import { EXAMPLES, exampleSize } from '../examplelibrary';
-import { Button, Menu, Field, Modal, TextInput } from '../designsystem';
+import { Button, HamburgerIcon, Menu, Field, Modal, TextInput } from '../designsystem';
 import styles from './projectswitcher.module.css';
+
+interface ProjectSwitcherProps {
+  /**
+   * Extra items for the file menu, supplied by whoever assembles the header.
+   *
+   * Export belongs in this menu and lives in a module of its own, and two UI modules may not
+   * import each other — so the menu takes the item rather than reaching for it. The rule is what
+   * keeps the panels independent, and a slot is the ordinary way past it.
+   */
+  extraActions?: ReactNode;
+}
 
 /**
  * Managing several ontologies: switch between them, start a new one, rename, delete, and
@@ -11,7 +23,7 @@ import styles from './projectswitcher.module.css';
  * Project files are the ontology *document* — layout included — as distinct from an RDF
  * export, which is the ontology itself.
  */
-export function ProjectSwitcher() {
+export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
   const projects = useProjects();
   const active = useActiveProject();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -65,13 +77,13 @@ export function ProjectSwitcher() {
       </select>
 
       {/*
-        One menu rather than five buttons. The header was the most crowded strip in the app and
-        the first thing to run out of room on a phone, and these five are all the same kind of
+        One menu rather than a row of buttons. The header was the most crowded strip in the app
+        and the first thing to run out of room on a phone, and these are all the same kind of
         thing -- what to do with the project as a whole -- so they read better gathered than
         spread. The project selector stays outside, because switching project is navigation
         rather than an action and is used far more often than any of these.
       */}
-      <Menu label="Project actions" triggerLabel="File" data-testid="file-menu">
+      <Menu label="File" triggerLabel={<HamburgerIcon />} data-testid="file-menu">
         <Button
           size="small"
           variant="subtle"
@@ -94,6 +106,7 @@ export function ProjectSwitcher() {
         <Button size="small" variant="subtle" onClick={() => fileInput.current?.click()}>
           Open a file
         </Button>
+        {extraActions}
         <Button
           size="small"
           variant="danger"
