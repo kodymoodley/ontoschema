@@ -216,9 +216,29 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > used with more than one distinct pairing. Reading the shapes file on import would close it, and
 > can be added later without changing anything decided here.
 >
-> **One project per file.** A workspace holds several projects; a Turtle document is one ontology.
-> Saving as RDF is per project by construction, so the whole-workspace round trip needs its own
-> answer or has to be dropped.
+> **One project per file, and the answer to it: a workspace backup.** A workspace holds several
+> projects; a Turtle document is one ontology, so saving as RDF is per project by construction.
+> The gap gets its own menu item rather than a compromise in the save format: **one action that
+> writes the entire workspace** — every project, exact state, no lossy import rules — and one
+> that reads it back. Two formats still exist, but with jobs that do not overlap: the `.ttl` is
+> the document you hand someone, the backup is a snapshot of this browser.
+>
+> Worth being clear about what the private format is actually for, because it is easy to
+> mistake. Day to day nobody saves anything — the workspace already persists to `localStorage`,
+> which is why deleting a project says "removed from this browser". The private file's job is
+> transfer and backup, not working storage. Keeping it for that job costs nothing and answers
+> the one thing RDF genuinely cannot do; keeping it for **everyday saving** is what this item
+> set out to end. _(todo 21)_
+>
+> **Import must say what it dropped.** The rules above are lossy by design — individuals,
+> restrictions, property chains discarded, non-`xsd` datatypes rewritten to `xsd:string` — and
+> once save and open share a format, that becomes everyone's problem: open a colleague's
+> ontology, move one class, save, and parts of their file no one ever looked at have been
+> silently rewritten. The fix is honesty rather than a format. **Report what was discarded**
+> after an import, in plain terms and by count, and make **"save as a copy"** the offered path
+> for a file that came from elsewhere rather than overwriting a document the tool only partly
+> understands. Cheaper than trying to model everything, and it puts the choice with the person
+> who knows what the file is for. _(todo 22)_
 
 > **Decided: deferred, not rejected.** A richer SHACL constraint vocabulary — `sh:minCount`,
 > `sh:maxCount`, `sh:pattern`, `sh:in`, datatype facets — is real and would be useful, but adding
@@ -604,5 +624,7 @@ list as originally written is in the git history; ask and it comes back.
 | 18     | Editing workflow       | Plain words in the interface, with the vocabulary behind a switch                         | M    |
 | ~~19~~ | Editing workflow       | ~~Move export into the file menu, and make the trigger a hamburger~~ — done               | —    |
 | 20     | Export and interop     | Harden the layout annotation: real tests, and fault tolerance worth the name              | S–M  |
+| 21     | Export and interop     | Workspace backup: one action that writes and reads the whole workspace                    | S–M  |
+| 22     | Export and interop     | Report what an import discarded, and offer "save as a copy" for a foreign file            | S    |
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
