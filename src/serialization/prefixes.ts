@@ -1,6 +1,8 @@
 import { NAMESPACES } from '../annotationvocabulary';
-import { isBlankNode, normalizeNamespaceIri } from '../ontologymodel';
+import { isBlankNode, localNameOf, namespaceOf, normalizeNamespaceIri } from '../ontologymodel';
 import type { Ontology, Triple } from '../ontologymodel';
+
+export { localNameOf, namespaceOf };
 
 export interface PrefixTable {
   [prefix: string]: string;
@@ -38,17 +40,6 @@ export function prefixesFor(ontology: Ontology, triples: readonly Triple[]): Pre
 }
 
 /** Splits an IRI at its last `#` or `/`, returning the namespace part. */
-export function namespaceOf(iri: string): string {
-  const hash = iri.lastIndexOf('#');
-  if (hash >= 0) return iri.slice(0, hash + 1);
-  const slash = iri.lastIndexOf('/');
-  if (slash >= 0) return iri.slice(0, slash + 1);
-  return iri;
-}
-
-export function localNameOf(iri: string): string {
-  return iri.slice(namespaceOf(iri).length);
-}
 
 /** Renders `iri` as a CURIE when a declared prefix covers it, else returns null. */
 export function toCurie(iri: string, prefixes: PrefixTable): string | null {

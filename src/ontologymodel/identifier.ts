@@ -152,3 +152,23 @@ export function uniqueLocalName(desired: string, taken: Iterable<string>): strin
   while (used.has(`${desired}${counter}`)) counter += 1;
   return `${desired}${counter}`;
 }
+
+/**
+ * Splitting an IRI back into a namespace and a local name — the inverse of `entityIri`, and
+ * here beside it for that reason. Reading a document needs this as much as writing one does,
+ * and the model may not reach into the serialization layer to find it.
+ *
+ * The last `#` wins over the last `/`, which is what every RDF tool does: a hash IRI names a
+ * term inside a document, a slash IRI names one at a path.
+ */
+export function namespaceOf(iri: string): string {
+  const hash = iri.lastIndexOf('#');
+  if (hash >= 0) return iri.slice(0, hash + 1);
+  const slash = iri.lastIndexOf('/');
+  if (slash >= 0) return iri.slice(0, slash + 1);
+  return iri;
+}
+
+export function localNameOf(iri: string): string {
+  return iri.slice(namespaceOf(iri).length);
+}
