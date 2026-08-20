@@ -8,6 +8,7 @@ import {
   downloadExport,
   dragFromPalette,
   openApp,
+  openExport,
   openInspectorTab,
   relate,
   renameClassOnCanvas,
@@ -197,8 +198,9 @@ test('a name with characters illegal in an IRI is corrected rather than exported
 
 test('an empty ontology exports a valid document containing only its header', async ({ page }) => {
   await openApp(page);
-  await openInspectorTab(page, 'Export');
+  await openExport(page);
   await expect(page.getByText(/no classes or properties yet/i)).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
 
   const turtle = await downloadExport(page, 'ttl');
   const quads = new Parser({ format: 'text/turtle' }).parse(turtle);

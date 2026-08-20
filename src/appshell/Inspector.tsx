@@ -6,7 +6,6 @@ import { AttributeDetails, ClassDetails } from '../classeditor';
 import { RelationDetails } from '../relationeditor';
 import { AnnotationEditor } from '../annotationpanel';
 import { OntologyMetadataForm } from '../ontologymetadata';
-import { ExportPanel } from '../exportpanel';
 import { Badge, EmptyState, Tabs } from '../designsystem';
 import styles from './appshell.module.css';
 
@@ -16,13 +15,12 @@ import styles from './appshell.module.css';
  * modules do not know each other.
  */
 
-type InspectorTab = 'details' | 'annotations' | 'ontology' | 'export';
+type InspectorTab = 'details' | 'annotations' | 'ontology';
 
 const TABS = [
   { value: 'details' as const, label: 'Details' },
   { value: 'annotations' as const, label: 'Annotations' },
   { value: 'ontology' as const, label: 'Ontology' },
-  { value: 'export' as const, label: 'Export' },
 ];
 
 export function Inspector() {
@@ -35,7 +33,7 @@ export function Inspector() {
   // during render (rather than in an effect) avoids a second pass with the stale tab.
   if (selection && selection.id !== tabbedFor) {
     setTabbedFor(selection.id);
-    if (tab === 'ontology' || tab === 'export') setTab('details');
+    if (tab === 'ontology') setTab('details');
   }
 
   const name = selection ? displayName(selection) : null;
@@ -88,8 +86,6 @@ export function Inspector() {
               <AnnotationEditor target={{ kind: 'ontology', id: '' }} />
             </>
           ) : null}
-
-          {tab === 'export' ? <ExportPanel /> : null}
         </div>
       </div>
     </aside>

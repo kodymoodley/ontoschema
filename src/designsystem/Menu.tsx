@@ -101,6 +101,7 @@ export function Menu({ label, triggerLabel, children, className, ...rest }: Menu
       <Button
         size="small"
         variant="subtle"
+        aria-label={label}
         aria-expanded={open}
         aria-haspopup="true"
         aria-controls={panelId}
@@ -132,5 +133,30 @@ export function Menu({ label, triggerLabel, children, className, ...rest }: Menu
           )
         : null}
     </div>
+  );
+}
+
+/**
+ * Three stacked lines: the glyph a menu trigger is expected to wear.
+ *
+ * Drawn here beside the component it belongs to rather than pulled from an icon package, for the
+ * reason the header icons give — one shape does not justify a dependency — and `currentColor` so
+ * the subtle and pressed states of the trigger need no special handling. The trigger names itself
+ * through `aria-label`, so this is decorative and hidden from assistive technology.
+ */
+export function HamburgerIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />
+    </svg>
   );
 }

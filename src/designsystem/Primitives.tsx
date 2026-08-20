@@ -286,6 +286,11 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  /**
+   * `wide` is for a dialog holding a panel rather than a question -- the export panel, which
+   * carries a preview of the file and reads badly wrapped into a column meant for one field.
+   */
+  size?: 'default' | 'wide';
 }
 
 const FOCUSABLE =
@@ -295,7 +300,7 @@ function focusableWithin(root: HTMLElement | null): HTMLElement[] {
   return root ? [...root.querySelectorAll<HTMLElement>(FOCUSABLE)] : [];
 }
 
-export function Modal({ title, open, onClose, children, footer }: ModalProps) {
+export function Modal({ title, open, onClose, children, footer, size = 'default' }: ModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [host] = useState(() =>
@@ -379,7 +384,7 @@ export function Modal({ title, open, onClose, children, footer }: ModalProps) {
       }}
     >
       <div
-        className={styles.dialog}
+        className={cx(styles.dialog, size === 'wide' && styles.dialogWide)}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

@@ -14,6 +14,7 @@ import {
 } from './graphRenderers';
 import { useThemePreference } from './useThemePreference';
 import { useFullscreen } from './useFullscreen';
+import { useExportAction } from './useExportAction';
 import { AppMark, RedoIcon, UndoIcon } from './icons';
 import styles from './appshell.module.css';
 
@@ -38,6 +39,7 @@ export function App() {
   const { create, canCreateAttribute } = usePaletteCreate();
   const { theme, toggleTheme } = useThemePreference();
   const fullscreen = useFullscreen();
+  const exporting = useExportAction();
   // Which side panel is showing when the viewport is too narrow for three columns.
   const [drawer, setDrawer] = useState<'none' | 'entities' | 'inspector'>('none');
 
@@ -81,7 +83,7 @@ export function App() {
         </Button>
         <ProjectNameField />
         <Spacer />
-        <ProjectSwitcher />
+        <ProjectSwitcher extraActions={exporting.action} />
         <Divider />
         <Button
           size="small"
@@ -220,6 +222,8 @@ export function App() {
 
         <Inspector />
       </div>
+
+      {exporting.dialog}
     </div>
   );
 }

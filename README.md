@@ -39,7 +39,7 @@ Everything else falls out of that one concept:
 ## Two export layers
 
 Both ride inside the same `.ttl`/`.rdf`/`.owl`/`.jsonld` files — SHACL is a vocabulary, not a
-serialization — and each can be switched off in the Export panel.
+serialization — and each can be switched off in the export dialog, under **File › Export**.
 
 - **OWL / RDFS axioms**: class and property declarations, subclass and subproperty hierarchies, and
   `rdfs:domain`/`rdfs:range` only where a property is used exactly once. A attribute's
@@ -66,13 +66,13 @@ npm run dev          # http://localhost:5173
 The quickest way in is **Examples** in the header. Each opens as its own project, so anything
 you are already working on is left alone.
 
-| Example                 | Classes | What it shows                                                                                                             |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **Music library**       | 13      | The gentlest start — everyone knows the domain, so only the modelling is new. `performedBy` covers both studio and stage. |
-| **Recipes and cooking** | 13      | The most useful habit there is: when a link needs its own facts (_how much_ flour), it needs its own class.               |
-| **Vehicle dealership**  | 15      | A branching taxonomy, and `offeredBy` drawn from three vehicle kinds — watch `rdfs:domain` disappear in the Export tab.   |
-| **University**          | 14      | The catalogue-versus-offering distinction, and a course that is a prerequisite of a course.                               |
-| **Insurance firm**      | 15      | A `Party` abstraction over people and companies, and one relation whose range differs per policy type.                    |
+| Example                 | Classes | What it shows                                                                                                              |
+| ----------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Music library**       | 13      | The gentlest start — everyone knows the domain, so only the modelling is new. `performedBy` covers both studio and stage.  |
+| **Recipes and cooking** | 13      | The most useful habit there is: when a link needs its own facts (_how much_ flour), it needs its own class.                |
+| **Vehicle dealership**  | 15      | A branching taxonomy, and `offeredBy` drawn from three vehicle kinds — watch `rdfs:domain` disappear in the export dialog. |
+| **University**          | 14      | The catalogue-versus-offering distinction, and a course that is a prerequisite of a course.                                |
+| **Insurance firm**      | 15      | A `Party` abstraction over people and companies, and one relation whose range differs per policy type.                     |
 
 ### The five-minute tour
 
