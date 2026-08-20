@@ -32,8 +32,15 @@ export interface WorkspaceActions {
   canRedo(): boolean;
 
   newProject(name?: string): string;
-  /** Opens a ready-made schema as a new project, leaving any existing work alone. */
-  openExample(name: string, ontology: Ontology): string;
+  /**
+   * Opens a schema as a new project, leaving any existing work alone.
+   *
+   * Named for what it does rather than where the schema came from: an example from the
+   * library and an ontology read out of a file want exactly this, and calling it
+   * `openExample` at an import site would be a small lie in the one place clarity is worth
+   * most — the seam where a foreign document enters the app.
+   */
+  openAsNewProject(name: string, ontology: Ontology): string;
   switchProject(id: string): void;
   renameProject(id: string, name: string): void;
   deleteProject(id: string): void;
@@ -104,7 +111,7 @@ export function createWorkspaceActions(
       });
       return project.id;
     },
-    openExample(name, ontology) {
+    openAsNewProject(name, ontology) {
       const project = { ...createProject(name), ontology };
       openWorkspace(addProject(get(), project));
       return project.id;
