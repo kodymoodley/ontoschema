@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearWorkspace, useProjectStore } from '../../src/projectstore';
+import { projectToFile } from '../../src/projectstore/persistence';
 import { COALESCE_WINDOW_MS, HISTORY_LIMIT } from '../../src/projectstore/history';
 import {
   classForest,
@@ -267,7 +268,9 @@ describe('a fuzzed editing session', () => {
     for (let step = 0; step < 60; step += 1) applyRandomEdit(random, step);
 
     const before = serialize(ontology(), 'turtle').content;
-    const file = store().exportProjectFile();
+    const file = projectToFile(
+      useProjectStore.getState().projects.find((p) => p.id === store().activeProjectId)!,
+    );
     expect(store().importProject(file ?? '')).toBeTruthy();
 
     expect(serialize(ontology(), 'turtle').content).toBe(before);

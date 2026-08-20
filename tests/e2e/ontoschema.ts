@@ -285,18 +285,39 @@ export async function openExport(page: Page) {
   await page.getByRole('dialog', { name: 'Export' }).waitFor();
 }
 
-/** Clicks an export button and returns the downloaded file's contents. */
-export async function downloadExport(page: Page, extension: string): Promise<string> {
-  await openExport(page);
+/** Opens the save dialog from the file menu. Leaves it open. */
+export async function openSave(page: Page) {
+  await chooseProjectAction(page, 'open-save');
+  await page.getByRole('dialog', { name: 'Save a schema' }).waitFor();
+}
+
+/*
+ * A schema is written from one of two dialogs now: `save` writes the documents this app can
+ * open again, `export` writes the renderings it cannot. Which one a file comes from follows
+ * from the file, so the tests name the file and not the dialog.
+ */
+const SAVED = new Set(['ttl', 'rdf', 'owl']);
+
+/** Clicks a download button and returns the file's contents. */
+export async function downloadExport(page: Page, key: string): Promise<string> {
+  if (SAVED.has(key)) await openSave(page);
+  else await openExport(page);
+
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId(`download-${extension}`).click(),
+    page.getByTestId(`download-${key}`).click(),
   ]);
   const content = await readDownload(download);
   // The dialog covers the canvas, so leaving it open would break whatever the test does next.
   await page.getByRole('button', { name: 'Close' }).click();
   return content;
 }
+
+/**
+ * The SHACL shapes, which are a file of their own now rather than a layer inside the ontology.
+ * Tests that assert on shapes ask for them by name instead of finding them in the Turtle.
+ */
+export const downloadShapes = (page: Page) => downloadExport(page, 'shapes');
 
 export async function readDownload(download: Download): Promise<string> {
   const path = await download.path();

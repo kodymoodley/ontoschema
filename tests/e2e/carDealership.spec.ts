@@ -10,6 +10,7 @@ import {
   dragFromPalette,
   dragPropertyOntoClass,
   downloadExport,
+  downloadShapes,
   openApp,
   openInspectorTab,
   relate,
@@ -110,16 +111,24 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
     ),
   ).toBe(true);
 
-  // And the same facts are carried precisely by the shapes.
+  // And the same facts are carried precisely by the shapes, in a file of their own.
+  const shapeQuads = new Parser({ format: 'text/turtle' }).parse(await downloadShapes(page));
+  const hasShape = (subject: string, predicate: string, object: string) =>
+    shapeQuads.some(
+      (quad) =>
+        quad.subject.value === subject &&
+        quad.predicate.value === predicate &&
+        quad.object.value === object,
+    );
   expect(
-    has(
+    hasShape(
       'https://example.org/auto/CarShape',
       'http://www.w3.org/ns/shacl#targetClass',
       'https://example.org/auto/Car',
     ),
   ).toBe(true);
   expect(
-    has(
+    hasShape(
       'https://example.org/auto/Car_offeredBy',
       'http://www.w3.org/ns/shacl#class',
       'https://example.org/auto/Dealership',
@@ -198,7 +207,8 @@ test('an relation stays off the canvas until it is used in a relation', async ({
   expect(used).toMatch(
     /:hasPart a owl:ObjectProperty;\s*rdfs:domain \w*:Car;\s*rdfs:range \w*:Wheel/,
   );
-  expect(used).toMatch(/:Car_hasPart[\s\S]*sh:class \w*:Wheel/);
+  const usedShapes = await downloadShapes(page);
+  expect(usedShapes).toMatch(/:Car_hasPart[\s\S]*sh:class \w*:Wheel/);
 });
 
 test('a attribute must be dropped onto a class, not onto empty canvas', async ({ page }) => {
@@ -257,14 +267,16 @@ test('a attribute is reused on a second class by dragging it from the list', asy
   ]);
 
   // The per-class truth is in the shapes instead, one for each class.
-  const paths = quads.filter(
+  const shapes = await downloadShapes(page);
+  const shapeQuads = new Parser({ format: 'text/turtle' }).parse(shapes);
+  const paths = shapeQuads.filter(
     (quad) =>
       quad.predicate.value === 'http://www.w3.org/ns/shacl#path' &&
       quad.object.value.endsWith('/price'),
   );
   expect(paths).toHaveLength(2);
-  expect(turtle).toContain('Car_price');
-  expect(turtle).toContain('Product_price');
+  expect(shapes).toContain('Car_price');
+  expect(shapes).toContain('Product_price');
 });
 
 /**

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useProjectStore } from '../projectstore';
+import { projectToFile } from '../projectstore/persistence';
 import { EXAMPLES } from '../examplelibrary';
 import { ProjectSwitcher } from './ProjectSwitcher';
 
@@ -309,7 +310,9 @@ describe('opening an RDF document', () => {
   it('still opens a project file, which the same picker takes', async () => {
     const user = userEvent.setup();
     store().createClass({ localName: 'FromTheProjectFile' });
-    const projectFile = store().exportProjectFile() ?? '';
+    const projectFile = projectToFile(
+      store().projects.find((project) => project.id === store().activeProjectId)!,
+    );
     render(<ProjectSwitcher />);
 
     await openFileMenu(user);

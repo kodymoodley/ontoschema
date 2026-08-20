@@ -1,13 +1,7 @@
 import { createProject } from '../ontologymodel';
 import type { Ontology, Project } from '../ontologymodel';
 import { EMPTY_HISTORY, redoStep, undoStep } from './history';
-import {
-  projectFromFile,
-  projectToFile,
-  saveWorkspace,
-  workspaceFromFile,
-  workspaceToFile,
-} from './persistence';
+import { projectFromFile, saveWorkspace, workspaceFromFile, workspaceToFile } from './persistence';
 import {
   activeProject,
   addProject,
@@ -44,8 +38,15 @@ export interface WorkspaceActions {
   switchProject(id: string): void;
   renameProject(id: string, name: string): void;
   deleteProject(id: string): void;
+  /**
+   * Opens a project file written before saving became RDF.
+   *
+   * There is no longer an action that *writes* one: a schema is saved as RDF and a whole
+   * workspace as a backup, which covers both jobs between them. Reading stays, because the
+   * files people already have must keep opening. `projectToFile` in `persistence` is what
+   * makes one, and only the tests for this reader need that.
+   */
   importProject(fileContent: string): string | null;
-  exportProjectFile(id?: string): string | null;
 
   /** Every project in this browser, as one file. */
   exportWorkspaceFile(): string;
@@ -147,13 +148,6 @@ export function createWorkspaceActions(
       if (!restored) return null;
       openWorkspace(restored);
       return restored.projects.length;
-    },
-    exportProjectFile(id) {
-      const state = get();
-      const project = state.projects.find(
-        (candidate) => candidate.id === (id ?? state.activeProjectId),
-      );
-      return project ? projectToFile(project) : null;
     },
   };
 }

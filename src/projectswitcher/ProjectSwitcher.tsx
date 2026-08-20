@@ -36,7 +36,6 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
   const openAsNewProject = useProjectStore((state) => state.openAsNewProject);
   const deleteProject = useProjectStore((state) => state.deleteProject);
   const importProject = useProjectStore((state) => state.importProject);
-  const exportProjectFile = useProjectStore((state) => state.exportProjectFile);
   const exportWorkspaceFile = useProjectStore((state) => state.exportWorkspaceFile);
   const restoreWorkspace = useProjectStore((state) => state.restoreWorkspace);
 
@@ -67,13 +66,6 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-  };
-
-  const saveToFile = () => {
-    const content = exportProjectFile();
-    if (!content || !active) return;
-    const name = active.name.replace(/[^A-Za-z0-9._-]+/g, '-') || 'project';
-    download(`${name}.ontoschema.json`, content);
   };
 
   /*
@@ -161,9 +153,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         >
           Examples
         </Button>
-        <Button size="small" variant="subtle" onClick={saveToFile}>
-          Save to file
-        </Button>
+        {extraActions}
         <Button size="small" variant="subtle" onClick={() => fileInput.current?.click()}>
           Open a file
         </Button>
@@ -178,7 +168,6 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         >
           Restore a backup
         </Button>
-        {extraActions}
         <Button
           size="small"
           variant="danger"

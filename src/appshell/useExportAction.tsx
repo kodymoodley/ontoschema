@@ -4,7 +4,10 @@ import { Button, Modal } from '../designsystem';
 import { ExportPanel } from '../exportpanel';
 
 /**
- * Export, as an item in the file menu and the dialog it opens.
+ * Writing the schema out, as an item in the file menu and the dialog it opens.
+ *
+ * Called twice, once for each purpose: saving produces a document that opens again, exporting
+ * produces a rendering that does not. Same shape, different list.
  *
  * Two pieces because they cannot be rendered in the same place. The item goes inside the menu
  * panel, which unmounts the moment anything in it is clicked; a dialog rendered there would be
@@ -15,18 +18,27 @@ import { ExportPanel } from '../exportpanel';
  * no longer an inspector tab: it was the one tab that had nothing to do with the selection, and
  * it reset to Details whenever you clicked a class.
  */
-export function useExportAction(): { action: ReactNode; dialog: ReactNode } {
+export function useExportAction(purpose: 'save' | 'export' = 'export'): {
+  action: ReactNode;
+  dialog: ReactNode;
+} {
   const [open, setOpen] = useState(false);
+  const saving = purpose === 'save';
 
   return {
     action: (
-      <Button size="small" variant="subtle" onClick={() => setOpen(true)} data-testid="open-export">
-        Export
+      <Button
+        size="small"
+        variant="subtle"
+        onClick={() => setOpen(true)}
+        data-testid={saving ? 'open-save' : 'open-export'}
+      >
+        {saving ? 'Save a schema' : 'Export'}
       </Button>
     ),
     dialog: (
       <Modal
-        title="Export"
+        title={saving ? 'Save a schema' : 'Export'}
         size="wide"
         open={open}
         onClose={() => setOpen(false)}
@@ -36,7 +48,7 @@ export function useExportAction(): { action: ReactNode; dialog: ReactNode } {
           </Button>
         }
       >
-        <ExportPanel />
+        <ExportPanel purpose={purpose} />
       </Modal>
     ),
   };

@@ -11,6 +11,7 @@ import {
   dragFromPalette,
   dragPropertyOntoClass,
   downloadExport,
+  downloadShapes,
   openApp,
   openInspectorTab,
   relate,
@@ -127,13 +128,16 @@ test('points one property at three different classes and exports a disjunction',
   const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
 
   // Three separate property shapes on one path would be conjunctive; one sh:or is correct.
-  const paths = quads.filter(
+  const shapeQuads = new Parser({ format: 'text/turtle' }).parse(await downloadShapes(page));
+  const paths = shapeQuads.filter(
     (quad) =>
       quad.predicate.value === 'http://www.w3.org/ns/shacl#path' &&
       quad.object.value.endsWith('/hasPart'),
   );
   expect(paths).toHaveLength(1);
-  expect(quads.some((quad) => quad.predicate.value === 'http://www.w3.org/ns/shacl#or')).toBe(true);
+  expect(shapeQuads.some((quad) => quad.predicate.value === 'http://www.w3.org/ns/shacl#or')).toBe(
+    true,
+  );
 
   /*
    * One class uses it, so the domain is that class outright. The range is the three targets,
@@ -267,9 +271,10 @@ test('reuses one attribute across five classes', async ({ page }) => {
   const turtle = await downloadExport(page, 'ttl');
   const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
 
-  // One property, five shapes, and a domain that unions all five classes.
+  // One property, five shapes in their own file, and a domain that unions all five classes.
+  const shapeQuads = new Parser({ format: 'text/turtle' }).parse(await downloadShapes(page));
   expect(
-    quads.filter(
+    shapeQuads.filter(
       (quad) =>
         quad.predicate.value === 'http://www.w3.org/ns/shacl#path' &&
         quad.object.value.endsWith('/price'),
