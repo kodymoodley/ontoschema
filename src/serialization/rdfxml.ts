@@ -1,5 +1,5 @@
 import { RDF_TYPE } from '../annotationvocabulary';
-import { ontologyToTriples } from '../ontologymodel';
+import { blankLabel, isBlankNode, ontologyToTriples } from '../ontologymodel';
 import type { Ontology, SerializationOptions, Triple } from '../ontologymodel';
 import { localNameOf, namespaceOf, prefixesFor } from './prefixes';
 import type { PrefixTable } from './prefixes';
@@ -8,10 +8,12 @@ import type { PrefixTable } from './prefixes';
  * RDF/XML writer.
  *
  * Written by hand because the RDF-JS ecosystem has no maintained standalone RDF/XML
- * serializer. The scope here is narrow and fully under our control — no blank nodes, no
- * collections, no reification — so a direct writer is both smaller and easier to verify
- * than pulling in a general-purpose serialization stack. Correctness is enforced by
- * parsing the output back with a real parser in the test suite.
+ * serializer. The scope here is narrow and fully under our control — no reification, no
+ * abbreviated collection syntax, and blank nodes only where OWL requires one — so a direct
+ * writer is both smaller and easier to verify than pulling in a general-purpose
+ * serialization stack. A blank node is written the long way, as `rdf:nodeID` on the node
+ * element and on whatever points at it, which needs no lookahead and no nesting.
+ * Correctness is enforced by parsing the output back with a real parser in the test suite.
  */
 
 const RDF_NS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
@@ -85,7 +87,10 @@ function describeSubject(
   const elementName = typeQName ?? 'rdf:Description';
   const body = triples.filter((triple) => triple !== typeTriple || typeQName === null);
 
-  const lines = [`  <${elementName} rdf:about="${escapeAttribute(subject)}">`];
+  const identity = isBlankNode(subject)
+    ? `rdf:nodeID="${escapeAttribute(blankLabel(subject))}"`
+    : `rdf:about="${escapeAttribute(subject)}"`;
+  const lines = [`  <${elementName} ${identity}>`];
   for (const triple of body) lines.push(...propertyElement(triple, prefixes));
   lines.push(`  </${elementName}>`);
   return lines;
@@ -97,6 +102,10 @@ function propertyElement(triple: Triple, prefixes: PrefixTable): string[] {
 
   if (triple.object.type === 'iri') {
     return [`    <${name} rdf:resource="${escapeAttribute(triple.object.value)}"/>`];
+  }
+
+  if (triple.object.type === 'blank') {
+    return [`    <${name} rdf:nodeID="${escapeAttribute(blankLabel(triple.object.value))}"/>`];
   }
 
   const attributes = triple.object.language

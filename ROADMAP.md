@@ -186,6 +186,16 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > The shapes are exported to a file of their own rather than mixed into the ontology, and import
 > never reads them — not from a shapes file, not from an ontology that happens to contain some.
 >
+> **Built, and one thing had to give.** The union must be an **anonymous** class. Measured
+> against a real OWL parser (owlready2, reading the app's own RDF/XML, Turtle and JSON-LD): a
+> _named_ class carrying `owl:unionOf` comes back as a bare class equivalent to nothing — the
+> union triple is discarded — so the domain would assert something meaningless, which is worse
+> than asserting nothing. Anonymous, all three syntaxes read back as `Car | Truck`. That cost
+> the "deliberately no blank nodes" rule the writers were built on. Blank nodes are now allowed
+> in exactly one place, an OWL class expression, and a test names every other blank node as a
+> failure. Shapes stay named, since SHACL asks nothing of the kind and a named shape can be
+> pointed at, annotated and diffed.
+>
 > That leaves the ontology file having to carry enough on its own, and today it does not: a
 > property used in more than one place is written with no `rdfs:domain` at all, because RDFS
 > cannot state the truth. Repeating the domain means intersection — that anything using the

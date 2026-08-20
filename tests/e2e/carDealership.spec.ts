@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { Parser } from 'n3';
+import { unionMembers } from '../fixtures/parseRdf';
 import {
   addAnnotation,
   addAttribute,
@@ -183,7 +184,7 @@ test('an relation stays off the canvas until it is used in a relation', async ({
   await expect(page.locator('[data-tree-item="hasPart"]')).toContainText('unused');
   await expect(page.locator('[data-relation-name]')).toHaveCount(0);
 
-  // It is still declared in the export, just without any domain or range.
+  // Unused, so there is nothing to state a domain or a range from.
   const declaredOnly = await downloadExport(page, 'ttl');
   expect(declaredOnly).toContain(':hasPart a owl:ObjectProperty.');
 
@@ -243,13 +244,17 @@ test('a attribute is reused on a second class by dragging it from the list', asy
   const turtle = await downloadExport(page, 'ttl');
   const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
 
-  // Reused, so no rdfs:domain — repeating it would mean Car and Product are the same thing.
-  const domains = quads.filter(
+  // Reused, so the domain is a union: repeating it would mean Car and Product are one thing.
+  const [domain] = quads.filter(
     (quad) =>
       quad.subject.value.endsWith('/price') &&
       quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#domain',
   );
-  expect(domains).toHaveLength(0);
+  expect(domain?.object.termType).toBe('BlankNode');
+  expect(unionMembers(quads, domain!.subject.value, domain!.predicate.value).sort()).toEqual([
+    expect.stringContaining('/Car'),
+    expect.stringContaining('/Product'),
+  ]);
 
   // The per-class truth is in the shapes instead, one for each class.
   const paths = quads.filter(

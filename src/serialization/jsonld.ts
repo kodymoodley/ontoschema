@@ -1,5 +1,5 @@
 import { RDF_TYPE } from '../annotationvocabulary';
-import { ontologyToTriples } from '../ontologymodel';
+import { isBlankNode, ontologyToTriples } from '../ontologymodel';
 import type { Ontology, SerializationOptions, TripleObject } from '../ontologymodel';
 import { prefixesFor, toCurie } from './prefixes';
 import type { PrefixTable } from './prefixes';
@@ -9,9 +9,10 @@ import type { PrefixTable } from './prefixes';
  *
  * Hand-written for the same reason as RDF/XML: the full `jsonld` library exists to do
  * expansion, compaction and framing against arbitrary remote contexts, none of which this
- * app needs. Our triples have no blank nodes and no lists, so a compacted `@graph`
- * document with a flat prefix `@context` is a faithful, and much cheaper, rendering.
- * Validity is checked by parsing the output with a real JSON-LD parser in the tests.
+ * app needs. A compacted `@graph` document with a flat prefix `@context` is a faithful, and
+ * much cheaper, rendering. Blank nodes need no special handling beyond leaving their labels
+ * alone: `_:x1` is already how JSON-LD names one. Validity is checked by parsing the output
+ * with a real JSON-LD parser in the tests.
  */
 
 type JsonLdValue = { '@id': string } | { '@value': string; '@language'?: string; '@type'?: string };
@@ -57,6 +58,7 @@ export function serializeJsonLd(ontology: Ontology, options: SerializationOption
 
 function toJsonLdValue(object: TripleObject, prefixes: PrefixTable): JsonLdValue {
   if (object.type === 'iri') return { '@id': compactIri(object.value, prefixes) };
+  if (object.type === 'blank') return { '@id': object.value };
   if (object.language) return { '@value': object.value, '@language': object.language };
   if (object.datatype)
     return { '@value': object.value, '@type': compactIri(object.datatype, prefixes) };
@@ -82,5 +84,7 @@ function appendValue(node: JsonLdNode, key: string, value: JsonLdValue): void {
 }
 
 function compactIri(iri: string, prefixes: PrefixTable): string {
+  // A blank node label is not an IRI and must survive intact; `_:x1` is already compact.
+  if (isBlankNode(iri)) return iri;
   return toCurie(iri, prefixes) ?? iri;
 }

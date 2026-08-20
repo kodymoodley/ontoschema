@@ -3,6 +3,7 @@ import {
   OWL_DATATYPE_PROPERTY,
   OWL_OBJECT_PROPERTY,
   OWL_ONTOLOGY,
+  OWL_UNION_OF,
   RDFS_DOMAIN,
   RDFS_RANGE,
   RDFS_SUBCLASS_OF,
@@ -40,21 +41,42 @@ import type { Annotation, Ontology, PropertyUsage } from './types';
  * consumes, which is what guarantees Turtle, RDF/XML and JSON-LD are semantically
  * identical: they are three renderings of one list.
  *
- * Everything here is an IRI or a literal — there are deliberately no blank nodes. Shapes
- * and their `sh:or` lists are named instead, which keeps all three writers simple and
- * makes every shape addressable and annotatable.
+ * Blank nodes exist here for one purpose and no other: an **OWL class expression**, which is
+ * the `owl:unionOf` a reused property needs for its domain. That is not a stylistic choice.
+ * The same union written as a *named* class parses back as a bare class with no union at all
+ * — measured against a real OWL parser, which drops the `owl:unionOf` triple on the floor —
+ * so a named union would assert a domain that means nothing, which is worse than asserting
+ * none. Anonymity is what makes an OWL tool read it as an expression.
+ *
+ * Everything else stays named, shapes and their `sh:or` lists included: SHACL puts no such
+ * requirement on them, and a named shape can be pointed at, annotated and diffed.
+ *
+ * A blank node is a string in the `_:label` form N-Triples uses, as a subject and as an
+ * object alike, so one predicate — `isBlankNode` — answers for both.
  */
 export type TripleObject =
   | { type: 'iri'; value: string }
+  | { type: 'blank'; value: string }
   | { type: 'literal'; value: string; language?: string; datatype?: string };
 
 export interface Triple {
+  /** An IRI, or a blank node label in `_:label` form. */
   subject: string;
   predicate: string;
   object: TripleObject;
 }
 
 export const iri = (value: string): TripleObject => ({ type: 'iri', value });
+
+/** `label` is the whole `_:name` string, the same one that appears as a subject. */
+export const blank = (label: string): TripleObject => ({ type: 'blank', value: label });
+
+export const BLANK_PREFIX = '_:';
+
+export const isBlankNode = (value: string): boolean => value.startsWith(BLANK_PREFIX);
+
+/** The bare label a writer needs, without the `_:` the model carries it with. */
+export const blankLabel = (value: string): string => value.slice(BLANK_PREFIX.length);
 
 export function literal(
   value: string,
@@ -122,10 +144,13 @@ function annotationTriples(subject: string, annotations: readonly Annotation[]):
  * Two layers are produced from one model:
  *
  *  - **Axioms** — class and property declarations, the subclass and subproperty
- *    hierarchies, and `rdfs:domain`/`rdfs:range` *only where they are unambiguous*. A
- *    property used on a single class has a real domain; once reused, RDFS cannot state the
- *    truth (repeating the domain means intersection, a union loses the pairing), so the
- *    axiom is omitted rather than falsified.
+ *    hierarchies, and `rdfs:domain`/`rdfs:range`. A property used on a single class has a
+ *    real domain and gets it directly. Once reused, RDFS alone cannot state the truth —
+ *    repeating the domain means *intersection*, that a thing using the property is a Company
+ *    and a School at once — so the domain becomes an `owl:unionOf` over every class that
+ *    uses it. That is true, and weaker than the pairing it came from: the union says which
+ *    classes are involved, not which subject went with which object. It is what lets the
+ *    ontology file be read back without the shapes beside it.
  *
  *  - **Shapes** — one `sh:PropertyShape` per usage, grouped into one `sh:NodeShape` per
  *    class. This is per-class, so it keeps every pairing intact and carries exactly what
@@ -147,6 +172,15 @@ export function ontologyToTriples(
   const propertyIri = (id: string) => relationIri.get(id) ?? attributeIri.get(id);
 
   const triples: Triple[] = [];
+
+  const mintName = nameAllocator(ontology, namespace);
+  /*
+   * Class expressions are collected apart from the axioms and appended at the end. A Turtle
+   * writer groups a subject's triples only while they stay adjacent, so emitting a union in
+   * the middle of the property that refers to it splits that property across two blocks.
+   */
+  const expressions: Triple[] = [];
+  const mintBlank = blankAllocator();
 
   const header = ontologyIri(namespace);
   triples.push({ subject: header, predicate: RDF_TYPE, object: iri(OWL_ONTOLOGY) });
@@ -178,14 +212,18 @@ export function ontologyToTriples(
         }
       }
 
-      // Domain and range only when the property is used in exactly one place.
       const usages = index.usagesByProperty.get(property.id) ?? [];
-      const only = usages.length === 1 ? usages[0] : undefined;
-      if (!only) continue;
-      const domain = classIri.get(only.subjectClassId);
-      const range = only.objectClassId ? classIri.get(only.objectClassId) : undefined;
-      if (domain) triples.push({ subject, predicate: RDFS_DOMAIN, object: iri(domain) });
-      if (range) triples.push({ subject, predicate: RDFS_RANGE, object: iri(range) });
+      const domains = distinctIris(usages.map((usage) => classIri.get(usage.subjectClassId)));
+      const ranges = distinctIris(
+        usages.map((usage) =>
+          usage.objectClassId ? classIri.get(usage.objectClassId) : undefined,
+        ),
+      );
+
+      const domain = classExpression(domains, mintBlank, expressions);
+      const range = classExpression(ranges, mintBlank, expressions);
+      if (domain) triples.push({ subject, predicate: RDFS_DOMAIN, object: domain });
+      if (range) triples.push({ subject, predicate: RDFS_RANGE, object: range });
     }
 
     for (const property of ontology.attributes) {
@@ -200,18 +238,20 @@ export function ontologyToTriples(
         }
       }
 
-      // The xsd range is global — `price` is a decimal wherever it is used — so it is
-      // always safe. Only the domain depends on how many classes use the property.
+      // The xsd range is global — `price` is a decimal wherever it is used — so it is stated
+      // outright. Only the domain depends on which classes carry the attribute.
       triples.push({
         subject,
         predicate: RDFS_RANGE,
         object: iri(xsdDatatypeIri(property.range)),
       });
       const usages = index.usagesByProperty.get(property.id) ?? [];
-      const only = usages.length === 1 ? usages[0] : undefined;
-      const domain = only ? classIri.get(only.subjectClassId) : undefined;
-      if (domain) triples.push({ subject, predicate: RDFS_DOMAIN, object: iri(domain) });
+      const domains = distinctIris(usages.map((usage) => classIri.get(usage.subjectClassId)));
+      const domain = classExpression(domains, mintBlank, expressions);
+      if (domain) triples.push({ subject, predicate: RDFS_DOMAIN, object: domain });
     }
+
+    triples.push(...expressions);
   }
 
   if (includeShapes) {
@@ -221,6 +261,7 @@ export function ontologyToTriples(
         propertyIri,
         attributeIds: new Set(ontology.attributes.map((e) => e.id)),
         namespace,
+        mintName,
       }),
     );
   }
@@ -228,11 +269,70 @@ export function ontologyToTriples(
   return dedupe(triples);
 }
 
+/**
+ * Mints local names for the things this module invents, never colliding with a real entity
+ * nor with each other.
+ *
+ * Seeded with every class and property name in the ontology, so a generated union or shape
+ * cannot land on a class the user happens to have called `CarShape` or `offeredByDomain`.
+ */
+type NameAllocator = (desired: string) => string;
+
+function nameAllocator(ontology: Ontology, namespace: string): NameAllocator {
+  const taken = new Set([...classLocalNames(ontology), ...propertyLocalNames(ontology)]);
+  return (desired: string) => {
+    const unique = uniqueLocalName(desired, taken);
+    taken.add(unique);
+    return entityIri(namespace, unique);
+  };
+}
+
+/** Drops the misses and the repeats, keeping the order the usages were drawn in. */
+function distinctIris(values: readonly (string | undefined)[]): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+/** Labels the blank nodes of one document: `_:x1`, `_:x2`, in the order they are needed. */
+function blankAllocator(): () => string {
+  let issued = 0;
+  return () => {
+    issued += 1;
+    return `${BLANK_PREFIX}x${issued}`;
+  };
+}
+
+/**
+ * The class expression standing for a set of classes: nothing, the class itself, or an
+ * anonymous `owl:unionOf` over all of them.
+ *
+ * Anonymous because an OWL parser only reads a union as an expression when it is a blank
+ * node; named, the union is dropped and the domain becomes a class that means nothing. See
+ * the note on `TripleObject`.
+ */
+function classExpression(
+  members: readonly string[],
+  mintBlank: () => string,
+  sink: Triple[],
+): TripleObject | undefined {
+  if (members.length === 0) return undefined;
+  if (members.length === 1) return iri(members[0]!);
+
+  const union = mintBlank();
+  sink.push({ subject: union, predicate: RDF_TYPE, object: iri(OWL_CLASS) });
+  sink.push({
+    subject: union,
+    predicate: OWL_UNION_OF,
+    object: blank(rdfList(members, mintBlank, sink)),
+  });
+  return blank(union);
+}
+
 interface ShapeContext {
   classIri: Map<string, string>;
   propertyIri: (id: string) => string | undefined;
   attributeIds: Set<string>;
   namespace: string;
+  mintName: NameAllocator;
 }
 
 /**
@@ -246,15 +346,7 @@ interface ShapeContext {
  */
 function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
   const triples: Triple[] = [];
-  // Seeded with the real entity names so a generated shape can never collide with a class
-  // or property that happens to be called `CarShape`.
-  const takenNames = new Set([...classLocalNames(ontology), ...propertyLocalNames(ontology)]);
-
-  const shapeIri = (desired: string) => {
-    const unique = uniqueLocalName(desired, takenNames);
-    takenNames.add(unique);
-    return entityIri(context.namespace, unique);
-  };
+  const shapeIri = context.mintName;
 
   for (const entity of ontology.classes) {
     const classSubject = context.classIri.get(entity.id);
@@ -332,7 +424,15 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
         const alternatives = targets.map(
           (_target, position) => `${propertyShape}_alt${position + 1}`,
         );
-        const listHead = rdfList(alternatives, `${propertyShape}_or`, propertyShapeTriples);
+        let cellNumber = 0;
+        const listHead = rdfList(
+          alternatives,
+          () => {
+            cellNumber += 1;
+            return `${propertyShape}_or${cellNumber}`;
+          },
+          propertyShapeTriples,
+        );
         propertyShapeTriples.push({
           subject: propertyShape,
           predicate: SH_OR,
@@ -355,20 +455,28 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
 }
 
 /**
- * Writes an RDF collection and returns its head. The cells are named rather than blank so
- * that the serializers need no blank-node or collection support of their own.
+ * Writes an RDF collection and returns its head.
+ *
+ * The cells come from the caller, which decides whether they are named or blank: SHACL's
+ * `sh:or` keeps named cells so every alternative stays addressable, while an OWL union needs
+ * blank ones to be read as an expression at all. Whether a cell points at the next one as an
+ * IRI or as a blank node follows from the label, which is the whole point of the `_:` form.
  */
-function rdfList(members: readonly string[], baseIri: string, sink: Triple[]): string {
+function rdfList(members: readonly string[], nextCell: () => string, sink: Triple[]): string {
   if (members.length === 0) return RDF_NIL;
-  const head = `${baseIri}1`;
+
+  const cells = members.map(() => nextCell());
   members.forEach((member, position) => {
-    const cell = `${baseIri}${position + 1}`;
-    const rest = position + 1 < members.length ? `${baseIri}${position + 2}` : RDF_NIL;
-    sink.push({ subject: cell, predicate: RDF_FIRST, object: iri(member) });
-    sink.push({ subject: cell, predicate: RDF_REST, object: iri(rest) });
+    const cell = cells[position]!;
+    const rest = cells[position + 1] ?? RDF_NIL;
+    sink.push({ subject: cell, predicate: RDF_FIRST, object: term(member) });
+    sink.push({ subject: cell, predicate: RDF_REST, object: term(rest) });
   });
-  return head;
+  return cells[0]!;
 }
+
+/** An IRI or a blank node, told apart by the `_:` a blank label always carries. */
+const term = (value: string): TripleObject => (isBlankNode(value) ? blank(value) : iri(value));
 
 /** Two identical assertions are one fact; duplicates would only bloat the output. */
 function dedupe(triples: readonly Triple[]): Triple[] {

@@ -1,5 +1,5 @@
 import { NAMESPACES } from '../annotationvocabulary';
-import { normalizeNamespaceIri } from '../ontologymodel';
+import { isBlankNode, normalizeNamespaceIri } from '../ontologymodel';
 import type { Ontology, Triple } from '../ontologymodel';
 
 export interface PrefixTable {
@@ -16,10 +16,13 @@ export function prefixesFor(ontology: Ontology, triples: readonly Triple[]): Pre
   const used = new Set<string>();
 
   for (const triple of triples) {
-    used.add(namespaceOf(triple.subject));
+    // A blank node has no namespace, as a subject or as an object.
+    if (!isBlankNode(triple.subject)) used.add(namespaceOf(triple.subject));
     used.add(namespaceOf(triple.predicate));
     if (triple.object.type === 'iri') used.add(namespaceOf(triple.object.value));
-    else if (triple.object.datatype) used.add(namespaceOf(triple.object.datatype));
+    else if (triple.object.type === 'literal' && triple.object.datatype) {
+      used.add(namespaceOf(triple.object.datatype));
+    }
   }
 
   const table: PrefixTable = {};

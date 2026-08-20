@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { Parser } from 'n3';
+import { unionMembers } from '../fixtures/parseRdf';
 import {
   addAnnotation,
   addAttribute,
@@ -134,13 +135,25 @@ test('points one property at three different classes and exports a disjunction',
   expect(paths).toHaveLength(1);
   expect(quads.some((quad) => quad.predicate.value === 'http://www.w3.org/ns/shacl#or')).toBe(true);
 
-  // Reused, so RDFS states no domain rather than an intersection.
-  const domains = quads.filter(
+  /*
+   * One class uses it, so the domain is that class outright. The range is the three targets,
+   * which RDFS can only state as a union -- and the union has to be anonymous to be read as
+   * an expression rather than as a class that happens to be called something.
+   */
+  const [domain] = quads.filter(
     (quad) =>
       quad.subject.value.endsWith('/hasPart') &&
       quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#domain',
   );
-  expect(domains).toHaveLength(0);
+  expect(domain?.object.value).toMatch(/\/Car$/);
+
+  const [range] = quads.filter(
+    (quad) =>
+      quad.subject.value.endsWith('/hasPart') &&
+      quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#range',
+  );
+  expect(range?.object.termType).toBe('BlankNode');
+  expect(unionMembers(quads, range!.subject.value, range!.predicate.value)).toHaveLength(3);
 });
 
 test('annotates in eight languages and round-trips every one', async ({ page }) => {
@@ -254,7 +267,7 @@ test('reuses one attribute across five classes', async ({ page }) => {
   const turtle = await downloadExport(page, 'ttl');
   const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
 
-  // One property, five shapes, no domain.
+  // One property, five shapes, and a domain that unions all five classes.
   expect(
     quads.filter(
       (quad) =>
@@ -262,13 +275,13 @@ test('reuses one attribute across five classes', async ({ page }) => {
         quad.object.value.endsWith('/price'),
     ),
   ).toHaveLength(5);
-  expect(
-    quads.filter(
-      (quad) =>
-        quad.subject.value.endsWith('/price') &&
-        quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#domain',
-    ),
-  ).toHaveLength(0);
+  const [domain] = quads.filter(
+    (quad) =>
+      quad.subject.value.endsWith('/price') &&
+      quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#domain',
+  );
+  expect(domain?.object.termType).toBe('BlankNode');
+  expect(unionMembers(quads, domain!.subject.value, domain!.predicate.value)).toHaveLength(5);
   // The xsd range is the same wherever it is used, so that one survives.
   expect(
     quads.some(

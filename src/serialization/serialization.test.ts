@@ -3,6 +3,7 @@ import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/aut
 import {
   canonicalize,
   hasBlankNodes,
+  unexpectedBlankNodes,
   parseJsonLd,
   parseRdfXml,
   parseTurtle,
@@ -264,10 +265,22 @@ describe('SHACL shapes travel inside the same documents', () => {
     expect(turtle.some((line) => line.includes('shacl#targetClass'))).toBe(true);
   });
 
-  it('contains no blank nodes, so nothing depends on collection support', async () => {
-    expect(hasBlankNodes(parseTurtle(serializeTurtle(reused)))).toBe(false);
-    expect(hasBlankNodes(await parseRdfXml(serializeRdfXml(reused)))).toBe(false);
-    expect(hasBlankNodes(await parseJsonLd(serializeJsonLd(reused)))).toBe(false);
+  /*
+   * Shapes are named on purpose, so that every one can be pointed at, annotated and diffed.
+   * The only blank nodes in the document are the union domains the axiom layer writes, and
+   * they are absent here because this is the shapes layer alone.
+   */
+  it('names every shape, leaving the document free of blank nodes', async () => {
+    const shapesOnly = { includeAxioms: false };
+    expect(hasBlankNodes(parseTurtle(serializeTurtle(reused, shapesOnly)))).toBe(false);
+    expect(hasBlankNodes(await parseRdfXml(serializeRdfXml(reused, shapesOnly)))).toBe(false);
+    expect(hasBlankNodes(await parseJsonLd(serializeJsonLd(reused, shapesOnly)))).toBe(false);
+  });
+
+  it('keeps the blank nodes of the full document confined to class expressions', async () => {
+    expect(unexpectedBlankNodes(parseTurtle(serializeTurtle(reused)))).toEqual([]);
+    expect(unexpectedBlankNodes(await parseRdfXml(serializeRdfXml(reused)))).toEqual([]);
+    expect(unexpectedBlankNodes(await parseJsonLd(serializeJsonLd(reused)))).toEqual([]);
   });
 
   it('drops the shapes but keeps the axioms when asked for axioms only', () => {

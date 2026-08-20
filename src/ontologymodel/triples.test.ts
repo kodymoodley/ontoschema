@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/autoOntology';
+import { has, objectsOf, unionMembers } from '../../tests/fixtures/readTriples';
 import {
   OWL_CLASS,
   OWL_DATATYPE_PROPERTY,
   OWL_OBJECT_PROPERTY,
   OWL_ONTOLOGY,
+  OWL_UNION_OF,
   RDFS_DOMAIN,
   RDFS_RANGE,
   RDFS_SUBCLASS_OF,
@@ -20,30 +22,8 @@ import {
 import { addAnnotation, addClass, attachProperty, updateAnnotation } from './mutations';
 import { createEmptyOntology } from './ontology';
 import { ontologyToTriples } from './triples';
-import type { Triple } from './triples';
 
 const AUTO = 'https://example.org/auto/';
-
-function has(
-  triples: Triple[],
-  subject: string,
-  predicate: string,
-  object: Partial<Triple['object']>,
-): boolean {
-  return triples.some(
-    (triple) =>
-      triple.subject === subject &&
-      triple.predicate === predicate &&
-      Object.entries(object).every(
-        ([key, value]) => (triple.object as Record<string, unknown>)[key] === value,
-      ),
-  );
-}
-
-const objectsOf = (triples: Triple[], subject: string, predicate: string) =>
-  triples
-    .filter((triple) => triple.subject === subject && triple.predicate === predicate)
-    .map((triple) => triple.object.value);
 
 describe('axioms', () => {
   const { ontology } = buildAutoOntology();
@@ -163,13 +143,38 @@ describe('axioms', () => {
   });
 });
 
-describe('a reused property cannot have an RDFS domain', () => {
+describe('a reused property states its domain as a union', () => {
   const { ontology } = buildReusedOntology();
   const triples = ontologyToTriples(ontology, { includeShapes: false });
 
-  it('omits rdfs:domain once a attribute is used on two classes', () => {
-    // Repeating the domain would mean intersection: every Car is also a Product.
-    expect(objectsOf(triples, `${AUTO}price`, RDFS_DOMAIN)).toHaveLength(0);
+  /*
+   * Repeating `rdfs:domain` would mean intersection -- that anything with a price is a Car
+   * *and* a Product -- which is false. A union is true, and it is what lets the ontology file
+   * be read back on its own, without the shapes beside it.
+   */
+  it('points the domain at a union of every class that carries the attribute', () => {
+    const [domain] = objectsOf(triples, `${AUTO}price`, RDFS_DOMAIN);
+    expect(has(triples, domain!, RDF_TYPE, { value: OWL_CLASS })).toBe(true);
+    expect(unionMembers(triples, domain!)).toEqual([`${AUTO}Car`, `${AUTO}Product`]);
+  });
+
+  /*
+   * The union has to be anonymous, and this is the assertion that says why. Measured against
+   * a real OWL parser: given a *named* class carrying `owl:unionOf`, the parser drops the
+   * union and reports the domain as a bare class equivalent to nothing — which is worse than
+   * stating no domain at all, since it asserts something meaningless rather than nothing.
+   */
+  it('makes the union anonymous, which is the only form an OWL parser reads as an expression', () => {
+    const domainTriple = triples.find(
+      (triple) => triple.subject === `${AUTO}price` && triple.predicate === RDFS_DOMAIN,
+    );
+    expect(domainTriple?.object.type).toBe('blank');
+    expect(triples.some((triple) => triple.predicate === OWL_UNION_OF)).toBe(true);
+    expect(
+      triples.some(
+        (triple) => triple.predicate === OWL_UNION_OF && !triple.subject.startsWith('_:'),
+      ),
+    ).toBe(false);
   });
 
   it('keeps the xsd range, which is the same wherever the property is used', () => {
@@ -178,14 +183,31 @@ describe('a reused property cannot have an RDFS domain', () => {
     ]);
   });
 
-  it('omits both domain and range once a relation is drawn between two pairs', () => {
-    // A union would keep the classes but lose the pairing: it would license Car→Garage.
-    expect(objectsOf(triples, `${AUTO}offeredBy`, RDFS_DOMAIN)).toHaveLength(0);
-    expect(objectsOf(triples, `${AUTO}offeredBy`, RDFS_RANGE)).toHaveLength(0);
+  it('unions both ends of a relation drawn between two pairs', () => {
+    const [domain] = objectsOf(triples, `${AUTO}offeredBy`, RDFS_DOMAIN);
+    const [range] = objectsOf(triples, `${AUTO}offeredBy`, RDFS_RANGE);
+    expect(unionMembers(triples, domain!)).toEqual([`${AUTO}Car`, `${AUTO}Truck`]);
+    expect(unionMembers(triples, range!)).toEqual([`${AUTO}Dealership`, `${AUTO}Garage`]);
   });
 
-  it('still states the domain of a property that is used only once', () => {
+  /*
+   * The known cost, asserted so it cannot be mistaken for a bug later: the union gives back
+   * both sets but not which subject went with which object, so Car->Garage is licensed even
+   * though it was never drawn. The shapes keep the pairings; the ontology file does not.
+   */
+  it('loses the pairing, which is the price of being able to state anything at all', () => {
+    const [domain] = objectsOf(triples, `${AUTO}offeredBy`, RDFS_DOMAIN);
+    const [range] = objectsOf(triples, `${AUTO}offeredBy`, RDFS_RANGE);
+    expect(unionMembers(triples, domain!)).toContain(`${AUTO}Car`);
+    expect(unionMembers(triples, range!)).toContain(`${AUTO}Garage`);
+  });
+
+  it('states a single class directly when the property is used only once', () => {
     expect(objectsOf(triples, `${AUTO}make`, RDFS_DOMAIN)).toEqual([`${AUTO}Car`]);
+    const domainTriple = triples.find(
+      (triple) => triple.subject === `${AUTO}make` && triple.predicate === RDFS_DOMAIN,
+    );
+    expect(domainTriple?.object.type).toBe('iri');
   });
 });
 

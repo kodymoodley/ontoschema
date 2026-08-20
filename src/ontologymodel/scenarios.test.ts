@@ -27,6 +27,11 @@ import {
 } from './taxonomy';
 import { entityIri, validateLocalName } from './identifier';
 import { ontologyToTriples } from './triples';
+import { RDFS_DOMAIN, RDFS_RANGE } from '../annotationvocabulary';
+import { objectsOf, unionMembers } from '../../tests/fixtures/readTriples';
+
+/** The namespace `buildMultiTarget` uses. */
+const PARTS = 'https://example.org/parts/';
 
 /**
  * Invariants that must hold for *any* ontology, checked against every awkward shape rather
@@ -170,12 +175,18 @@ describe('one property with several ranges', () => {
     expect(usagesOfProperty(ontology, ids.hasPart!)).toHaveLength(4);
   });
 
-  it('leaves the property without an RDFS domain, since it is used four times', () => {
+  it('unions the two classes that use it, and the three classes it points at', () => {
     const triples = ontologyToTriples(ontology, { includeShapes: false });
-    const domains = triples.filter(
-      (t) => t.subject.endsWith('/hasPart') && t.predicate.endsWith('#domain'),
-    );
-    expect(domains).toHaveLength(0);
+    const [domain] = objectsOf(triples, `${PARTS}hasPart`, RDFS_DOMAIN);
+    const [range] = objectsOf(triples, `${PARTS}hasPart`, RDFS_RANGE);
+
+    expect(unionMembers(triples, domain!)).toEqual([`${PARTS}Car`, `${PARTS}Bicycle`]);
+    // Bicycle also points at Wheel, so the range is three classes rather than four usages.
+    expect(unionMembers(triples, range!)).toEqual([
+      `${PARTS}Wheel`,
+      `${PARTS}Door`,
+      `${PARTS}Engine`,
+    ]);
   });
 
   it('groups the three Car targets into one shape and leaves Bicycle with its own', () => {

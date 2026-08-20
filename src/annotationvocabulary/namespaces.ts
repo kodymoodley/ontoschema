@@ -26,6 +26,8 @@ export const OWL_CLASS = `${NAMESPACES.owl}Class`;
 export const OWL_OBJECT_PROPERTY = `${NAMESPACES.owl}ObjectProperty`;
 export const OWL_DATATYPE_PROPERTY = `${NAMESPACES.owl}DatatypeProperty`;
 export const OWL_ONTOLOGY = `${NAMESPACES.owl}Ontology`;
+/** The one OWL construct that can state a domain of several classes without lying about it. */
+export const OWL_UNION_OF = `${NAMESPACES.owl}unionOf`;
 
 export const RDF_FIRST = `${NAMESPACES.rdf}first`;
 export const RDF_REST = `${NAMESPACES.rdf}rest`;

@@ -15,7 +15,17 @@ import {
   usagesOfProperty,
 } from '../../src/ontologymodel';
 import { serialize } from '../../src/serialization';
-import { canonicalize, parseJsonLd, parseRdfXml, parseTurtle } from '../fixtures/parseRdf';
+import {
+  canonicalize,
+  parseJsonLd,
+  parseRdfXml,
+  parseTurtle,
+  unionMembers,
+} from '../fixtures/parseRdf';
+import { RDFS_DOMAIN, RDFS_RANGE } from '../../src/annotationvocabulary';
+
+/** The namespace `buildAutomotiveProject` sets. */
+const AUTO = 'https://example.org/auto/';
 
 /**
  * Integration across the real module boundary: the store is driven exactly as the UI drives
@@ -201,15 +211,20 @@ describe('exports of a store-built ontology', () => {
 });
 
 describe('reuse is expressed by shapes, not by contradictory axioms', () => {
-  it('drops rdfs:domain once a property is used twice, and keeps a shape per class', async () => {
+  it('unions the domain once a property is used twice, and keeps a shape per class', async () => {
     const ids = buildAutomotiveProject();
     store().attachPropertyToClass(ids.price, ids.truck);
     const model = ontology();
 
     const axioms = serialize(model, 'turtle', 'auto', { includeShapes: false }).content;
     const priceStatement = statementFor(axioms, 'auto:price');
-    // Saying it twice would mean intersection: every Car is also a Truck.
-    expect(priceStatement).not.toContain('rdfs:domain');
+    // Saying it twice would mean intersection: every Car is also a Truck. A union is true.
+    expect(priceStatement).toMatch(/rdfs:domain _:/);
+    expect(axioms).toMatch(/owl:unionOf/);
+    expect(unionMembers(parseTurtle(axioms), `${AUTO}price`, RDFS_DOMAIN)).toEqual([
+      `${AUTO}Car`,
+      `${AUTO}Truck`,
+    ]);
     // The xsd range is the same wherever the property is used, so it survives.
     expect(priceStatement).toContain('rdfs:range xsd:decimal');
 
@@ -233,12 +248,24 @@ describe('reuse is expressed by shapes, not by contradictory axioms', () => {
     expect(shapes).toMatch(/auto:Car_offeredBy[\s\S]*sh:class auto:Dealership/);
     expect(shapes).toMatch(/auto:Truck_offeredBy[\s\S]*sh:class auto:Garage/);
 
-    // A union domain/range would have licensed Car -> Garage; nothing here does.
+    /*
+     * The shapes above keep the pairings. The axioms cannot, and do not pretend to: the union
+     * names both subjects and both objects, which licenses Car -> Garage as well. That loss is
+     * the price of the ontology file standing on its own, and it is asserted here so it stays
+     * a known cost rather than turning up later as a surprise.
+     */
     const axioms = serialize(ontology(), 'turtle', 'auto', { includeShapes: false }).content;
     const statement = statementFor(axioms, 'auto:offeredBy');
     expect(statement).toContain('owl:ObjectProperty');
-    expect(statement).not.toContain('rdfs:range');
-    expect(statement).not.toContain('rdfs:domain');
+    const quads = parseTurtle(axioms);
+    expect(unionMembers(quads, `${AUTO}offeredBy`, RDFS_DOMAIN)).toEqual([
+      `${AUTO}Car`,
+      `${AUTO}Truck`,
+    ]);
+    expect(unionMembers(quads, `${AUTO}offeredBy`, RDFS_RANGE)).toEqual([
+      `${AUTO}Dealership`,
+      `${AUTO}Garage`,
+    ]);
   });
 });
 
