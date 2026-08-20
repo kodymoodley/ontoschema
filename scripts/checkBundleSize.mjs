@@ -33,8 +33,12 @@ const BUDGETS = {
    * project actions moved into. No dependency was added -- the growth is a portal-positioned menu
    * primitive and a fullscreen hook, both ours, and the check exists to catch an accidental import
    * of something enormous rather than to argue over half a kilobyte.
+   *
+   * Raised from 38 for the workspace backup, which landed on 38.00 exactly -- a budget the next
+   * change would break for no reason of its own. Measured: 37.53 before it, 38.00 after, and the
+   * growth is a file format, two store actions and a confirmation dialog, all ours.
    */
-  'index.js': 38,
+  'index.js': 40,
   'react.js': 65,
   'canvas.js': 80, // @xyflow/react and dagre
   'rdf.js': 55, // n3

@@ -511,6 +511,79 @@ describe('multiple projects', () => {
     expect(store().importProject('{"nope":true}')).toBeNull();
   });
 
+  it('backs up every project and restores all of them together', () => {
+    buildAutomotiveProject();
+    store().newProject('Boats');
+    store().createClass({ localName: 'Yacht' });
+    const before = useProjectStore.getState().projects.map((project) => project.name);
+    expect(before).toHaveLength(3);
+
+    const backup = store().exportWorkspaceFile();
+    clearWorkspace();
+    store().newProject('Something else entirely');
+
+    expect(store().restoreWorkspace(backup)).toBe(3);
+    const after = useProjectStore.getState();
+    expect(after.projects.map((project) => project.name)).toEqual(before);
+    // Which project was open is part of the snapshot.
+    expect(after.projects.find((project) => project.id === after.activeProjectId)?.name).toBe(
+      'Boats',
+    );
+  });
+
+  /*
+   * Restoring replaces rather than merges. Merging would duplicate every project the moment
+   * someone restored their own snapshot onto the browser it came from, which is the commonest
+   * way a backup gets used.
+   */
+  it('replaces what is there rather than adding to it', () => {
+    buildAutomotiveProject();
+    const backup = store().exportWorkspaceFile();
+    const projectCount = useProjectStore.getState().projects.length;
+
+    store().newProject('Made after the backup');
+    expect(useProjectStore.getState().projects).toHaveLength(projectCount + 1);
+
+    store().restoreWorkspace(backup);
+    const names = useProjectStore.getState().projects.map((project) => project.name);
+    expect(names).toHaveLength(projectCount);
+    expect(names).not.toContain('Made after the backup');
+  });
+
+  it('keeps the ontology exact, ids and all, which is what a backup is for', () => {
+    const ids = buildAutomotiveProject();
+    const backup = store().exportWorkspaceFile();
+    store().restoreWorkspace(backup);
+
+    const restored = ontology();
+    expect(findClass(restored, ids.car)).toBeDefined();
+    expect(findRelation(restored, ids.offeredBy)).toBeDefined();
+    expect(restored.usages).toHaveLength(6);
+  });
+
+  it('leaves the workspace alone when the file is not a backup', () => {
+    buildAutomotiveProject();
+    const before = useProjectStore.getState().projects.map((project) => project.id);
+
+    expect(store().restoreWorkspace('not json at all')).toBeNull();
+    expect(store().restoreWorkspace(store().exportProjectFile() ?? '')).toBeNull();
+    expect(useProjectStore.getState().projects.map((project) => project.id)).toEqual(before);
+  });
+
+  it('survives the round trip through localStorage that follows a restore', () => {
+    buildAutomotiveProject();
+    const backup = store().exportWorkspaceFile();
+    store().newProject('Scratch');
+    store().restoreWorkspace(backup);
+
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as {
+      projects?: { name: string }[];
+    };
+    expect(stored.projects?.map((project) => project.name)).toEqual(
+      useProjectStore.getState().projects.map((project) => project.name),
+    );
+  });
+
   it('always leaves at least one project to edit', () => {
     const only = useProjectStore.getState().activeProjectId ?? '';
     store().deleteProject(only);

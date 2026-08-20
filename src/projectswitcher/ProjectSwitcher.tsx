@@ -34,12 +34,17 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
   const deleteProject = useProjectStore((state) => state.deleteProject);
   const importProject = useProjectStore((state) => state.importProject);
   const exportProjectFile = useProjectStore((state) => state.exportProjectFile);
+  const exportWorkspaceFile = useProjectStore((state) => state.exportWorkspaceFile);
+  const restoreWorkspace = useProjectStore((state) => state.restoreWorkspace);
 
   const [creating, setCreating] = useState(false);
   const [browsingExamples, setBrowsingExamples] = useState(false);
   const [newName, setNewName] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  /* The chosen backup, held between picking the file and agreeing to replace everything. */
+  const [pendingRestore, setPendingRestore] = useState<string | null>(null);
+  const backupInput = useRef<HTMLInputElement>(null);
 
   const create = () => {
     newProject(newName.trim() || 'Untitled ontology');
@@ -47,18 +52,39 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
     setCreating(false);
   };
 
-  const saveToFile = () => {
-    const content = exportProjectFile();
-    if (!content || !active) return;
+  const download = (filename: string, content: string) => {
     const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `${active.name.replace(/[^A-Za-z0-9._-]+/g, '-') || 'project'}.ontoschema.json`;
+    anchor.download = filename;
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+
+  const saveToFile = () => {
+    const content = exportProjectFile();
+    if (!content || !active) return;
+    const name = active.name.replace(/[^A-Za-z0-9._-]+/g, '-') || 'project';
+    download(`${name}.ontoschema.json`, content);
+  };
+
+  /*
+   * Named for the day rather than for a project, because a backup is a snapshot of this
+   * browser and belongs to no one project. The date is what tells two of them apart.
+   */
+  const backUp = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    download(`ontoschema-backup-${today}.json`, exportWorkspaceFile());
+  };
+
+  const restore = () => {
+    if (pendingRestore === null) return;
+    const restored = restoreWorkspace(pendingRestore);
+    setPendingRestore(null);
+    if (restored === null) setImportError('That file is not an OntoSchema backup.');
   };
 
   return (
@@ -106,6 +132,17 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         <Button size="small" variant="subtle" onClick={() => fileInput.current?.click()}>
           Open a file
         </Button>
+        <Button size="small" variant="subtle" onClick={backUp} data-testid="back-up">
+          Back up everything
+        </Button>
+        <Button
+          size="small"
+          variant="subtle"
+          onClick={() => backupInput.current?.click()}
+          data-testid="restore-backup"
+        >
+          Restore a backup
+        </Button>
         {extraActions}
         <Button
           size="small"
@@ -131,6 +168,51 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
           setImportError(imported ? null : 'That file is not a valid OntoSchema project.');
         }}
       />
+
+      {/*
+        A second input rather than one that accepts either kind of file. Restoring replaces
+        everything in this browser, and an action that destructive should be chosen on purpose
+        rather than arrived at by opening a file that turned out to be a backup.
+      */}
+      <input
+        ref={backupInput}
+        type="file"
+        accept="application/json,.json"
+        className={styles.hiddenInput}
+        aria-label="Restore a backup file"
+        onChange={async (event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (!file) return;
+          setPendingRestore(await file.text());
+        }}
+      />
+
+      <Modal
+        title="Replace everything in this browser?"
+        open={pendingRestore !== null}
+        onClose={() => setPendingRestore(null)}
+        footer={
+          <>
+            <Button variant="subtle" onClick={() => setPendingRestore(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={restore} data-testid="confirm-restore">
+              Restore
+            </Button>
+          </>
+        }
+      >
+        <p className={styles.confirmText}>
+          Restoring puts the workspace back exactly as the backup has it.{' '}
+          <strong>
+            {projects.length === 1
+              ? 'The one project open here'
+              : `All ${projects.length} projects here`}
+          </strong>{' '}
+          will be replaced. Back up first if you have not already.
+        </p>
+      </Modal>
 
       <Modal
         title="New ontology project"

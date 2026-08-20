@@ -1,7 +1,13 @@
 import { createProject } from '../ontologymodel';
 import type { Ontology, Project } from '../ontologymodel';
 import { EMPTY_HISTORY, redoStep, undoStep } from './history';
-import { projectFromFile, projectToFile, saveWorkspace } from './persistence';
+import {
+  projectFromFile,
+  projectToFile,
+  saveWorkspace,
+  workspaceFromFile,
+  workspaceToFile,
+} from './persistence';
 import {
   activeProject,
   addProject,
@@ -33,6 +39,17 @@ export interface WorkspaceActions {
   deleteProject(id: string): void;
   importProject(fileContent: string): string | null;
   exportProjectFile(id?: string): string | null;
+
+  /** Every project in this browser, as one file. */
+  exportWorkspaceFile(): string;
+  /**
+   * Replaces everything with the contents of a backup, and reports how many projects arrived.
+   *
+   * Replacing rather than merging, because that is what restoring a backup means: merging
+   * would duplicate every project the moment someone restored their own snapshot onto the
+   * browser it came from. Destructive, so the caller is expected to have asked first.
+   */
+  restoreWorkspace(fileContent: string): number | null;
 }
 
 export function createWorkspaceActions(
@@ -113,6 +130,16 @@ export function createWorkspaceActions(
       const project: Project = { ...imported, id: createProject(imported.name).id };
       openWorkspace(addProject(get(), project));
       return project.id;
+    },
+    exportWorkspaceFile() {
+      const { projects, activeProjectId } = get();
+      return workspaceToFile({ projects, activeProjectId });
+    },
+    restoreWorkspace(fileContent) {
+      const restored = workspaceFromFile(fileContent);
+      if (!restored) return null;
+      openWorkspace(restored);
+      return restored.projects.length;
     },
     exportProjectFile(id) {
       const state = get();

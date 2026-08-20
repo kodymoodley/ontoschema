@@ -125,3 +125,85 @@ describe('the example picker', () => {
     expect(ontology().prefix).toBe('uni');
   });
 });
+
+/**
+ * Restoring a backup replaces everything in the browser, so what is worth testing is the
+ * asking: that nothing happens until the person agrees, and that changing their mind is free.
+ */
+describe('restoring a backup', () => {
+  /** The picker is a file input, so a test drives it the way the browser would. */
+  async function chooseBackup(user: ReturnType<typeof userEvent.setup>, content: string) {
+    await openFileMenu(user);
+    const input = screen.getByLabelText('Restore a backup file');
+    await user.upload(input, new File([content], 'backup.json', { type: 'application/json' }));
+  }
+
+  const confirmation = () => screen.queryByRole('dialog', { name: /Replace everything/ });
+
+  it('asks before replacing anything', async () => {
+    const user = userEvent.setup();
+    store().newProject('Something I care about');
+    render(<ProjectSwitcher />);
+
+    await chooseBackup(user, store().exportWorkspaceFile());
+
+    expect(confirmation()).toBeInTheDocument();
+    expect(store().projects.map((project) => project.name)).toContain('Something I care about');
+  });
+
+  it('says how much is at stake, in whole words rather than a count of one', async () => {
+    const user = userEvent.setup();
+    render(<ProjectSwitcher />);
+    await chooseBackup(user, store().exportWorkspaceFile());
+
+    expect(confirmation()).toHaveTextContent('The one project open here');
+  });
+
+  it('counts them once there are several', async () => {
+    const user = userEvent.setup();
+    store().newProject('Second');
+    store().newProject('Third');
+    render(<ProjectSwitcher />);
+    await chooseBackup(user, store().exportWorkspaceFile());
+
+    expect(confirmation()).toHaveTextContent('All 3 projects here');
+  });
+
+  it('changes nothing when the answer is no', async () => {
+    const user = userEvent.setup();
+    const backup = store().exportWorkspaceFile();
+    store().newProject('Made after the backup');
+    render(<ProjectSwitcher />);
+
+    await chooseBackup(user, backup);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(confirmation()).not.toBeInTheDocument();
+    expect(store().projects.map((project) => project.name)).toContain('Made after the backup');
+  });
+
+  it('replaces the workspace once the answer is yes', async () => {
+    const user = userEvent.setup();
+    const backup = store().exportWorkspaceFile();
+    const before = store().projects.map((project) => project.name);
+    store().newProject('Made after the backup');
+    render(<ProjectSwitcher />);
+
+    await chooseBackup(user, backup);
+    await user.click(screen.getByTestId('confirm-restore'));
+
+    expect(store().projects.map((project) => project.name)).toEqual(before);
+  });
+
+  it('says so, and keeps the workspace, when the file is not a backup', async () => {
+    const user = userEvent.setup();
+    const before = store().projects.map((project) => project.id);
+    render(<ProjectSwitcher />);
+
+    await chooseBackup(user, 'certainly not a backup');
+    await user.click(screen.getByTestId('confirm-restore'));
+
+    expect(screen.getByRole('dialog', { name: /Could not open/ })).toBeInTheDocument();
+    expect(store().projects.map((project) => project.id)).toEqual(before);
+  });
+});
