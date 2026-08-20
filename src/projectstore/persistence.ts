@@ -247,7 +247,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/* --------------------------------------------------- project file exchange */
+/* ------------------------------------------------------ file exchange */
 
 /*
  * 2 since relations and attributes were renamed, which changed the keys a project file is
@@ -257,6 +257,40 @@ export const PROJECT_FILE_VERSION = 2;
 
 export function projectToFile(project: Project): string {
   return `${JSON.stringify({ version: PROJECT_FILE_VERSION, project }, null, 2)}\n`;
+}
+
+/**
+ * The whole workspace as one file: every project, exactly as it stands, with no lossy rules.
+ *
+ * The one thing RDF cannot do. A Turtle document is one ontology and a workspace is several,
+ * so a backup is not a compromise in the save format — it is the answer to the gap the save
+ * format leaves. It is a snapshot of this browser rather than a document to hand anyone, which
+ * is why it stays a private format and why nothing else is expected to read it.
+ *
+ * Versioned with the same number as a project file, because what it contains *is* projects and
+ * they are what the version describes.
+ */
+export function workspaceToFile(workspace: Workspace): string {
+  return `${JSON.stringify({ version: PROJECT_FILE_VERSION, workspace }, null, 2)}
+`;
+}
+
+export function workspaceFromFile(content: string): Workspace | null {
+  try {
+    const parsed: unknown = JSON.parse(content);
+    if (!isRecord(parsed)) return null;
+    if (typeof parsed.version === 'number' && parsed.version < PROJECT_FILE_VERSION) return null;
+    /*
+     * A project file is not a backup, and must not be read as one: `reviveWorkspace` would find
+     * no `projects` array and return null, but saying so explicitly is what keeps the two file
+     * kinds from ever being confused as the format grows.
+     */
+    const workspace = parsed.workspace ?? parsed;
+    if (!isRecord(workspace) || !Array.isArray(workspace.projects)) return null;
+    return reviveWorkspace(workspace);
+  } catch {
+    return null;
+  }
 }
 
 export function projectFromFile(content: string): Project | null {

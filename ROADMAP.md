@@ -228,7 +228,12 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > which is why deleting a project says "removed from this browser". The private file's job is
 > transfer and backup, not working storage. Keeping it for that job costs nothing and answers
 > the one thing RDF genuinely cannot do; keeping it for **everyday saving** is what this item
-> set out to end. _(todo 21)_
+> set out to end. **Built** — _Back up everything_ and _Restore a backup_, the latter behind a
+> confirmation that names what is about to be replaced, and behind a file picker of its own so
+> an action that destructive is chosen on purpose rather than arrived at by opening a file that
+> turned out to be a backup. Restoring replaces rather than merges, because merging would
+> duplicate every project the moment someone restored their own snapshot onto the browser it
+> came from. _(todo 21)_
 >
 > **Import must say what it dropped.** The rules above are lossy by design — individuals,
 > restrictions, property chains discarded, non-`xsd` datatypes rewritten to `xsd:string` — and
@@ -624,7 +629,7 @@ list as originally written is in the git history; ask and it comes back.
 | 18     | Editing workflow       | Plain words in the interface, with the vocabulary behind a switch                         | M    |
 | ~~19~~ | Editing workflow       | ~~Move export into the file menu, and make the trigger a hamburger~~ — done               | —    |
 | 20     | Export and interop     | Harden the layout annotation: real tests, and fault tolerance worth the name              | S–M  |
-| 21     | Export and interop     | Workspace backup: one action that writes and reads the whole workspace                    | S–M  |
+| ~~21~~ | Export and interop     | ~~Workspace backup: one action that writes and reads the whole workspace~~ — done         | —    |
 | 22     | Export and interop     | Report what an import discarded, and offer "save as a copy" for a foreign file            | S    |
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
