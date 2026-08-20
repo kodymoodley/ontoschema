@@ -283,6 +283,23 @@ export async function openInspectorTab(page: Page, name: string) {
   await page.getByRole('tab', { name }).click();
 }
 
+/*
+ * The ontology's own metadata is not an inspector tab any more: it describes the document
+ * rather than the selection, so it opens from the header and covers the canvas while it is up.
+ * Every caller has to put it away again before touching anything behind it.
+ */
+export async function openMetadata(page: Page) {
+  await page.getByTestId('open-metadata').click();
+  await page.getByRole('dialog', { name: 'Ontology metadata' }).waitFor();
+}
+
+export async function closeMetadata(page: Page) {
+  await page
+    .getByRole('dialog', { name: 'Ontology metadata' })
+    .getByRole('button', { name: 'Close' })
+    .click();
+}
+
 /** Opens the export dialog from the file menu. Leaves it open. */
 export async function openExport(page: Page) {
   await chooseProjectAction(page, 'open-export');

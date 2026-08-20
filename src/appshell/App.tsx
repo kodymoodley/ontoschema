@@ -15,6 +15,9 @@ import {
 import { useThemePreference } from './useThemePreference';
 import { useFullscreen } from './useFullscreen';
 import { useExportAction } from './useExportAction';
+import { useDialogAction } from './useDialogAction';
+import { OntologyMetadataForm } from '../ontologymetadata';
+import { AnnotationEditor } from '../annotationpanel';
 import { AppMark, RedoIcon, UndoIcon } from './icons';
 import styles from './appshell.module.css';
 
@@ -41,6 +44,22 @@ export function App() {
   const fullscreen = useFullscreen();
   const saving = useExportAction('save');
   const exporting = useExportAction();
+  /*
+   * Beside the project name rather than in the canvas toolbar: the IRI, prefix, title and
+   * licence are properties of the document, and the document's name is already here. The
+   * toolbar stays about the canvas.
+   */
+  const metadata = useDialogAction({
+    label: 'Metadata',
+    title: 'Ontology metadata',
+    testId: 'open-metadata',
+    children: (
+      <>
+        <OntologyMetadataForm />
+        <AnnotationEditor target={{ kind: 'ontology', id: '' }} />
+      </>
+    ),
+  });
   // Which side panel is showing when the viewport is too narrow for three columns.
   const [drawer, setDrawer] = useState<'none' | 'entities' | 'inspector'>('none');
 
@@ -83,6 +102,7 @@ export function App() {
           <AppMark />
         </Button>
         <ProjectNameField />
+        {metadata.action}
         <Spacer />
         <ProjectSwitcher
           extraActions={
@@ -231,6 +251,7 @@ export function App() {
         <Inspector />
       </div>
 
+      {metadata.dialog}
       {saving.dialog}
       {exporting.dialog}
     </div>
