@@ -10,7 +10,8 @@ import {
   dragFromPalette,
   openApp,
   openExport,
-  openInspectorTab,
+  closeMetadata,
+  openMetadata,
   relate,
   renameClassOnCanvas,
   selectClass,
@@ -242,7 +243,7 @@ test('annotations in two languages survive a round trip through the export', asy
 
 test('ontology-level metadata is exported on the ontology header', async ({ page }) => {
   await openApp(page);
-  await openInspectorTab(page, 'Ontology');
+  await openMetadata(page);
   await page.getByLabel('Base IRI').fill('https://example.org/auto/');
   await page.getByLabel('Prefix').fill('auto');
 
@@ -252,6 +253,7 @@ test('ontology-level metadata is exported on the ontology header', async ({ page
     .locator('[data-annotation-term="dcterms:title"]')
     .getByLabel('dcterms:title value')
     .fill('Automotive Schema');
+  await closeMetadata(page);
 
   const turtle = await downloadExport(page, 'ttl');
   expect(turtle).toContain('<https://example.org/auto> a owl:Ontology');

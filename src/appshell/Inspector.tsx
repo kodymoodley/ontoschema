@@ -5,7 +5,6 @@ import { useOntology, useSelection } from '../projectstore';
 import { AttributeDetails, ClassDetails } from '../classeditor';
 import { RelationDetails } from '../relationeditor';
 import { AnnotationEditor } from '../annotationpanel';
-import { OntologyMetadataForm } from '../ontologymetadata';
 import { Badge, EmptyState, Tabs } from '../designsystem';
 import styles from './appshell.module.css';
 
@@ -13,14 +12,17 @@ import styles from './appshell.module.css';
  * The right-hand inspector. It decides *what* is being inspected and delegates the
  * rendering to the module that owns that concept — the shell knows the modules, the
  * modules do not know each other.
+ *
+ * Everything here describes the selection. The two tabs that did not — Export, then the
+ * ontology's own metadata — have both left, for the same reason: clicking a class threw you
+ * off them, which is what a tab that is not about the selection always does.
  */
 
-type InspectorTab = 'details' | 'annotations' | 'ontology';
+type InspectorTab = 'details' | 'annotations';
 
 const TABS = [
   { value: 'details' as const, label: 'Details' },
   { value: 'annotations' as const, label: 'Annotations' },
-  { value: 'ontology' as const, label: 'Ontology' },
 ];
 
 export function Inspector() {
@@ -31,10 +33,7 @@ export function Inspector() {
 
   // Selecting something should show that thing, not whatever tab was left open. Adjusting
   // during render (rather than in an effect) avoids a second pass with the stale tab.
-  if (selection && selection.id !== tabbedFor) {
-    setTabbedFor(selection.id);
-    if (tab === 'ontology') setTab('details');
-  }
+  if (selection && selection.id !== tabbedFor) setTabbedFor(selection.id);
 
   const name = selection ? displayName(selection) : null;
 
@@ -73,18 +72,10 @@ export function Inspector() {
               <AnnotationEditor target={selection} />
             ) : (
               <EmptyState>
-                Select a class or property to annotate it, or use the Ontology tab for
-                ontology-level metadata.
+                Select a class, relation or attribute to annotate it. The ontology's own metadata is
+                under <strong>Metadata</strong> in the header.
               </EmptyState>
             )
-          ) : null}
-
-          {tab === 'ontology' ? (
-            <>
-              <OntologyMetadataForm />
-              <div style={{ height: 'var(--space-4)' }} />
-              <AnnotationEditor target={{ kind: 'ontology', id: '' }} />
-            </>
           ) : null}
         </div>
       </div>

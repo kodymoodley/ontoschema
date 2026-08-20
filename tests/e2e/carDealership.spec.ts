@@ -12,7 +12,8 @@ import {
   downloadExport,
   downloadShapes,
   openApp,
-  openInspectorTab,
+  closeMetadata,
+  openMetadata,
   relate,
   renameClassOnCanvas,
   selectClass,
@@ -43,9 +44,10 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
   await expect(page.locator('[data-class-name="Dealership"]')).toBeVisible();
 
   // 3. Set the ontology namespace.
-  await openInspectorTab(page, 'Ontology');
+  await openMetadata(page);
   await page.getByLabel('Base IRI').fill('https://example.org/auto/');
   await page.getByLabel('Prefix').fill('auto');
+  await closeMetadata(page);
 
   // 4. Five typed attributes on Car.
   await selectClass(page, 'Car');

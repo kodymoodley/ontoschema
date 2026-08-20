@@ -7,7 +7,8 @@ import {
   downloadShapes,
   openApp,
   openExamples,
-  openInspectorTab,
+  closeMetadata,
+  openMetadata,
   selectClass,
 } from './ontoschema';
 
@@ -132,9 +133,10 @@ test('an example carries its metadata and language tags', async ({ page }) => {
   await openApp(page);
   await openExample(page, 'Recipes and cooking');
 
-  await openInspectorTab(page, 'Ontology');
+  await openMetadata(page);
   await expect(page.getByLabel('Base IRI')).toHaveValue('https://example.org/cooking/');
   await expect(page.getByLabel('Prefix')).toHaveValue('cook');
+  await closeMetadata(page);
 
   const turtle = await downloadExport(page, 'ttl');
   expect(turtle).toContain('"Recipe Collection"@en');

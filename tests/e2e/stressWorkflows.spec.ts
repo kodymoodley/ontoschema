@@ -13,7 +13,8 @@ import {
   downloadExport,
   downloadShapes,
   openApp,
-  openInspectorTab,
+  closeMetadata,
+  openMetadata,
   relate,
   selectClass,
 } from './ontoschema';
@@ -322,8 +323,9 @@ test('deleting a class in the middle of a hierarchy re-roots its children', asyn
 
 test('a long editing session stays coherent and undoes cleanly', async ({ page }) => {
   await openApp(page);
-  await openInspectorTab(page, 'Ontology');
+  await openMetadata(page);
   await page.getByLabel('Base IRI').fill('https://example.org/long/');
+  await closeMetadata(page);
 
   await newClass(page, 'Car', 40, 120);
   await newClass(page, 'Dealership', 340, 120);
