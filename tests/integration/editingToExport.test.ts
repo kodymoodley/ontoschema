@@ -5,6 +5,7 @@ import {
   flushWorkspace,
   useProjectStore,
 } from '../../src/projectstore';
+import { projectToFile } from '../../src/projectstore/persistence';
 import {
   attributeUsagesOfClass,
   classForest,
@@ -487,7 +488,9 @@ describe('multiple projects', () => {
 
   it('round-trips a project, usages included, through its file format', () => {
     const ids = buildAutomotiveProject();
-    const file = store().exportProjectFile();
+    const file = projectToFile(
+      useProjectStore.getState().projects.find((p) => p.id === store().activeProjectId)!,
+    );
     expect(file).toBeTruthy();
 
     const importedId = store().importProject(file ?? '');
@@ -566,7 +569,13 @@ describe('multiple projects', () => {
     const before = useProjectStore.getState().projects.map((project) => project.id);
 
     expect(store().restoreWorkspace('not json at all')).toBeNull();
-    expect(store().restoreWorkspace(store().exportProjectFile() ?? '')).toBeNull();
+    expect(
+      store().restoreWorkspace(
+        projectToFile(
+          useProjectStore.getState().projects.find((p) => p.id === store().activeProjectId)!,
+        ),
+      ),
+    ).toBeNull();
     expect(useProjectStore.getState().projects.map((project) => project.id)).toEqual(before);
   });
 

@@ -6,6 +6,7 @@ import {
   addAttribute,
   chooseProjectAction,
   downloadExport,
+  downloadShapes,
   dragFromPalette,
   openApp,
   openExport,
@@ -125,7 +126,7 @@ test('deleting a class removes its attributes and relations from the export', as
 
   const after = await downloadExport(page, 'ttl');
   expect(after).not.toContain(':Car ');
-  expect(after).not.toContain('CarShape');
+  expect(await downloadShapes(page)).not.toContain('CarShape');
   expect(after).toContain(':Dealership');
   // The properties survive in the pool; only their uses went with the class.
   expect(after).toContain(':make a owl:DatatypeProperty');
@@ -175,8 +176,9 @@ test('renaming a class carries every reference with it', async ({ page }) => {
   expect(turtle).not.toMatch(/:Car\b/);
   expect(turtle).toMatch(/rdfs:domain \w*:Automobile/);
   // The derived shapes follow the rename too.
-  expect(turtle).toContain(':AutomobileShape');
-  expect(turtle).not.toContain(':CarShape');
+  const shapes = await downloadShapes(page);
+  expect(shapes).toContain(':AutomobileShape');
+  expect(shapes).not.toContain(':CarShape');
 });
 
 test('a name with characters illegal in an IRI is corrected rather than exported broken', async ({

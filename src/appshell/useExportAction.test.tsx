@@ -49,13 +49,15 @@ describe('export from the file menu', () => {
 
   it('shows the export panel, working against the open project', async () => {
     const user = userEvent.setup();
-    useProjectStore.getState().createClass({ localName: 'Motorcycle' });
+    const motorcycle = useProjectStore.getState().createClass({ localName: 'Motorcycle' });
+    // The export panel shows the shapes first, and a class with no usages has none.
+    useProjectStore.getState().createAttributeOn(motorcycle, { localName: 'engineSize' });
     render(<Header />);
 
     await openMenu(user);
     await user.click(screen.getByTestId('open-export'));
 
-    expect(screen.getByTestId('download-ttl')).toBeInTheDocument();
+    expect(screen.getByTestId('download-mmd')).toBeInTheDocument();
     expect(screen.getByTestId('export-preview')).toHaveTextContent('Motorcycle');
   });
 

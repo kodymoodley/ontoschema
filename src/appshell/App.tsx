@@ -39,6 +39,7 @@ export function App() {
   const { create, canCreateAttribute } = usePaletteCreate();
   const { theme, toggleTheme } = useThemePreference();
   const fullscreen = useFullscreen();
+  const saving = useExportAction('save');
   const exporting = useExportAction();
   // Which side panel is showing when the viewport is too narrow for three columns.
   const [drawer, setDrawer] = useState<'none' | 'entities' | 'inspector'>('none');
@@ -83,7 +84,14 @@ export function App() {
         </Button>
         <ProjectNameField />
         <Spacer />
-        <ProjectSwitcher extraActions={exporting.action} />
+        <ProjectSwitcher
+          extraActions={
+            <>
+              {saving.action}
+              {exporting.action}
+            </>
+          }
+        />
         <Divider />
         <Button
           size="small"
@@ -223,6 +231,7 @@ export function App() {
         <Inspector />
       </div>
 
+      {saving.dialog}
       {exporting.dialog}
     </div>
   );

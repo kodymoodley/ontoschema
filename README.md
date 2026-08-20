@@ -28,29 +28,62 @@ PropertyUsage    { id, propertyId, subjectClassId, objectClassId? }
 A usage maps **1:1 onto a SHACL property shape**, which is per-class and keeps every pairing intact.
 Everything else falls out of that one concept:
 
-| Behaviour                                  | Why it works that way                                        |
-| ------------------------------------------ | ------------------------------------------------------------ |
-| A attribute can never float on the canvas  | It exists only as a usage on some class                      |
-| An relation is invisible until used        | Zero usages means there is no edge to draw                   |
-| The same property is reused across classes | Two usages of one property, pairing preserved                |
-| There is no "generic vs scoped" flag       | It is just a usage count: 0, 1, or many                      |
-| Exports never contradict themselves        | `rdfs:domain`/`range` only while a property is used **once** |
+| Behaviour                                  | Why it works that way                                         |
+| ------------------------------------------ | ------------------------------------------------------------- |
+| A attribute can never float on the canvas  | It exists only as a usage on some class                       |
+| An relation is invisible until used        | Zero usages means there is no edge to draw                    |
+| The same property is reused across classes | Two usages of one property, pairing preserved                 |
+| There is no "generic vs scoped" flag       | It is just a usage count: 0, 1, or many                       |
+| Exports never contradict themselves        | A reused property's domain is a **union**, never a repetition |
 
-## Two export layers
+## Saving, and exporting
 
-Both ride inside the same `.ttl`/`.rdf`/`.owl`/`.jsonld` files — SHACL is a vocabulary, not a
-serialization — and each can be switched off in the export dialog, under **File › Export**.
+Two different promises, so two different menu items.
 
-- **OWL / RDFS axioms**: class and property declarations, subclass and subproperty hierarchies, and
-  `rdfs:domain`/`rdfs:range` only where a property is used exactly once. A attribute's
-  `rdfs:range` is always emitted, because it is the same wherever the property is used.
-- **SHACL shapes**: one `sh:NodeShape` per class with usages, and one named `sh:PropertyShape` per
-  (class, property). Several target classes on one path become a single `sh:or` rather than several
-  shapes, because two property shapes on the same path are _conjunctive_ — `Car hasPart Wheel` plus
-  `Car hasPart Door` as separate shapes would demand every part be both at once.
+**File › Save a schema** writes a document this app can open again: `.ttl`, `.rdf` or `.owl`,
+carrying the OWL/RDFS axioms and where the classes sit on the canvas. There is no private project
+format any more — a schema leaves here in a form every other RDF tool understands.
 
-Shapes are **named, not blank**. That keeps all three writers free of blank-node and RDF-collection
-handling, and makes every shape addressable for annotation and for future `sh:minCount`/`sh:maxCount`.
+**File › Export** writes what cannot be read back: the SHACL shapes as a file of their own,
+JSON-LD, and a Mermaid class diagram.
+
+### What the ontology file says
+
+Class and property declarations, subclass and subproperty hierarchies, and `rdfs:domain`/`rdfs:range`
+on every property. A property used on one class states that class directly; one used on several
+states an **anonymous `owl:unionOf`** over all of them. Repeating the domain would mean intersection
+— that a thing with a `price` is a Car _and_ a Product — which is false, and stating nothing would
+leave the file unable to be read back. The union has to be anonymous: a _named_ class carrying
+`owl:unionOf` is discarded by real OWL parsers, which was measured rather than assumed.
+
+The union is weaker than what it came from. It names both ends of a relation but not which end went
+with which, so a relation drawn `Car → Dealership` and `Wheel → Garage` reopens permitting
+`Car → Garage`. The shapes keep the pairings.
+
+Where the classes sit rides along as a single annotation on the ontology, keyed by IRI. One line a
+triple-level diff can ignore by predicate, and nothing at all in a document never opened here.
+
+### What the shapes file says
+
+One `sh:NodeShape` per class with usages, and one named `sh:PropertyShape` per (class, property).
+Several target classes on one path become a single `sh:or` rather than several shapes, because two
+property shapes on the same path are _conjunctive_ — `Car hasPart Wheel` plus `Car hasPart Door` as
+separate shapes would demand every part be both at once.
+
+Shapes are **named, not blank**, which makes every one addressable for annotation and for future
+`sh:minCount`/`sh:maxCount`. They are a separate file so that the ontology is what a reasoner reads
+and the shapes are what a validator reads, with neither needing to be told to ignore the other.
+
+## Opening a file
+
+`.ttl`, `.rdf` and `.owl` open here, and so do project files saved before saving became RDF. This
+app models a narrow slice of OWL, so a document written elsewhere keeps what fits and leaves the
+rest — individuals, restrictions, property chains — rather than refusing to open. It says what it
+left behind, and what it **changed**: a datatype it does not offer arrives as `xsd:string`.
+
+**File › Back up everything** is the exception to all of this: the whole workspace, every project,
+exactly as it stands, in a private format nothing else reads. A Turtle document is one ontology; a
+workspace is several.
 
 ---
 
@@ -66,13 +99,13 @@ npm run dev          # http://localhost:5173
 The quickest way in is **Examples** in the header. Each opens as its own project, so anything
 you are already working on is left alone.
 
-| Example                 | Classes | What it shows                                                                                                              |
-| ----------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Music library**       | 13      | The gentlest start — everyone knows the domain, so only the modelling is new. `performedBy` covers both studio and stage.  |
-| **Recipes and cooking** | 13      | The most useful habit there is: when a link needs its own facts (_how much_ flour), it needs its own class.                |
-| **Vehicle dealership**  | 15      | A branching taxonomy, and `offeredBy` drawn from three vehicle kinds — watch `rdfs:domain` disappear in the export dialog. |
-| **University**          | 14      | The catalogue-versus-offering distinction, and a course that is a prerequisite of a course.                                |
-| **Insurance firm**      | 15      | A `Party` abstraction over people and companies, and one relation whose range differs per policy type.                     |
+| Example                 | Classes | What it shows                                                                                                             |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Music library**       | 13      | The gentlest start — everyone knows the domain, so only the modelling is new. `performedBy` covers both studio and stage. |
+| **Recipes and cooking** | 13      | The most useful habit there is: when a link needs its own facts (_how much_ flour), it needs its own class.               |
+| **Vehicle dealership**  | 15      | A branching taxonomy, and `offeredBy` drawn from three vehicle kinds — watch `rdfs:domain` become a union when you save.  |
+| **University**          | 14      | The catalogue-versus-offering distinction, and a course that is a prerequisite of a course.                               |
+| **Insurance firm**      | 15      | A `Party` abstraction over people and companies, and one relation whose range differs per policy type.                    |
 
 ### The five-minute tour
 

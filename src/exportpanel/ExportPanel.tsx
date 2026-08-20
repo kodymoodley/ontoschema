@@ -1,98 +1,89 @@
-import { useMemo, useState } from 'react';
-import { SERIALIZATION_FORMATS, serialize } from '../serialization';
-import type { SerializationFormat } from '../serialization';
+import { useState } from 'react';
+import { serialize } from '../serialization';
 import { isOntologyEmpty } from '../ontologymodel';
 import { useActiveProject, useOntology } from '../projectstore';
 import { Button } from '../designsystem';
 import { downloadFile } from './download';
+import { filesFor } from './files';
+import type { WritableFile } from './files';
 import styles from './exportpanel.module.css';
 
 /**
- * One-click export. All four files are rendered from the same triple list, so they are
- * semantically identical by construction; the preview shows exactly what will be written.
+ * Writing the schema out, for one of two purposes.
+ *
+ * **Saving** produces a document this app can open again: the axioms and the layout, in
+ * Turtle or RDF/XML. **Exporting** produces something it cannot — the SHACL shapes as a file
+ * of their own, JSON-LD, a diagram.
+ *
+ * One component because the mechanics are identical — pick a file, see it, download it — and
+ * the difference is which files are on offer and what to say about them. Two components would
+ * have been the same code twice with a different list at the top.
+ *
+ * There are no layer checkboxes any more. What each file contains is a property of the file:
+ * an ontology has axioms and a layout, a shapes file has shapes. Asking the person to assemble
+ * that was asking them to know why the layers existed.
  */
-export function ExportPanel() {
+
+interface ExportPanelProps {
+  purpose?: 'save' | 'export';
+}
+
+export function ExportPanel({ purpose = 'export' }: ExportPanelProps) {
   const ontology = useOntology();
   const project = useActiveProject();
-  const [preview, setPreview] = useState<SerializationFormat>('turtle');
-  const [includeAxioms, setIncludeAxioms] = useState(true);
-  const [includeShapes, setIncludeShapes] = useState(true);
+  const files = filesFor(purpose);
+  const [previewKey, setPreviewKey] = useState(files[0]?.key ?? '');
 
   const baseName = project?.name ?? 'ontology';
-  const options = useMemo(() => ({ includeAxioms, includeShapes }), [includeAxioms, includeShapes]);
-  const previewText = useMemo(
-    () => serialize(ontology, preview, baseName, options).content,
-    [ontology, preview, baseName, options],
-  );
+  const previewed = files.find((file) => file.key === previewKey) ?? files[0];
+  /*
+   * Not memoised by hand. The compiler does it, and doing it here needed `previewed` as a
+   * dependency -- an object rebuilt on every render, which defeats the memo and makes the
+   * compiler skip the whole component rather than optimise around it.
+   */
+  const previewText = previewed
+    ? serialize(ontology, previewed.format, baseName, previewed.options).content
+    : '';
 
-  const empty = isOntologyEmpty(ontology);
+  const write = (file: WritableFile) => {
+    const written = serialize(
+      ontology,
+      file.format,
+      `${baseName}${file.suffix ?? ''}`,
+      file.options,
+    );
+    downloadFile(written.filename, written.mimeType, written.content);
+  };
 
   return (
     <div className={styles.panel}>
-      {empty ? (
+      {isOntologyEmpty(ontology) ? (
         <p className={styles.warning}>
-          This ontology has no classes or properties yet. Exporting now produces a valid but empty
-          document containing only the ontology header.
+          This ontology has no classes or properties yet. Writing it out now produces a valid but
+          empty document containing only the ontology header.
         </p>
       ) : null}
 
-      {/*
-        SHACL is a vocabulary, not a serialization, so shapes ride inside the same files
-        rather than being a fifth format. They carry what the canvas actually means: a
-        per-class constraint, which rdfs:domain and rdfs:range cannot express once a
-        property is reused.
-      */}
-      <fieldset className={styles.layers}>
-        <legend className={styles.layersLegend}>Include</legend>
-        <label className={styles.layer}>
-          <input
-            type="checkbox"
-            checked={includeAxioms}
-            aria-label="Include OWL and RDFS axioms"
-            onChange={(event) => setIncludeAxioms(event.target.checked)}
-          />
-          <span>
-            <strong>OWL / RDFS axioms</strong>
-            <span className={styles.layerHint}>
-              Class and property declarations, hierarchies, and domain/range where a property is
-              used only once.
-            </span>
-          </span>
-        </label>
-        <label className={styles.layer}>
-          <input
-            type="checkbox"
-            checked={includeShapes}
-            aria-label="Include SHACL shapes"
-            onChange={(event) => setIncludeShapes(event.target.checked)}
-          />
-          <span>
-            <strong>SHACL shapes</strong>
-            <span className={styles.layerHint}>
-              One property shape per use, so every class keeps its own constraints even when a
-              property is shared.
-            </span>
-          </span>
-        </label>
-      </fieldset>
+      <p className={styles.purpose}>
+        {purpose === 'save'
+          ? 'A schema saved this way opens again here, and in any other RDF tool. Where the classes sit is saved with it.'
+          : 'These are renderings, not documents: this app writes them and does not read them back.'}
+      </p>
 
       <div className={styles.formats}>
-        {SERIALIZATION_FORMATS.map((descriptor) => (
-          <div key={descriptor.format} className={styles.format}>
+        {files.map((file) => (
+          <div key={file.key} className={styles.format}>
             <div className={styles.formatText}>
-              <span className={styles.formatLabel}>{descriptor.label}</span>
-              <span className={styles.formatHint}>{descriptor.description}</span>
+              <span className={styles.formatLabel}>{file.label}</span>
+              <span className={styles.formatHint}>{file.description}</span>
             </div>
             <Button
               size="small"
               variant="primary"
-              data-testid={`download-${descriptor.extension}`}
-              onClick={() => {
-                const file = serialize(ontology, descriptor.format, baseName, options);
-                downloadFile(file.filename, file.mimeType, file.content);
-              }}
+              data-testid={`download-${file.key}`}
+              onClick={() => write(file)}
             >
-              .{descriptor.extension}
+              .{file.extension}
             </Button>
           </div>
         ))}
@@ -102,13 +93,13 @@ export function ExportPanel() {
         <span className={styles.previewTitle}>Preview</span>
         <select
           className={styles.previewSelect}
-          value={preview}
+          value={previewed?.key ?? ''}
           aria-label="Preview format"
-          onChange={(event) => setPreview(event.target.value as SerializationFormat)}
+          onChange={(event) => setPreviewKey(event.target.value)}
         >
-          {SERIALIZATION_FORMATS.map((descriptor) => (
-            <option key={descriptor.format} value={descriptor.format}>
-              {descriptor.label}
+          {files.map((file) => (
+            <option key={file.key} value={file.key}>
+              {file.label}
             </option>
           ))}
         </select>

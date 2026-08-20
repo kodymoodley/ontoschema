@@ -2,7 +2,14 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { Parser } from 'n3';
 import { unionMembers } from '../fixtures/parseRdf';
-import { downloadExport, openApp, openExamples, openInspectorTab, selectClass } from './ontoschema';
+import {
+  downloadExport,
+  downloadShapes,
+  openApp,
+  openExamples,
+  openInspectorTab,
+  selectClass,
+} from './ontoschema';
 
 /**
  * The examples are most people's first contact with the editor, so these check the thing
@@ -46,7 +53,7 @@ test('every example opens, draws and exports', async ({ page }) => {
     const turtle = await downloadExport(page, 'ttl');
     expect(() => new Parser({ format: 'text/turtle' }).parse(turtle), title).not.toThrow();
     expect(turtle, title).toContain('a owl:Class');
-    expect(turtle, title).toContain('sh:NodeShape');
+    expect(await downloadShapes(page), title).toContain('sh:NodeShape');
   }
 });
 
@@ -91,7 +98,8 @@ test('a reused property unions its domain and keeps a shape per class', async ({
   expect(domain?.object.termType).toBe('BlankNode');
   expect(unionMembers(quads, domain!.subject.value, domain!.predicate.value)).toHaveLength(3);
 
-  const shapes = quads.filter(
+  const shapeQuads = new Parser({ format: 'text/turtle' }).parse(await downloadShapes(page));
+  const shapes = shapeQuads.filter(
     (quad) =>
       quad.predicate.value === 'http://www.w3.org/ns/shacl#path' &&
       quad.object.value.endsWith('/offeredBy'),
