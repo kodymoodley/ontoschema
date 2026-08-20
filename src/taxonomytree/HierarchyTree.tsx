@@ -16,8 +16,8 @@ import {
   useProjectStore,
   useSelection,
 } from '../projectstore';
-import { Button, EmptyState, Tabs } from '../designsystem';
-import { AddChildIcon, AddRootIcon, DeleteIcon } from './icons';
+import { Button, DeleteIcon, EmptyState, Tabs } from '../designsystem';
+import { AddChildIcon, AddRootIcon } from './icons';
 import styles from './taxonomytree.module.css';
 
 /**
@@ -294,8 +294,8 @@ function AttributePool() {
           variant="danger"
           onClick={() => selected && deleteProperty(selected)}
           disabled={selected === null}
-          aria-label="Delete attribute"
-          title="Delete attribute"
+          aria-label="Delete selected attribute"
+          title="Delete selected attribute"
         >
           <DeleteIcon />
         </Button>

@@ -242,3 +242,48 @@ describe('AttributeDetails', () => {
     expect(screen.getByText(/Not used by any class yet/i)).toBeInTheDocument();
   });
 });
+
+/**
+ * The delete button, named and drawn.
+ *
+ * The labels are asserted because the last rename missed them: both property panels went on
+ * saying "Delete property" long after properties became relations and attributes, and nothing
+ * in the suite noticed. A name nothing asserts on is a name that drifts.
+ */
+describe('deleting from the inspector', () => {
+  it('names the button for the kind of thing it deletes', () => {
+    const car = store().createClass({ localName: 'Car' });
+    const price = store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
+
+    const { unmount } = render(<ClassDetails classId={car} />);
+    expect(screen.getByRole('button', { name: 'Delete class' })).toBeInTheDocument();
+    unmount();
+
+    render(<AttributeDetails propertyId={price} />);
+    expect(screen.getByRole('button', { name: 'Delete attribute' })).toBeInTheDocument();
+    // The word this panel used to say, for a thing the app stopped calling a property.
+    expect(screen.queryByRole('button', { name: /Delete property/ })).not.toBeInTheDocument();
+  });
+
+  it('is a bin, with the name on the button rather than in the drawing', () => {
+    const car = store().createClass({ localName: 'Car' });
+    render(<ClassDetails classId={car} />);
+
+    const remove = screen.getByRole('button', { name: 'Delete class' });
+    expect(remove.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(remove).toHaveTextContent('');
+    // Still says what it will take with it, since that is the part people get wrong.
+    expect(remove).toHaveAttribute('title', expect.stringContaining('every attribute row'));
+  });
+
+  it('still deletes what it says it deletes', async () => {
+    const user = userEvent.setup();
+    const car = store().createClass({ localName: 'Car' });
+    const price = store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
+    render(<AttributeDetails propertyId={price} />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete attribute' }));
+    expect(ontology().attributes).toHaveLength(0);
+    expect(findClass(ontology(), car)).toBeDefined();
+  });
+});

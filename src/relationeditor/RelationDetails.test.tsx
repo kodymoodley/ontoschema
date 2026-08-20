@@ -117,7 +117,7 @@ describe('RelationDetails', () => {
     const { offeredBy } = usedOnce();
     render(<RelationDetails propertyId={offeredBy} />);
 
-    await user.click(screen.getByRole('button', { name: 'Delete property' }));
+    await user.click(screen.getByRole('button', { name: 'Delete relation' }));
 
     expect(findRelation(ontology(), offeredBy)).toBeUndefined();
     expect(ontology().usages).toHaveLength(0);
