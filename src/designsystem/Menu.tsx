@@ -137,6 +137,61 @@ export function Menu({ label, triggerLabel, children, className, ...rest }: Menu
 }
 
 /**
+ * A rule between groups of actions.
+ *
+ * Eight actions in a row read as one undifferentiated list. Four groups of two read as what
+ * they are: starting something, writing it out, the workspace as a whole, and destroying.
+ */
+export function MenuSeparator() {
+  return <div className={styles.menuSeparator} role="separator" />;
+}
+
+/**
+ * A group of actions folded behind one line of the menu.
+ *
+ * A nested disclosure rather than a flyout submenu, for the same reason the menu itself is a
+ * disclosure: a flyout brings hover intent, edge detection and arrow-key traversal, and what
+ * is needed here is two more buttons that are usually not wanted. Expanding in place keeps
+ * them in the tab order and needs none of that.
+ *
+ * The click is stopped rather than allowed to bubble, because the panel closes on any click
+ * inside it -- which is right for an action and wrong for a control that reveals more.
+ */
+export function MenuGroup({
+  label,
+  children,
+  ...rest
+}: {
+  label: string;
+  children: ReactNode;
+  'data-testid'?: string | undefined;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button
+        size="small"
+        variant="subtle"
+        className={styles.menuGroupTrigger}
+        aria-expanded={open}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((showing) => !showing);
+        }}
+        {...rest}
+      >
+        <span>{label}</span>
+        <span aria-hidden="true" className={styles.menuGroupChevron}>
+          {open ? '▾' : '▸'}
+        </span>
+      </Button>
+      {open ? <div className={styles.menuGroupItems}>{children}</div> : null}
+    </>
+  );
+}
+
+/**
  * Three stacked lines: the glyph a menu trigger is expected to wear.
  *
  * Drawn here beside the component it belongs to rather than pulled from an icon package, for the

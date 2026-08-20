@@ -33,12 +33,13 @@ export function useExportAction(purpose: 'save' | 'export' = 'export'): {
         onClick={() => setOpen(true)}
         data-testid={saving ? 'open-save' : 'open-export'}
       >
-        {saving ? 'Save a schema' : 'Export'}
+        {saving ? 'Save as…' : 'Export…'}
       </Button>
     ),
     dialog: (
       <Modal
-        title={saving ? 'Save a schema' : 'Export'}
+        // No ellipsis on a heading: the title names where you are, it is not an action.
+        title={saving ? 'Save as' : 'Export'}
         size="wide"
         open={open}
         onClose={() => setOpen(false)}

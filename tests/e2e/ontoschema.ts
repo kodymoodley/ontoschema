@@ -266,8 +266,12 @@ export async function addAnnotation(page: Page, term: string, value: string, lan
  * takes two steps. Named here rather than repeated at each call site, since the last gesture
  * change had to be edited in twenty-eight places for exactly that reason.
  */
+/** The two actions that live behind the Workspace group rather than at the top level. */
+const INSIDE_WORKSPACE = new Set(['back-up', 'restore-backup']);
+
 export async function chooseProjectAction(page: Page, testId: string) {
   await page.getByTestId('file-menu').click();
+  if (INSIDE_WORKSPACE.has(testId)) await page.getByTestId('workspace-group').click();
   await page.getByTestId(testId).click();
 }
 
@@ -288,7 +292,7 @@ export async function openExport(page: Page) {
 /** Opens the save dialog from the file menu. Leaves it open. */
 export async function openSave(page: Page) {
   await chooseProjectAction(page, 'open-save');
-  await page.getByRole('dialog', { name: 'Save a schema' }).waitFor();
+  await page.getByRole('dialog', { name: 'Save as' }).waitFor();
 }
 
 /*

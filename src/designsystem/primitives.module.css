@@ -435,3 +435,28 @@
   justify-content: flex-start;
   text-align: left;
 }
+
+/* A rule between groups, so eight actions read as four pairs rather than one list. */
+.menuSeparator {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--border-subtle);
+}
+
+/* The chevron sits at the far edge, so the trigger overrides the panel's left alignment. */
+.menuPanel .menuGroupTrigger {
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.menuGroupChevron {
+  color: var(--text-tertiary);
+}
+
+/* Indented, so an expanded group reads as belonging to the line above it. */
+.menuGroupItems {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: var(--space-3);
+}
