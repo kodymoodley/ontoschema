@@ -95,5 +95,7 @@ export {
   updateAnnotation,
 } from './mutations';
 
+export { decodeLayout, encodeLayout } from './layout';
+export type { Layout } from './layout';
 export { ontologyToTriples, blank, blankLabel, iri, isBlankNode, literal } from './triples';
 export type { Triple, TripleObject, SerializationOptions } from './triples';

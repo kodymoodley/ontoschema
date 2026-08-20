@@ -406,3 +406,45 @@ test('a class can have two superclasses, and both are exported', async ({ page }
 
   expect(parents.sort()).toEqual(['Contract', 'FinancialInstrument']);
 });
+
+test('where the classes were dropped is saved with them, as one annotation', async ({ page }) => {
+  await openApp(page);
+  await dragFromPalette(page, 'class', { x: 160, y: 160 });
+  await dragFromPalette(page, 'class', { x: 520, y: 380 });
+  await expect(page.locator('[data-class-node-id]')).toHaveCount(2);
+
+  for (const [position, name] of [
+    ['first', 'Car'],
+    ['last', 'Wheel'],
+  ] as const) {
+    await page.locator('[data-class-node-id]')[position]().locator('header [title]').dblclick();
+    await page.getByLabel('Class name').fill(name);
+    await page.getByLabel('Class name').press('Enter');
+  }
+
+  const turtle = await downloadExport(page, 'ttl');
+  const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
+
+  const [annotation] = quads.filter((quad) => quad.predicate.value.endsWith('/ns#layout'));
+  expect(annotation, 'the layout should be written').toBeDefined();
+
+  /*
+   * One annotation on the ontology carrying every class, rather than a position on each: a
+   * triple-level diff can ignore the whole layout by predicate, and a document that was never
+   * opened here carries nothing at all.
+   */
+  expect(annotation!.subject.value).not.toMatch(/\/(Car|Wheel)$/);
+  const layout = JSON.parse(annotation!.object.value) as Record<string, [number, number]>;
+  const keys = Object.keys(layout);
+  expect(keys.some((iri) => iri.endsWith('/Car'))).toBe(true);
+  expect(keys.some((iri) => iri.endsWith('/Wheel'))).toBe(true);
+
+  // Dropped in different places, so they are recorded in different places.
+  const car = layout[keys.find((iri) => iri.endsWith('/Car'))!]!;
+  const wheel = layout[keys.find((iri) => iri.endsWith('/Wheel'))!]!;
+  expect(wheel[0]).toBeGreaterThan(car[0]);
+  expect(wheel[1]).toBeGreaterThan(car[1]);
+
+  // Declared, so what is written is still a valid OWL document.
+  expect(turtle).toMatch(/ontoschema:layout a owl:AnnotationProperty/);
+});

@@ -12,6 +12,13 @@ export const NAMESPACES = {
   prov: 'http://www.w3.org/ns/prov#',
   vann: 'http://purl.org/vocab/vann/',
   sh: 'http://www.w3.org/ns/shacl#',
+  /*
+   * This app's own namespace, for the one term it has to invent: where the classes sit on the
+   * canvas. Resolvable, and pointing at the app that wrote the file, so anyone who meets the
+   * term in a document has somewhere to go. Nothing here is offered as an annotation the user
+   * can choose — that list is explicit, elsewhere — and nothing else will be added.
+   */
+  ontoschema: 'https://kodymoodley.github.io/ontoschema-site/ns#',
 } as const;
 
 export type KnownPrefix = keyof typeof NAMESPACES;
@@ -28,6 +35,16 @@ export const OWL_DATATYPE_PROPERTY = `${NAMESPACES.owl}DatatypeProperty`;
 export const OWL_ONTOLOGY = `${NAMESPACES.owl}Ontology`;
 /** The one OWL construct that can state a domain of several classes without lying about it. */
 export const OWL_UNION_OF = `${NAMESPACES.owl}unionOf`;
+export const OWL_ANNOTATION_PROPERTY = `${NAMESPACES.owl}AnnotationProperty`;
+
+/**
+ * Where the classes sit on the canvas, as one annotation on the ontology.
+ *
+ * One term rather than a position on each class, so a layout is a single line that a
+ * triple-level diff can ignore by predicate, and so a document that has never been opened
+ * here carries nothing at all.
+ */
+export const ONTOSCHEMA_LAYOUT = `${NAMESPACES.ontoschema}layout`;
 
 export const RDF_FIRST = `${NAMESPACES.rdf}first`;
 export const RDF_REST = `${NAMESPACES.rdf}rest`;

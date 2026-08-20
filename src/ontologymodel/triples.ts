@@ -2,6 +2,8 @@ import {
   OWL_CLASS,
   OWL_DATATYPE_PROPERTY,
   OWL_OBJECT_PROPERTY,
+  ONTOSCHEMA_LAYOUT,
+  OWL_ANNOTATION_PROPERTY,
   OWL_ONTOLOGY,
   OWL_UNION_OF,
   RDFS_DOMAIN,
@@ -34,6 +36,7 @@ import {
   uniqueLocalName,
 } from './identifier';
 import { indexOntology, classLocalNames, propertyLocalNames } from './ontology';
+import { encodeLayout } from './layout';
 import type { Annotation, Ontology, PropertyUsage } from './types';
 
 /**
@@ -94,11 +97,20 @@ export interface SerializationOptions {
   includeAxioms?: boolean;
   /** Emit SHACL node and property shapes for every usage. */
   includeShapes?: boolean;
+  /**
+   * Emit where the classes sit on the canvas.
+   *
+   * On by default, because a saved file has to come back looking the way it was left. It is
+   * a flag of its own rather than part of the axioms: a layout is neither an axiom nor a
+   * constraint, and a file meant only to be read by another tool can leave it out.
+   */
+  includeLayout?: boolean;
 }
 
 const DEFAULT_OPTIONS: Required<SerializationOptions> = {
   includeAxioms: true,
   includeShapes: true,
+  includeLayout: true,
 };
 
 /**
@@ -161,7 +173,7 @@ export function ontologyToTriples(
   ontology: Ontology,
   options: SerializationOptions = {},
 ): Triple[] {
-  const { includeAxioms, includeShapes } = { ...DEFAULT_OPTIONS, ...options };
+  const { includeAxioms, includeShapes, includeLayout } = { ...DEFAULT_OPTIONS, ...options };
   const namespace = normalizeNamespaceIri(ontology.iri);
   const subjectOf = (localName: string) => entityIri(namespace, localName);
   const index = indexOntology(ontology);
@@ -185,6 +197,19 @@ export function ontologyToTriples(
   const header = ontologyIri(namespace);
   triples.push({ subject: header, predicate: RDF_TYPE, object: iri(OWL_ONTOLOGY) });
   triples.push(...annotationTriples(header, ontology.annotations));
+
+  if (includeLayout) {
+    const layout = encodeLayout(ontology);
+    if (layout !== null) {
+      // Declared, so the document is still valid OWL rather than carrying a term from nowhere.
+      triples.push({
+        subject: ONTOSCHEMA_LAYOUT,
+        predicate: RDF_TYPE,
+        object: iri(OWL_ANNOTATION_PROPERTY),
+      });
+      triples.push({ subject: header, predicate: ONTOSCHEMA_LAYOUT, object: literal(layout) });
+    }
+  }
 
   if (includeAxioms) {
     for (const entity of ontology.classes) {

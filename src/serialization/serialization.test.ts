@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ONTOSCHEMA_LAYOUT } from '../annotationvocabulary';
 import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/autoOntology';
 import {
   canonicalize,
@@ -302,10 +303,21 @@ describe('SHACL shapes travel inside the same documents', () => {
     const quads = parseTurtle(
       serializeTurtle(reused, { includeAxioms: false, includeShapes: false }),
     );
-    expect(quads.every((quad) => quad.subject.value === 'https://example.org/auto')).toBe(true);
     expect(quads.some((quad) => quad.predicate.value === 'http://purl.org/dc/terms/title')).toBe(
       true,
     );
+    // The layout is a third layer, so what is left describes the ontology and that one term.
+    expect(new Set(quads.map((quad) => quad.subject.value))).toEqual(
+      new Set(['https://example.org/auto', ONTOSCHEMA_LAYOUT]),
+    );
+  });
+
+  it('writes nothing but the header once the layout is switched off too', () => {
+    const quads = parseTurtle(
+      serializeTurtle(reused, { includeAxioms: false, includeShapes: false, includeLayout: false }),
+    );
+    expect(quads.every((quad) => quad.subject.value === 'https://example.org/auto')).toBe(true);
+    expect(quads.some((quad) => quad.predicate.value === ONTOSCHEMA_LAYOUT)).toBe(false);
   });
 });
 
