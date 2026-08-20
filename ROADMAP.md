@@ -27,17 +27,15 @@ The five small canvas and interface fixes are done, and so is the relations-and-
 file menu, export now included in it, and the small-screen work as far as it was agreed to go. The individual entries are
 struck through in the tables below.
 
-1. **Palette and taxonomy as subtabs** — the first step of the layout work. _(The language-code
-   item that used to share this line is done; see the Editing workflow table.)_
-2. **Save and open standard RDF rather than a private format** — the questions that kept it out
+1. **Save and open standard RDF rather than a private format** — the questions that kept it out
    of this list are answered: positions go in one annotation on the ontology, and what counts as
    schema-level is written down, shapes move to a file of their own, and a reused property states
    its domain and range as a union so the ontology file carries enough to be read back. The part
    that handles foreign terms waits on the import item below; the rest does not.
-3. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
+2. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
    for opposite reasons: one risks the very legibility that makes the view worth having, the other
    is four features in a sentence and would invalidate the bundled examples.
-4. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
+3. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
    size. It is the largest new dependency surface on the list, and the only item that makes this
    tool depend on vocabularies it does not control; everything above it improves what is already
    here.
@@ -187,6 +185,16 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 >
 > The shapes are exported to a file of their own rather than mixed into the ontology, and import
 > never reads them — not from a shapes file, not from an ontology that happens to contain some.
+>
+> **Built, and one thing had to give.** The union must be an **anonymous** class. Measured
+> against a real OWL parser (owlready2, reading the app's own RDF/XML, Turtle and JSON-LD): a
+> _named_ class carrying `owl:unionOf` comes back as a bare class equivalent to nothing — the
+> union triple is discarded — so the domain would assert something meaningless, which is worse
+> than asserting nothing. Anonymous, all three syntaxes read back as `Car | Truck`. That cost
+> the "deliberately no blank nodes" rule the writers were built on. Blank nodes are now allowed
+> in exactly one place, an OWL class expression, and a test names every other blank node as a
+> failure. Shapes stay named, since SHACL asks nothing of the kind and a named shape can be
+> pointed at, annotated and diffed.
 >
 > That leaves the ontology file having to carry enough on its own, and today it does not: a
 > property used in more than one place is written with no `rdfs:domain` at all, because RDFS
@@ -354,7 +362,7 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | ~~**Move the "draw a relation by dragging" hint into a tooltip**~~ — _done by deletion._ Put behind a question mark first, then removed outright: the palette entries already say what each thing is. | — |
 | ~~**Icons instead of words on the taxonomy buttons**~~ — _done._ With names and tooltips, since no drawing tells adding a root from adding a child. | — |
 | **Plain words in the interface, with the vocabulary behind a switch** — the tool asks people to know `rdfs:label`, `skos:prefLabel` and `dcterms:description` in order to fill in what are, to them, a name, another name and a description. The annotations tab should read like an ordinary form: a labelled field per common term, in plain words, with the term names out of sight. Experts lose nothing — a toggle reveals the vocabulary and lets any term be chosen, remembered per person the way the theme is. Save and export keep their format names, since anyone downloading a file does need to know what a `.ttl` is. **Decided for the datatypes**: every xsd type stays on offer, and each is shown as the part after the prefix — `string`, `integer`, `boolean` — rather than renamed to _Text_ or _Whole number_. The prefix is the jargon; the type names themselves are ordinary words, and translating them would cost an expert the ability to recognise what they are choosing while gaining a beginner very little. _(todo 18)_ | M |
-| **Make the palette and the taxonomy tree subtabs of the left panel** — they are stacked today, so both are cramped and neither is whole. _(todo 3)_ | M |
+| **Make the palette and the taxonomy tree subtabs of the left panel** — they are stacked today, so both are cramped and neither is whole. **Parked on 20 August 2026**, with two things measured that the entry did not know. The palette costs **304px of an 852px panel** at 1440×900 — 36% — to hold three buttons, and the size is the hint sentence under each one, not the buttons. And the tree already has a tab strip of its own (Class, Relation, Attribute), so _subtabs_ means a second strip above it: 60px of tabs in a panel whose complaint is wasted height. Three ways out were drawn up — shrink the palette to one row and add no tabs at all, fold it in as a fourth tab beside the three entity tabs, or nest the strips as filed — and choosing between them is the owner's call, not a detail of the build. _(todo 3)_ | M |
 | ~~**Say relations and attributes throughout the interface**~~ — _done, both halves, and the code was the larger one._ 43 files: `objectProperty` became `relation` and `datatypeProperty` became `attribute` across the model, the store, the serializers and their tests, then every label, tab and aria-label a user reads. The exported RDF still says `owl:ObjectProperty`, which belongs to OWL rather than to this app. Documents written before it are refused rather than read: the reviver is forgiving by design, so an absent list revives as an empty one, and an old document would otherwise have opened with its classes intact and every relation and attribute silently gone. The file version is 2 now, and is actually checked. | — |
 | ~~**Collect the file actions into one menu**~~ — _done._ New, Examples, Save, Open and Delete sit behind one trigger, on both layouts. A disclosure rather than an ARIA menu, and the panel is portalled to the body because the header scrolls sideways on a narrow screen and a scrolling element clips what hangs out of it. _(todo 13)_ | — |
 | ~~**Move export into the file menu, and make the trigger a hamburger**~~ — _done._ The inspector is three tabs that all describe the selection, and export opens as a dialog from the file menu, whose trigger is now three stacked lines. Two things came out of the move that the entry did not anticipate: two UI modules may not import each other, so the menu takes the item through a slot the header fills rather than reaching for it; and the item and its dialog cannot be rendered together, because the menu panel unmounts on the very click meant to open the dialog. `Modal` grew a wide size and a scrolling body. _(todo 19)_ | — |
@@ -573,7 +581,7 @@ list as originally written is in the git history; ask and it comes back.
 | ------ | ---------------------- | ----------------------------------------------------------------------------------------- | ---- |
 | ~~1~~  | Editing workflow       | ~~Offer every ISO 639-1 language code~~ — done                                            | —    |
 | ~~2~~  | Editing workflow       | ~~Move the "draw a relation" hint into a tooltip~~ — done                                 | —    |
-| 3      | Editing workflow       | Palette and taxonomy tree as subtabs                                                      | M    |
+| 3      | Editing workflow       | Palette and taxonomy tree as subtabs — parked, needs a design choice                      | M    |
 | ~~4~~  | Canvas and readability | ~~Halve the minimap~~ — done                                                              | —    |
 | ~~5~~  | Canvas and readability | ~~Give the class header more height~~ — done                                              | —    |
 | ~~6~~  | Editing workflow       | ~~Revamp the interface for small screens~~ — done as agreed, stopped there                | —    |

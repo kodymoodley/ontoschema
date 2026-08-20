@@ -1,22 +1,27 @@
 import { DataFactory, Writer } from 'n3';
 import type { Quad } from 'n3';
-import { ontologyToTriples } from '../ontologymodel';
+import { blankLabel, isBlankNode, ontologyToTriples } from '../ontologymodel';
 import type { Ontology, SerializationOptions, Triple } from '../ontologymodel';
 import { prefixesFor } from './prefixes';
 
-const { namedNode, literal, quad, defaultGraph } = DataFactory;
+const { blankNode, namedNode, literal, quad, defaultGraph } = DataFactory;
 
 /** Converts our serializer-agnostic triple into an RDF/JS quad for N3. */
 export function toQuad(triple: Triple): Quad {
   const object =
     triple.object.type === 'iri'
       ? namedNode(triple.object.value)
-      : triple.object.language
-        ? literal(triple.object.value, triple.object.language)
-        : triple.object.datatype
-          ? literal(triple.object.value, namedNode(triple.object.datatype))
-          : literal(triple.object.value);
-  return quad(namedNode(triple.subject), namedNode(triple.predicate), object, defaultGraph());
+      : triple.object.type === 'blank'
+        ? blankNode(blankLabel(triple.object.value))
+        : triple.object.language
+          ? literal(triple.object.value, triple.object.language)
+          : triple.object.datatype
+            ? literal(triple.object.value, namedNode(triple.object.datatype))
+            : literal(triple.object.value);
+  const subject = isBlankNode(triple.subject)
+    ? blankNode(blankLabel(triple.subject))
+    : namedNode(triple.subject);
+  return quad(subject, namedNode(triple.predicate), object, defaultGraph());
 }
 
 /**

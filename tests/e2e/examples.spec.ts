@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { Parser } from 'n3';
+import { unionMembers } from '../fixtures/parseRdf';
 import { downloadExport, openApp, openExamples, openInspectorTab, selectClass } from './ontoschema';
 
 /**
@@ -68,7 +69,7 @@ test('the music example is immediately editable', async ({ page }) => {
   await expect(page.locator('[data-class-name="Track"] [data-attribute-name]')).toHaveCount(7);
 });
 
-test('a reused property loses its domain but keeps a shape per class', async ({ page }) => {
+test('a reused property unions its domain and keeps a shape per class', async ({ page }) => {
   await openApp(page);
   await openExample(page, 'Vehicle dealership');
 
@@ -78,12 +79,17 @@ test('a reused property loses its domain but keeps a shape per class', async ({ 
   const turtle = await downloadExport(page, 'ttl');
   const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
 
-  const domains = quads.filter(
+  /*
+   * Three vehicle kinds offer, so the domain is the union of the three. It has to be an
+   * anonymous class: a named one parses back as a class with no union in it at all.
+   */
+  const [domain] = quads.filter(
     (quad) =>
       quad.subject.value.endsWith('/offeredBy') &&
       quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#domain',
   );
-  expect(domains).toHaveLength(0);
+  expect(domain?.object.termType).toBe('BlankNode');
+  expect(unionMembers(quads, domain!.subject.value, domain!.predicate.value)).toHaveLength(3);
 
   const shapes = quads.filter(
     (quad) =>

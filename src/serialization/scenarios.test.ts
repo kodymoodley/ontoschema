@@ -7,7 +7,7 @@ import {
 } from '../../tests/fixtures/scenarios';
 import {
   canonicalize,
-  hasBlankNodes,
+  unexpectedBlankNodes,
   parseJsonLd,
   parseRdfXml,
   parseTurtle,
@@ -38,9 +38,9 @@ describe.each(allScenarios())('$name', ({ ontology }) => {
     expect(quads).toHaveLength(ontologyToTriples(ontology).length);
   });
 
-  it('uses no blank nodes, so nothing depends on collection support', async () => {
-    expect(hasBlankNodes(parseTurtle(serializeTurtle(ontology)))).toBe(false);
-    expect(hasBlankNodes(await parseRdfXml(serializeRdfXml(ontology)))).toBe(false);
+  it('uses blank nodes only for OWL class expressions, never for anything else', async () => {
+    expect(unexpectedBlankNodes(parseTurtle(serializeTurtle(ontology)))).toEqual([]);
+    expect(unexpectedBlankNodes(await parseRdfXml(serializeRdfXml(ontology)))).toEqual([]);
   });
 
   it('agrees across the layers, whichever are selected', async () => {

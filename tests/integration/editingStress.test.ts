@@ -4,14 +4,26 @@ import { COALESCE_WINDOW_MS, HISTORY_LIMIT } from '../../src/projectstore/histor
 import {
   classForest,
   entityIri,
+  normalizeNamespaceIri,
   relationUsages,
   rootClasses,
   validateLocalName,
 } from '../../src/ontologymodel';
 import type { Ontology } from '../../src/ontologymodel';
-import { findAnnotationTerm, isXsdDatatype } from '../../src/annotationvocabulary';
+import {
+  RDFS_DOMAIN,
+  RDFS_RANGE,
+  findAnnotationTerm,
+  isXsdDatatype,
+} from '../../src/annotationvocabulary';
 import { serialize } from '../../src/serialization';
-import { canonicalize, parseJsonLd, parseRdfXml, parseTurtle } from '../fixtures/parseRdf';
+import {
+  canonicalize,
+  parseJsonLd,
+  parseRdfXml,
+  parseTurtle,
+  unionMembers,
+} from '../fixtures/parseRdf';
 import { pick, seededRandom } from '../fixtures/scenarios';
 
 const store = () => useProjectStore.getState();
@@ -347,8 +359,22 @@ describe('destructive storms', () => {
 
     assertConsistent(ontology(), 'after fanning one property out');
     const axioms = serialize(ontology(), 'turtle', 'x', { includeShapes: false }).content;
-    // Used fourteen times, so RDFS cannot state a domain without lying.
-    expect(axioms).not.toMatch(/isRelatedTo[\s\S]{0,80}rdfs:domain/);
+    /*
+     * Used fourteen times, so RDFS alone cannot state a domain without lying: the domain is a
+     * union of the fourteen subject classes and the range a union of the fourteen objects.
+     * Node0 is only ever a subject and Node14 only ever an object, which is what tells the two
+     * unions apart rather than merely counting them.
+     */
+    const quads = parseTurtle(axioms);
+    const term = (localName: string) => entityIri(normalizeNamespaceIri(ontology().iri), localName);
+    const domain = unionMembers(quads, term('isRelatedTo'), RDFS_DOMAIN);
+    const range = unionMembers(quads, term('isRelatedTo'), RDFS_RANGE);
+    expect(domain).toHaveLength(14);
+    expect(range).toHaveLength(14);
+    expect(domain).toContain(term('Node0'));
+    expect(domain).not.toContain(term('Node14'));
+    expect(range).toContain(term('Node14'));
+    expect(range).not.toContain(term('Node0'));
 
     const shapes = serialize(ontology(), 'turtle', 'x', { includeAxioms: false }).content;
     expect((shapes.match(/sh:path/g) ?? []).length).toBe(14);
