@@ -12,7 +12,7 @@ import {
   toClassLocalName,
 } from '../ontologymodel';
 import { useOntology, useProjectStore } from '../projectstore';
-import { Button, Field, NameInput, Select } from '../designsystem';
+import { Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
 import styles from './details.module.css';
 
 /**
@@ -220,10 +220,12 @@ export function ClassDetails({ classId }: { classId: string }) {
       <div className={styles.actions}>
         <Button
           variant="danger"
+          iconOnly
           onClick={() => deleteClass(classId)}
-          title="Deletes this class and every attribute row and relation attached to it"
+          aria-label="Delete class"
+          title="Delete class — also removes every attribute row and relation attached to it"
         >
-          Delete class
+          <DeleteIcon />
         </Button>
       </div>
     </div>

@@ -7,7 +7,7 @@ import {
   usagesOfProperty,
 } from '../ontologymodel';
 import { useOntology, useProjectStore } from '../projectstore';
-import { Badge, Button, Field, NameInput, Select } from '../designsystem';
+import { Badge, Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
 import styles from './relationeditor.module.css';
 
 /**
@@ -143,8 +143,14 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
       </Field>
 
       <div className={styles.actions}>
-        <Button variant="danger" onClick={() => remove(propertyId)}>
-          Delete property
+        <Button
+          variant="danger"
+          iconOnly
+          onClick={() => remove(propertyId)}
+          aria-label="Delete relation"
+          title="Delete relation"
+        >
+          <DeleteIcon />
         </Button>
       </div>
     </div>

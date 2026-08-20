@@ -8,7 +8,7 @@ import {
   usagesOfProperty,
 } from '../ontologymodel';
 import { useOntology, useProjectStore } from '../projectstore';
-import { Button, Field, NameInput, Select } from '../designsystem';
+import { Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
 import styles from './details.module.css';
 
 /**
@@ -124,8 +124,14 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
       </Field>
 
       <div className={styles.actions}>
-        <Button variant="danger" onClick={() => remove(propertyId)}>
-          Delete property
+        <Button
+          variant="danger"
+          iconOnly
+          onClick={() => remove(propertyId)}
+          aria-label="Delete attribute"
+          title="Delete attribute"
+        >
+          <DeleteIcon />
         </Button>
       </div>
     </div>

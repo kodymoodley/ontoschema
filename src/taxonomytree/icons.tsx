@@ -51,13 +51,3 @@ export function AddChildIcon(_props: IconProps) {
 }
 
 /** A waste basket, which reads as delete far more widely than a cross or a minus does. */
-export function DeleteIcon(_props: IconProps) {
-  return (
-    <svg {...common}>
-      <path d="M2.75 4.5h10.5" />
-      <path d="M6.5 4.5V3.25h3V4.5" />
-      <path d="M4.25 4.5l.6 8.25h6.3l.6-8.25" />
-      <path d="M6.75 7v3.5M9.25 7v3.5" />
-    </svg>
-  );
-}

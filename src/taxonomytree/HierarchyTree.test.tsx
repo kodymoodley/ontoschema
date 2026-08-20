@@ -196,7 +196,7 @@ describe('HierarchyTree — attribute pool', () => {
     await user.click(screen.getByRole('tab', { name: 'Attribute' }));
 
     await user.click(poolRow('price') as HTMLElement);
-    await user.click(screen.getByRole('button', { name: 'Delete attribute' }));
+    await user.click(screen.getByRole('button', { name: 'Delete selected attribute' }));
     expect(ontology().attributes).toHaveLength(0);
     expect(ontology().usages).toHaveLength(0);
   });
@@ -206,5 +206,24 @@ describe('HierarchyTree — attribute pool', () => {
     render(<HierarchyTree />);
     await user.click(screen.getByRole('tab', { name: 'Attribute' }));
     expect(screen.getByText(/No attributes yet/i)).toBeInTheDocument();
+  });
+});
+
+/*
+ * The tree's toolbar and the inspector are both on screen at once on a wide layout, and both
+ * can delete the same attribute. Two buttons answering to one name is a problem for anyone
+ * navigating by name, so the toolbar says which one it acts on -- as its class and relation
+ * siblings already did.
+ */
+describe('telling the two delete buttons apart', () => {
+  it('names the toolbar delete for the selection, on all three tabs', async () => {
+    const user = userEvent.setup();
+    render(<HierarchyTree />);
+
+    expect(screen.getByRole('button', { name: 'Delete selected class' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Relation' }));
+    expect(screen.getByRole('button', { name: 'Delete selected relation' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Attribute' }));
+    expect(screen.getByRole('button', { name: 'Delete selected attribute' })).toBeInTheDocument();
   });
 });
