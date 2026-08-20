@@ -2,7 +2,16 @@ import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useActiveProject, useProjectStore, useProjects } from '../projectstore';
 import { EXAMPLES, exampleSize } from '../examplelibrary';
-import { Button, HamburgerIcon, Menu, Field, Modal, TextInput } from '../designsystem';
+import {
+  Button,
+  Field,
+  HamburgerIcon,
+  Menu,
+  MenuGroup,
+  MenuSeparator,
+  Modal,
+  TextInput,
+} from '../designsystem';
 import { formatForFilename, readOntology } from '../serialization';
 import { projectNameFromFilename, summariseImport, worthReporting } from './importSummary';
 import type { ImportSummary } from './importSummary';
@@ -135,6 +144,11 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         thing -- what to do with the project as a whole -- so they read better gathered than
         spread. The project selector stays outside, because switching project is navigation
         rather than an action and is used far more often than any of these.
+
+        Four groups, in the order every file menu uses: start something, write it out, the
+        workspace as a whole, destroy. An ellipsis means the item asks for something before it
+        acts -- a dialog or a file picker -- which is why backing up has none and restoring
+        does. Confirming is not asking, so deleting has none either.
       */}
       <Menu label="File" triggerLabel={<HamburgerIcon />} data-testid="file-menu">
         <Button
@@ -143,7 +157,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
           onClick={() => setCreating(true)}
           data-testid="new-project"
         >
-          New project
+          New project…
         </Button>
         <Button
           size="small"
@@ -151,28 +165,42 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
           onClick={() => setBrowsingExamples(true)}
           data-testid="open-examples"
         >
-          Examples
+          New from example…
         </Button>
-        {extraActions}
         <Button size="small" variant="subtle" onClick={() => fileInput.current?.click()}>
-          Open a file
+          Open…
         </Button>
-        <Button size="small" variant="subtle" onClick={backUp} data-testid="back-up">
-          Back up everything
-        </Button>
-        <Button
-          size="small"
-          variant="subtle"
-          onClick={() => backupInput.current?.click()}
-          data-testid="restore-backup"
-        >
-          Restore a backup
-        </Button>
+
+        <MenuSeparator />
+        {/* Save and Export, filled by whoever assembles the header. */}
+        {extraActions}
+
+        <MenuSeparator />
+        {/*
+          Folded away because it is the rarest thing here and the only one that is about the
+          browser rather than about the schema in front of you.
+        */}
+        <MenuGroup label="Workspace" data-testid="workspace-group">
+          <Button size="small" variant="subtle" onClick={backUp} data-testid="back-up">
+            Back up workspace
+          </Button>
+          <Button
+            size="small"
+            variant="subtle"
+            onClick={() => backupInput.current?.click()}
+            data-testid="restore-backup"
+          >
+            Restore workspace…
+          </Button>
+        </MenuGroup>
+
+        <MenuSeparator />
         <Button
           size="small"
           variant="danger"
           onClick={() => setConfirmingDelete(true)}
           disabled={!active}
+          data-testid="delete-project"
         >
           Delete project
         </Button>
