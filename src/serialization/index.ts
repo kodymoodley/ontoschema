@@ -120,3 +120,6 @@ export { serializeRdfXml } from './rdfxml';
 export { serializeJsonLd } from './jsonld';
 export { prefixesFor } from './prefixes';
 export type { SerializationOptions } from '../ontologymodel';
+
+export { formatForFilename, fromQuad, parseDocument, readOntology } from './read';
+export type { ImportFormat, ParsedDocument } from './read';
