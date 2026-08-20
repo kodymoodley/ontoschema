@@ -243,7 +243,11 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > after an import, in plain terms and by count, and make **"save as a copy"** the offered path
 > for a file that came from elsewhere rather than overwriting a document the tool only partly
 > understands. Cheaper than trying to model everything, and it puts the choice with the person
-> who knows what the file is for. _(todo 22)_
+> who knows what the file is for. **The report is built** — counts in plain words, with what was
+> _changed_ kept apart from what was _dropped_, since a thing that is gone gets noticed and a
+> thing that is quietly different does not. It says outright that saving writes what was kept
+> rather than the file that was opened. **"Save as a copy" is not built**: nothing saves RDF yet,
+> so there is no path to make safe — it belongs with that work. _(todo 22)_
 
 > **Decided: deferred, not rejected.** A richer SHACL constraint vocabulary — `sh:minCount`,
 > `sh:maxCount`, `sh:pattern`, `sh:in`, datatype facets — is real and would be useful, but adding
@@ -645,7 +649,7 @@ list as originally written is in the git history; ask and it comes back.
 | ~~19~~ | Editing workflow       | ~~Move export into the file menu, and make the trigger a hamburger~~ — done               | —    |
 | 20     | Export and interop     | Harden the layout annotation: real tests, and fault tolerance worth the name              | S–M  |
 | ~~21~~ | Export and interop     | ~~Workspace backup: one action that writes and reads the whole workspace~~ — done         | —    |
-| 22     | Export and interop     | Report what an import discarded, and offer "save as a copy" for a foreign file            | S    |
+| ~~22~~ | Export and interop     | ~~Report what an import discarded~~ — done; "save as a copy" waits on save writing RDF    | —    |
 | 23     | Editing workflow       | Bug: two inspector delete buttons still say "property"                                    | XS   |
 | 24     | Editing workflow       | Inspector delete becomes a red bin icon                                                   | XS   |
 | 25     | Editing workflow       | Ontology metadata as its own panel, out of the inspector tabs                             | S    |

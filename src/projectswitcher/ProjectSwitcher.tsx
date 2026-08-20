@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import { useActiveProject, useProjectStore, useProjects } from '../projectstore';
 import { EXAMPLES, exampleSize } from '../examplelibrary';
 import { Button, HamburgerIcon, Menu, Field, Modal, TextInput } from '../designsystem';
+import { formatForFilename, readOntology } from '../serialization';
+import { projectNameFromFilename, summariseImport, worthReporting } from './importSummary';
+import type { ImportSummary } from './importSummary';
 import styles from './projectswitcher.module.css';
 
 interface ProjectSwitcherProps {
@@ -30,7 +33,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
 
   const switchProject = useProjectStore((state) => state.switchProject);
   const newProject = useProjectStore((state) => state.newProject);
-  const openExample = useProjectStore((state) => state.openExample);
+  const openAsNewProject = useProjectStore((state) => state.openAsNewProject);
   const deleteProject = useProjectStore((state) => state.deleteProject);
   const importProject = useProjectStore((state) => state.importProject);
   const exportProjectFile = useProjectStore((state) => state.exportProjectFile);
@@ -44,6 +47,8 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
   const [importError, setImportError] = useState<string | null>(null);
   /* The chosen backup, held between picking the file and agreeing to replace everything. */
   const [pendingRestore, setPendingRestore] = useState<string | null>(null);
+  /* What the last opened document left behind, shown once and dismissed. */
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const backupInput = useRef<HTMLInputElement>(null);
 
   const create = () => {
@@ -78,6 +83,36 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
   const backUp = () => {
     const today = new Date().toISOString().slice(0, 10);
     download(`ontoschema-backup-${today}.json`, exportWorkspaceFile());
+  };
+
+  /**
+   * One picker for a schema and for a project file, told apart by extension.
+   *
+   * Both mean the same thing to the person doing it -- open what I have got -- and asking
+   * them which kind of file it is before they choose it would be asking them to know
+   * something the file already says. A backup is the exception, because restoring one is
+   * destructive; opening either of these is not.
+   */
+  const openFile = async (file: File) => {
+    const format = formatForFilename(file.name);
+    const content = await file.text();
+
+    if (!format) {
+      const imported = importProject(content);
+      setImportError(imported ? null : 'That file is not a valid OntoSchema project.');
+      return;
+    }
+
+    try {
+      const { ontology, report } = await readOntology(content, format);
+      openAsNewProject(projectNameFromFilename(file.name), ontology);
+      const summary = summariseImport(ontology, report);
+      if (worthReporting(summary)) setImportSummary(summary);
+    } catch {
+      setImportError(
+        `${file.name} could not be read as ${format === 'turtle' ? 'Turtle' : 'RDF/XML'}.`,
+      );
+    }
   };
 
   const restore = () => {
@@ -157,15 +192,14 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
       <input
         ref={fileInput}
         type="file"
-        accept="application/json,.json"
+        accept=".json,.ttl,.rdf,.owl,application/json,text/turtle,application/rdf+xml"
         className={styles.hiddenInput}
         aria-label="Open project file"
         onChange={async (event) => {
           const file = event.target.files?.[0];
           event.target.value = '';
           if (!file) return;
-          const imported = importProject(await file.text());
-          setImportError(imported ? null : 'That file is not a valid OntoSchema project.');
+          await openFile(file);
         }}
       />
 
@@ -266,7 +300,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
                   className={styles.exampleItem}
                   data-example={example.key}
                   onClick={() => {
-                    openExample(example.title, example.build());
+                    openAsNewProject(example.title, example.build());
                     setBrowsingExamples(false);
                   }}
                 >
@@ -307,6 +341,59 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         <p className={styles.confirmText}>
           <strong>{active?.name}</strong> and everything in it will be removed from this browser.
           Save it to a file first if you want to keep it.
+        </p>
+      </Modal>
+
+      {/*
+        Shown after the file is open, not before. Nothing here is a question -- the document is
+        already in front of them -- so it reports rather than asks, and it appears only when
+        there is something to say.
+      */}
+      <Modal
+        title="Opened, with some of the file left behind"
+        open={importSummary !== null}
+        onClose={() => setImportSummary(null)}
+        footer={
+          <Button
+            variant="primary"
+            onClick={() => setImportSummary(null)}
+            data-testid="import-report-ok"
+          >
+            OK
+          </Button>
+        }
+      >
+        <p className={styles.confirmText}>
+          OntoSchema kept {importSummary?.kept} What it does not model was left out rather than
+          refused, so the schema opens as far as it goes.
+        </p>
+        {importSummary && importSummary.dropped.length > 0 ? (
+          <>
+            <p className={styles.confirmText}>
+              <strong>Left out</strong>
+            </p>
+            <ul className={styles.reportList}>
+              {importSummary.dropped.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        {importSummary && importSummary.changed.length > 0 ? (
+          <>
+            <p className={styles.confirmText}>
+              <strong>Changed</strong>
+            </p>
+            <ul className={styles.reportList}>
+              {importSummary.changed.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        <p className={styles.confirmText}>
+          Saving from here writes what OntoSchema kept, not the file you opened. Keep the original
+          if you need everything in it.
         </p>
       </Modal>
 

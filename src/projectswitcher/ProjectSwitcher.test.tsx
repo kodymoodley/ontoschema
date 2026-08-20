@@ -207,3 +207,117 @@ describe('restoring a backup', () => {
     expect(store().projects.map((project) => project.id)).toEqual(before);
   });
 });
+
+/**
+ * Opening a schema rather than a project file.
+ *
+ * The same picker takes both, told apart by extension, so the tests drive it the way the
+ * browser does: a File with a name on it.
+ */
+describe('opening an RDF document', () => {
+  async function open(user: ReturnType<typeof userEvent.setup>, name: string, content: string) {
+    await openFileMenu(user);
+    await user.upload(
+      screen.getByLabelText('Open project file'),
+      new File([content], name, { type: 'text/turtle' }),
+    );
+  }
+
+  const TURTLE = `
+    @prefix owl: <http://www.w3.org/2002/07/owl#>.
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+    @prefix car: <https://example.org/car/>.
+    car:Car a owl:Class; rdfs:label "Car".
+    car:Wheel a owl:Class.
+    car:hasWheel a owl:ObjectProperty; rdfs:domain car:Car; rdfs:range car:Wheel.
+  `;
+
+  it('opens the schema as a new project, named after the file', async () => {
+    const user = userEvent.setup();
+    render(<ProjectSwitcher />);
+    const before = store().projects.length;
+
+    await open(user, 'car-dealership.ttl', TURTLE);
+
+    expect(store().projects).toHaveLength(before + 1);
+    const active = store().projects.find((project) => project.id === store().activeProjectId);
+    expect(active?.name).toBe('car-dealership');
+    expect(
+      ontology()
+        .classes.map((entity) => entity.localName)
+        .sort(),
+    ).toEqual(['Car', 'Wheel']);
+    expect(ontology().relations.map((entity) => entity.localName)).toEqual(['hasWheel']);
+  });
+
+  it('says nothing when the whole file fitted', async () => {
+    const user = userEvent.setup();
+    render(<ProjectSwitcher />);
+    await open(user, 'clean.ttl', TURTLE);
+
+    expect(screen.queryByRole('dialog', { name: /left behind/ })).not.toBeInTheDocument();
+  });
+
+  /*
+   * The point of the report. Once a file can be opened and saved in the same format, silence
+   * means a colleague's ontology can be rewritten without anyone noticing.
+   */
+  it('reports what it left out, and what it changed rather than left out', async () => {
+    const user = userEvent.setup();
+    render(<ProjectSwitcher />);
+
+    await open(
+      user,
+      'foreign.ttl',
+      `${TURTLE}
+       car:myCar a car:Car.
+       car:colour a owl:DatatypeProperty; rdfs:domain car:Car; rdfs:range rdfs:Literal.
+       car:vague a owl:ObjectProperty.`,
+    );
+
+    const report = screen.getByRole('dialog', { name: /left behind/ });
+    expect(report).toHaveTextContent('1 individual');
+    expect(report).toHaveTextContent(/1 relation that did not say/);
+    expect(report).toHaveTextContent(/1 attribute had a type OntoSchema does not offer/);
+    // The schema is already open behind it: this reports, it does not ask.
+    expect(ontology().classes).toHaveLength(2);
+  });
+
+  it('warns that saving writes what was kept, not the file that was opened', async () => {
+    const user = userEvent.setup();
+    render(<ProjectSwitcher />);
+    await open(user, 'foreign.ttl', `${TURTLE}\ncar:myCar a car:Car.`);
+
+    expect(screen.getByRole('dialog', { name: /left behind/ })).toHaveTextContent(
+      /Saving from here writes what OntoSchema kept/,
+    );
+    await user.click(screen.getByTestId('import-report-ok'));
+    expect(screen.queryByRole('dialog', { name: /left behind/ })).not.toBeInTheDocument();
+  });
+
+  it('says so, and opens nothing, when the file is not the syntax its name claims', async () => {
+    const user = userEvent.setup();
+    render(<ProjectSwitcher />);
+    const before = store().projects.length;
+
+    await open(user, 'broken.ttl', 'this is certainly not turtle {{{');
+
+    expect(screen.getByRole('dialog', { name: /Could not open/ })).toHaveTextContent('broken.ttl');
+    expect(store().projects).toHaveLength(before);
+  });
+
+  it('still opens a project file, which the same picker takes', async () => {
+    const user = userEvent.setup();
+    store().createClass({ localName: 'FromTheProjectFile' });
+    const projectFile = store().exportProjectFile() ?? '';
+    render(<ProjectSwitcher />);
+
+    await openFileMenu(user);
+    await user.upload(
+      screen.getByLabelText('Open project file'),
+      new File([projectFile], 'saved.ontoschema.json', { type: 'application/json' }),
+    );
+
+    expect(ontology().classes.map((entity) => entity.localName)).toContain('FromTheProjectFile');
+  });
+});
