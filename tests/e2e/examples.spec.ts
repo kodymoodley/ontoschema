@@ -73,7 +73,7 @@ test('the music example is immediately editable', async ({ page }) => {
   // And it can be edited like anything else.
   await selectClass(page, 'Track');
   await page.getByLabel('New attribute name').fill('keySignature');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Add attribute to this class' }).click();
   await expect(page.locator('[data-class-name="Track"] [data-attribute-name]')).toHaveCount(7);
 });
 

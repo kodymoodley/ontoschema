@@ -236,7 +236,7 @@ export async function relate(
 export async function addAttribute(page: Page, name: string, range: string) {
   await page.getByLabel('New attribute name').fill(name);
   await page.getByLabel('New attribute range').selectOption(`xsd:${range}`);
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Add attribute to this class' }).click();
   await expect(page.getByLabel('New attribute name')).toHaveValue('');
 }
 
@@ -248,9 +248,9 @@ export async function createRelation(page: Page, localName: string) {
 
 /** Adds an annotation to whatever is selected, with an optional language tag. */
 export async function addAnnotation(page: Page, term: string, value: string, language?: string) {
-  await page.getByRole('tab', { name: 'Annotations' }).click();
+  // The inspector is one scrolling panel, so annotations are already on screen with the details.
   await page.getByLabel('Annotation term to add').selectOption(term);
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Add annotation' }).click();
 
   const row = page.locator(`[data-annotation-term="${term}"]`).last();
   await row.getByLabel(`${term} value`).fill(value);
@@ -277,10 +277,6 @@ export async function chooseProjectAction(page: Page, testId: string) {
 
 export async function openExamples(page: Page) {
   await chooseProjectAction(page, 'open-examples');
-}
-
-export async function openInspectorTab(page: Page, name: string) {
-  await page.getByRole('tab', { name }).click();
 }
 
 /*

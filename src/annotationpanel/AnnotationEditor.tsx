@@ -74,7 +74,13 @@ export function AnnotationEditor({ target }: { target: EntityRef }) {
         >
           <TermOptions terms={available} />
         </Select>
+        {/*
+          Named for what it adds, not just "Add". The inspector is one panel now, so this button
+          and the one that adds an attribute are on screen together, and two controls answering
+          to one name is a problem for anyone reaching them by name.
+        */}
         <Button
+          aria-label="Add annotation"
           onClick={() => {
             const term = findAnnotationTerm(newTerm);
             annotate(target, newTerm, '', term?.kind === 'text' ? 'en' : undefined);

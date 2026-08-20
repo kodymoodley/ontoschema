@@ -69,7 +69,7 @@ describe('ClassDetails', () => {
 
     await user.type(screen.getByLabelText('New attribute name'), 'year');
     await user.selectOptions(screen.getByLabelText('New attribute range'), 'integer');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add attribute to this class' }));
 
     expect(attributeUsagesOfClass(ontology(), car)).toHaveLength(1);
     expect(ontology().attributes[0]).toMatchObject({ localName: 'year', range: 'integer' });
@@ -83,7 +83,7 @@ describe('ClassDetails', () => {
 
     for (const name of ['make', 'model', 'year']) {
       await user.type(screen.getByLabelText('New attribute name'), name);
-      await user.click(screen.getByRole('button', { name: 'Add' }));
+      await user.click(screen.getByRole('button', { name: 'Add attribute to this class' }));
     }
 
     expect(attributeUsagesOfClass(ontology(), car)).toHaveLength(3);

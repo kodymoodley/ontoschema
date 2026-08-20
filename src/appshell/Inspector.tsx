@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { findClass, findAttribute, findRelation } from '../ontologymodel';
 import type { EntityRef } from '../ontologymodel';
 import { useOntology, useSelection } from '../projectstore';
 import { AttributeDetails, ClassDetails } from '../classeditor';
 import { RelationDetails } from '../relationeditor';
 import { AnnotationEditor } from '../annotationpanel';
-import { Badge, EmptyState, Tabs } from '../designsystem';
+import { Badge, EmptyState } from '../designsystem';
 import styles from './appshell.module.css';
 
 /**
@@ -13,27 +12,16 @@ import styles from './appshell.module.css';
  * rendering to the module that owns that concept — the shell knows the modules, the
  * modules do not know each other.
  *
- * Everything here describes the selection. The two tabs that did not — Export, then the
- * ontology's own metadata — have both left, for the same reason: clicking a class threw you
- * off them, which is what a tab that is not about the selection always does.
+ * Everything here describes the selection, and there are no tabs left. Three left in turn, all
+ * for the same reason: Export and the ontology's own metadata were never about the selection, so
+ * clicking a class threw you off them. Once those had gone, the two that remained described the
+ * same thing from the same source, and splitting one thing across two tabs only ever meant
+ * clicking back and forth to see it whole.
  */
-
-type InspectorTab = 'details' | 'annotations';
-
-const TABS = [
-  { value: 'details' as const, label: 'Details' },
-  { value: 'annotations' as const, label: 'Annotations' },
-];
 
 export function Inspector() {
   const ontology = useOntology();
   const selection = useSelection();
-  const [tab, setTab] = useState<InspectorTab>('details');
-  const [tabbedFor, setTabbedFor] = useState<string | null>(null);
-
-  // Selecting something should show that thing, not whatever tab was left open. Adjusting
-  // during render (rather than in an effect) avoids a second pass with the stale tab.
-  if (selection && selection.id !== tabbedFor) setTabbedFor(selection.id);
 
   const name = selection ? displayName(selection) : null;
 
@@ -52,10 +40,6 @@ export function Inspector() {
 
   return (
     <aside id="ontoschema-inspector" className={styles.right} aria-label="Inspector">
-      <div className={styles.inspectorTabs}>
-        <Tabs options={TABS} value={tab} onChange={setTab} ariaLabel="Inspector section" />
-      </div>
-
       {selection && name ? (
         <div className={styles.selectionHeader}>
           <Badge tone={toneFor(selection)}>{kindLabel(selection)}</Badge>
@@ -64,34 +48,32 @@ export function Inspector() {
       ) : null}
 
       <div className={styles.scroll}>
-        <div className={styles.sectionBody}>
-          {tab === 'details' ? <DetailsFor selection={selection} /> : null}
-
-          {tab === 'annotations' ? (
-            selection ? (
+        {selection ? (
+          <>
+            <h3 className={styles.inspectorSection}>Details</h3>
+            <div className={styles.sectionBody}>
+              <DetailsFor selection={selection} />
+            </div>
+            <h3 className={styles.inspectorSection}>Annotations</h3>
+            <div className={styles.sectionBody}>
               <AnnotationEditor target={selection} />
-            ) : (
-              <EmptyState>
-                Select a class, relation or attribute to annotate it. The ontology's own metadata is
-                under <strong>Metadata</strong> in the header.
-              </EmptyState>
-            )
-          ) : null}
-        </div>
+            </div>
+          </>
+        ) : (
+          <div className={styles.sectionBody}>
+            <EmptyState>
+              Nothing selected. Click a class, relation or attribute — on the canvas or in the
+              hierarchy — to edit and annotate it here. The ontology's own metadata is under{' '}
+              <strong>Metadata</strong> in the header.
+            </EmptyState>
+          </div>
+        )}
       </div>
     </aside>
   );
 }
 
-function DetailsFor({ selection }: { selection: EntityRef | null }) {
-  if (!selection) {
-    return (
-      <EmptyState>
-        Nothing selected. Click a class, relation or attribute — on the canvas or in the hierarchy —
-        to edit it here.
-      </EmptyState>
-    );
-  }
+function DetailsFor({ selection }: { selection: EntityRef }) {
   if (selection.kind === 'class') return <ClassDetails classId={selection.id} />;
   if (selection.kind === 'relation') return <RelationDetails propertyId={selection.id} />;
   if (selection.kind === 'attribute') return <AttributeDetails propertyId={selection.id} />;
