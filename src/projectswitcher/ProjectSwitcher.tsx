@@ -182,7 +182,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         */}
         <MenuGroup label="Workspace" data-testid="workspace-group">
           <Button size="small" variant="subtle" onClick={backUp} data-testid="back-up">
-            Back up workspace
+            Back up
           </Button>
           <Button
             size="small"
@@ -190,7 +190,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
             onClick={() => backupInput.current?.click()}
             data-testid="restore-backup"
           >
-            Restore workspace…
+            Restore…
           </Button>
         </MenuGroup>
 

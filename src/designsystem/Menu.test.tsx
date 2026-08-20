@@ -144,8 +144,8 @@ describe('grouping the actions', () => {
         <Button onClick={vi.fn()}>Open</Button>
         <MenuSeparator />
         <MenuGroup label="Workspace" data-testid="workspace-group">
-          <Button onClick={vi.fn()}>Back up workspace</Button>
-          <Button onClick={vi.fn()}>Restore workspace</Button>
+          <Button onClick={vi.fn()}>Back up</Button>
+          <Button onClick={vi.fn()}>Restore</Button>
         </MenuGroup>
       </Menu>,
     );
@@ -158,7 +158,7 @@ describe('grouping the actions', () => {
     await user.click(trigger);
 
     expect(screen.getByTestId('workspace-group')).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('button', { name: 'Back up workspace' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back up' })).not.toBeInTheDocument();
   });
 
   /*
@@ -172,7 +172,7 @@ describe('grouping the actions', () => {
     await user.click(trigger);
     await user.click(screen.getByTestId('workspace-group'));
 
-    expect(screen.getByRole('button', { name: 'Back up workspace' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Back up' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-group')).toHaveAttribute('aria-expanded', 'true');
   });
@@ -182,7 +182,7 @@ describe('grouping the actions', () => {
     const trigger = renderGrouped();
     await user.click(trigger);
     await user.click(screen.getByTestId('workspace-group'));
-    await user.click(screen.getByRole('button', { name: 'Restore workspace' }));
+    await user.click(screen.getByRole('button', { name: 'Restore' }));
 
     expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
   });
@@ -199,7 +199,7 @@ describe('grouping the actions', () => {
     expect(screen.getByTestId('workspace-group')).toHaveFocus();
     await user.keyboard('{Enter}');
     await user.tab();
-    expect(screen.getByRole('button', { name: 'Back up workspace' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Back up' })).toHaveFocus();
   });
 
   it('marks the rule as a separator rather than leaving it a stray box', () => {
