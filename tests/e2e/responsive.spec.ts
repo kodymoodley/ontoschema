@@ -68,6 +68,7 @@ test.describe('narrow', () => {
     await expect(entities(page)).toBeHidden();
     await expect(inspector(page)).toBeHidden();
     await expect(page.getByRole('button', { name: 'Entities' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Inspector' })).toHaveCount(0);
 
     const canvas = await page.getByTestId('schema-canvas').boundingBox();
     expect(canvas?.width ?? 0).toBeGreaterThan(NARROW.width * 0.9);
@@ -94,12 +95,40 @@ test.describe('narrow', () => {
     await expect(entities(page)).toBeHidden();
   });
 
+  /*
+   * The rule, and it is the same rule at every width: the inspector is open exactly when
+   * something is selected. Here that means the drawer slides in by itself, which is why the
+   * button that used to do it is gone.
+   */
+  test('opens the inspector by selecting, and closes it by deselecting', async ({ page }) => {
+    await openApp(page);
+    // The palette lives in the entities drawer here, and creating from it closes that drawer.
+    await page.getByRole('button', { name: 'Entities' }).click();
+    await page.locator('[data-palette-kind="class"]').click();
+
+    /*
+     * Creating a class selects it, so the panel is already open. Put it away first, or this
+     * would assert that something stayed open rather than that selecting opened it.
+     */
+    await page.getByTestId('schema-canvas').click({ position: { x: 12, y: 12 } });
+    await expect(inspector(page)).toBeHidden();
+
+    await selectClass(page, 'NewClass');
+    await expect(inspector(page)).toBeVisible();
+
+    await page.getByTestId('schema-canvas').click({ position: { x: 12, y: 12 } });
+    await expect(inspector(page)).toBeHidden();
+  });
+
   test('shows one drawer at a time', async ({ page }) => {
     await openApp(page);
     await page.getByRole('button', { name: 'Entities' }).click();
+    await page.locator('[data-palette-kind="class"]').click();
+    await page.getByRole('button', { name: 'Entities' }).click();
     await expect(entities(page)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Inspector' }).click();
+    // Selecting opens the inspector, and the entities drawer gets out of its way.
+    await selectClass(page, 'NewClass');
     await expect(inspector(page)).toBeVisible();
     await expect(entities(page)).toBeHidden();
   });
@@ -125,9 +154,8 @@ test.describe('narrow', () => {
     await page.getByLabel('Class name').fill('Car');
     await page.getByLabel('Class name').press('Enter');
 
-    // Adding an attribute means reaching the inspector, which is a drawer here.
+    // Adding an attribute means reaching the inspector, which selecting the class opens.
     await selectClass(page, 'Car');
-    await page.getByRole('button', { name: 'Inspector' }).click();
     await page.getByLabel('New attribute name').fill('price');
     await page.getByRole('button', { name: 'Add attribute to this class' }).click();
 

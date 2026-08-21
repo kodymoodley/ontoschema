@@ -3,7 +3,7 @@ import { Palette, SchemaCanvas, TaxonomyCanvas, usePaletteCreate } from '../canv
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
 import { ConnectionPicker, RelationMarkers } from '../relationeditor';
-import { useCanvasView, useOntology, useProjectStore } from '../projectstore';
+import { useCanvasView, useOntology, useProjectStore, useSelection } from '../projectstore';
 import { Button, Divider, Spacer, Tabs, Toolbar } from '../designsystem';
 import { Inspector } from './Inspector';
 import {
@@ -62,7 +62,17 @@ export function App() {
     ),
   });
   // Which side panel is showing when the viewport is too narrow for three columns.
-  const [drawer, setDrawer] = useState<'none' | 'entities' | 'inspector'>('none');
+  const [drawer, setDrawer] = useState<'none' | 'entities'>('none');
+  /*
+   * The inspector has no toggle of its own. It is open exactly when something is selected, on
+   * every width -- selecting a class is already the gesture that means "tell me about this", and
+   * a button whose only job was revealing an empty panel is one control fewer to explain.
+   *
+   * The same rule on both layouts is a decision, not an accident: a drawer that appears on a
+   * phone and a column that appears on a desktop are the same idea at two sizes, and giving the
+   * desktop the width back when nothing is selected is most of what the collapsing item wanted.
+   */
+  const inspecting = useSelection() !== null;
 
   useGlobalShortcuts({ undo, redo, deleteSelection });
 
@@ -70,7 +80,7 @@ export function App() {
   const relationCount = ontology.relations.length;
 
   return (
-    <div className={styles.shell} data-drawer={drawer}>
+    <div className={styles.shell} data-drawer={drawer} data-inspecting={inspecting}>
       <RelationMarkers />
       <ConnectionPicker />
 
@@ -124,16 +134,6 @@ export function App() {
             }
           />
           <Divider />
-          <Button
-            size="small"
-            variant="subtle"
-            className={styles.drawerToggle}
-            aria-expanded={drawer === 'inspector'}
-            aria-controls="ontoschema-inspector"
-            onClick={() => setDrawer((current) => (current === 'inspector' ? 'none' : 'inspector'))}
-          >
-            Inspector
-          </Button>
           {/*
           Only drawn where it can work. Safari on iOS allows fullscreen for video and nothing
           else, and an app launched from the home screen has no chrome left to hide; in both
