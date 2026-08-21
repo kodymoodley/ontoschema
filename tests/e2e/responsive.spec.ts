@@ -129,7 +129,7 @@ test.describe('narrow', () => {
     await selectClass(page, 'Car');
     await page.getByRole('button', { name: 'Inspector' }).click();
     await page.getByLabel('New attribute name').fill('price');
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await page.getByRole('button', { name: 'Add attribute to this class' }).click();
 
     await expect(page.locator('[data-class-name="Car"] [data-attribute-name]')).toHaveCount(1);
   });

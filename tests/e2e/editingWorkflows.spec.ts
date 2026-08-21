@@ -248,7 +248,7 @@ test('ontology-level metadata is exported on the ontology header', async ({ page
   await page.getByLabel('Prefix').fill('auto');
 
   await page.getByLabel('Annotation term to add').selectOption('dcterms:title');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Add annotation' }).click();
   await page
     .locator('[data-annotation-term="dcterms:title"]')
     .getByLabel('dcterms:title value')

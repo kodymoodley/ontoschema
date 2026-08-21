@@ -174,7 +174,13 @@ export function ClassDetails({ classId }: { classId: string }) {
               </option>
             ))}
           </Select>
-          <Button onClick={addAttribute} disabled={!attributeName.trim()}>
+          <Button
+            onClick={addAttribute}
+            disabled={!attributeName.trim()}
+            /* The palette has an "Add Attribute" of its own, and role names match without
+               regard to case. This one says which class it adds to, which it should anyway. */
+            aria-label="Add attribute to this class"
+          >
             Add
           </Button>
         </div>

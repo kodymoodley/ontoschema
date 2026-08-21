@@ -15,9 +15,9 @@ async function labelledClass(page: Page) {
   await openApp(page);
   await page.locator('[data-palette-kind="class"]').click();
   await selectClass(page, 'NewClass');
-  await page.getByRole('tab', { name: 'Annotations' }).click();
+  // No tab to reach for: the inspector is one panel, and annotations are a section of it.
   await page.getByLabel('Annotation term to add').selectOption('rdfs:label');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Add annotation' }).click();
   await page.getByLabel('rdfs:label value').fill('Car');
 }
 

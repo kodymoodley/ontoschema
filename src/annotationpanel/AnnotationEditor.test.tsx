@@ -39,7 +39,7 @@ describe('AnnotationEditor', () => {
     const id = renderForClass();
 
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'skos:prefLabel');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add annotation' }));
 
     expect(annotationsOf(id)).toHaveLength(1);
     expect(annotationsOf(id)[0]?.term).toBe('skos:prefLabel');
@@ -50,7 +50,7 @@ describe('AnnotationEditor', () => {
     const id = renderForClass();
 
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'skos:prefLabel');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add annotation' }));
 
     expect(annotationsOf(id)[0]?.language).toBe('en');
     expect(screen.getByLabelText('skos:prefLabel language tag')).toHaveValue('en');
@@ -61,7 +61,7 @@ describe('AnnotationEditor', () => {
     const id = renderForClass();
 
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'skos:prefLabel');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add annotation' }));
     await user.type(screen.getByLabelText('skos:prefLabel value'), 'Car');
 
     expect(annotationsOf(id)[0]?.value).toBe('Car');
@@ -72,7 +72,7 @@ describe('AnnotationEditor', () => {
     renderForClass();
 
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'skos:prefLabel');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add annotation' }));
 
     const value = screen.getByLabelText('skos:prefLabel value');
     await user.click(value);
@@ -89,7 +89,7 @@ describe('AnnotationEditor', () => {
       ['Auto', 'nl'],
     ]) {
       await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'skos:prefLabel');
-      await user.click(screen.getByRole('button', { name: 'Add' }));
+      await user.click(screen.getByRole('button', { name: 'Add annotation' }));
       const values = screen.getAllByLabelText('skos:prefLabel value');
       const languages = screen.getAllByLabelText('skos:prefLabel language tag');
       await user.clear(values.at(-1) as HTMLElement);
@@ -110,7 +110,7 @@ describe('AnnotationEditor', () => {
     renderForClass();
 
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:seeAlso');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add annotation' }));
 
     expect(screen.queryByLabelText('rdfs:seeAlso language tag')).not.toBeInTheDocument();
     const row = rowFor('rdfs:seeAlso');
@@ -123,7 +123,7 @@ describe('AnnotationEditor', () => {
     renderForClass();
 
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'dcterms:created');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add annotation' }));
 
     expect(screen.getByLabelText('dcterms:created value')).toHaveAttribute('type', 'date');
   });
@@ -133,7 +133,7 @@ describe('AnnotationEditor', () => {
     const id = renderForClass();
 
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add annotation' }));
     await user.type(screen.getByLabelText('rdfs:label value'), 'Car');
     await user.selectOptions(screen.getByLabelText('Annotation term'), 'skos:prefLabel');
 
@@ -145,7 +145,7 @@ describe('AnnotationEditor', () => {
     const id = renderForClass();
 
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add annotation' }));
     await user.click(screen.getByRole('button', { name: 'Remove rdfs:label' }));
 
     expect(annotationsOf(id)).toHaveLength(0);
@@ -176,7 +176,7 @@ describe('the language tag control', () => {
 
   async function addLabel(user: ReturnType<typeof userEvent.setup>) {
     await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add annotation' }));
   }
 
   it('is a list, so an invalid tag cannot be entered in the first place', async () => {

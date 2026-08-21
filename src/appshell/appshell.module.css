@@ -247,6 +247,26 @@
   }
 }
 
+/*
+ * A section heading inside the inspector's scroll. Sticky, because the panel is now one column
+ * that can run well past its own height, and a heading that scrolls away leaves the fields
+ * under it unlabelled.
+ */
+.inspectorSection {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: var(--surface-raised);
+}
+
 .selectionHeader {
   display: flex;
   align-items: center;
@@ -260,11 +280,6 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-
-.inspectorTabs {
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .statusBar {
