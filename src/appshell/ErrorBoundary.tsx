@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
       <div role="alert" className="crashPanel">
         <h1>Something went wrong</h1>
         <p>
-          Your ontology is saved in this browser and has not been lost. Reloading should bring it
+          Your schema is saved in this browser and has not been lost. Reloading should bring it
           back.
         </p>
         <pre>{error.message}</pre>

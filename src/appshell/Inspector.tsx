@@ -34,7 +34,7 @@ export function Inspector() {
       case 'attribute':
         return findAttribute(ontology, ref.id)?.localName ?? null;
       case 'ontology':
-        return 'Ontology';
+        return 'Schema';
     }
   }
 
@@ -63,7 +63,7 @@ export function Inspector() {
           <div className={styles.sectionBody}>
             <EmptyState>
               Nothing selected. Click a class, relation or attribute — on the canvas or in the
-              hierarchy — to edit and annotate it here. The ontology's own metadata is under{' '}
+              hierarchy — to edit and annotate it here. The schema's own metadata is under{' '}
               <strong>Metadata</strong> in the header.
             </EmptyState>
           </div>
@@ -91,5 +91,5 @@ function kindLabel(ref: EntityRef): string {
   if (ref.kind === 'class') return 'Class';
   if (ref.kind === 'relation') return 'Relation';
   if (ref.kind === 'attribute') return 'Attribute';
-  return 'Ontology';
+  return 'Schema';
 }

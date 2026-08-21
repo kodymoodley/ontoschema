@@ -9,7 +9,7 @@ import { chooseProjectAction, openApp, openExamples, readDownload } from './onto
  */
 
 const projectNames = (page: Page) =>
-  page.locator('select[aria-label="Active ontology project"] option').allTextContents();
+  page.locator('select[aria-label="Active project"] option').allTextContents();
 
 test('backs up every project and puts them all back', async ({ page }) => {
   await openApp(page);

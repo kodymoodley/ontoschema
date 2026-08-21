@@ -59,12 +59,12 @@ export function OntologyMetadataForm() {
         />
       </Field>
 
-      <Field label="Ontology IRI">
+      <Field label="Schema IRI">
         <code className={styles.iri}>{ontologyIri(ontology.iri)}</code>
       </Field>
 
       <p className={styles.note}>
-        Title, description, creator, version and licence are set as ontology annotations below.
+        Title, description, creator, version and licence are set as annotations below.
       </p>
     </div>
   );

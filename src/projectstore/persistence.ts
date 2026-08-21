@@ -3,7 +3,7 @@ import type { Annotation, Ontology, Project, PropertyUsage } from '../ontologymo
 import { isXsdDatatype } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import { createSaveQueue } from './savequeue';
-import { emptyWorkspace } from './workspace';
+import { UNTITLED, emptyWorkspace } from './workspace';
 import type { Workspace } from './workspace';
 
 /**
@@ -111,7 +111,7 @@ export function reviveProject(value: unknown): Project | null {
   const now = new Date().toISOString();
   return {
     id: typeof value.id === 'string' ? value.id : createProject('').id,
-    name: typeof value.name === 'string' && value.name.trim() ? value.name : 'Untitled ontology',
+    name: typeof value.name === 'string' && value.name.trim() ? value.name : UNTITLED,
     createdAt: typeof value.createdAt === 'string' ? value.createdAt : now,
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : now,
     ontology,

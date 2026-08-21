@@ -2,6 +2,8 @@ import { useProjectStore, activeOntology } from './store';
 import { createEmptyOntology } from '../ontologymodel';
 import type { EntityRef, Ontology, Project } from '../ontologymodel';
 
+export { UNTITLED } from './workspace';
+
 export { useProjectStore, activeOntology } from './store';
 export type { ProjectStoreState, CanvasView, PendingConnection } from './store';
 export {

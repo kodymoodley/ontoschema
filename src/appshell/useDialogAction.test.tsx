@@ -14,7 +14,7 @@ import { MetadataIcon } from './icons';
 function Harness({ apart }: { apart: boolean }) {
   const { action, dialog } = useDialogAction({
     label: 'Metadata',
-    title: 'Ontology metadata',
+    title: 'Schema metadata',
     testId: 'open-metadata',
     children: <p>the fields</p>,
   });
@@ -45,7 +45,7 @@ function Disappearing({ children }: { children: ReactNode }) {
   return <div onClickCapture={() => setShowing(false)}>{showing ? children : null}</div>;
 }
 
-const dialog = () => screen.queryByRole('dialog', { name: 'Ontology metadata' });
+const dialog = () => screen.queryByRole('dialog', { name: 'Schema metadata' });
 
 describe('a button and the dialog it opens', () => {
   it('shows nothing until the trigger is used', () => {
@@ -83,7 +83,7 @@ describe('a button and the dialog it opens', () => {
     function IconTrigger() {
       const { action } = useDialogAction({
         label: <MetadataIcon />,
-        title: 'Ontology metadata',
+        title: 'Schema metadata',
         testId: 'open-metadata',
         triggerLabel: 'Metadata',
         children: null,

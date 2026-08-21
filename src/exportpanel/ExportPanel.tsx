@@ -59,7 +59,7 @@ export function ExportPanel({ purpose = 'export' }: ExportPanelProps) {
     <div className={styles.panel}>
       {isOntologyEmpty(ontology) ? (
         <p className={styles.warning}>
-          This ontology has no classes or properties yet. Writing it out now produces a valid but
+          This schema has no classes or properties yet. Writing it out now produces a valid but
           empty document containing only the ontology header.
         </p>
       ) : null}

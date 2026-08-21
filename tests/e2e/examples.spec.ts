@@ -153,7 +153,7 @@ test('two examples can be open at once without colliding', async ({ page }) => {
   expect(insurance).toContain('@prefix ins:');
   expect(insurance).not.toContain('@prefix mus:');
 
-  await page.getByLabel('Active ontology project').selectOption({ label: 'Music library' });
+  await page.getByLabel('Active project').selectOption({ label: 'Music library' });
   const music = await downloadExport(page, 'ttl');
   expect(music).toContain('@prefix mus:');
   expect(music).toContain('Album');
@@ -168,6 +168,6 @@ test('opening an example does not clear work already in progress', async ({ page
   await openExample(page, 'University');
   await expect(page.locator('[data-class-name="Student"]')).toBeVisible();
 
-  await page.getByLabel('Active ontology project').selectOption({ label: 'My schema' });
+  await page.getByLabel('Active project').selectOption({ label: 'My schema' });
   await expect(page.locator('[data-class-node-id]')).toHaveCount(1);
 });

@@ -14,7 +14,14 @@ export interface Workspace {
   activeProjectId: string | null;
 }
 
-export const UNTITLED = 'Untitled ontology';
+/**
+ * What a project is called before anyone names it.
+ *
+ * _Schema_ rather than _ontology_ on screen: the app's users are far likelier to have the first
+ * word, and the exported RDF still says `owl:Ontology`, exactly as it still says
+ * `owl:ObjectProperty` for what the interface calls a relation.
+ */
+export const UNTITLED = 'Untitled schema';
 
 export function emptyWorkspace(): Workspace {
   const project = createProject(UNTITLED);

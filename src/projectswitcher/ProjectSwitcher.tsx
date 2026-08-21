@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useActiveProject, useProjectStore, useProjects } from '../projectstore';
+import { UNTITLED, useActiveProject, useProjectStore, useProjects } from '../projectstore';
 import { EXAMPLES, exampleSize } from '../examplelibrary';
 import {
   Button,
@@ -60,7 +60,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
   const backupInput = useRef<HTMLInputElement>(null);
 
   const create = () => {
-    newProject(newName.trim() || 'Untitled ontology');
+    newProject(newName.trim() || UNTITLED);
     setNewName('');
     setCreating(false);
   };
@@ -128,7 +128,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
       <select
         className={styles.select}
         value={active?.id ?? ''}
-        aria-label="Active ontology project"
+        aria-label="Active project"
         onChange={(event) => switchProject(event.target.value)}
       >
         {projects.map((project) => (
@@ -266,7 +266,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
       </Modal>
 
       <Modal
-        title="New ontology project"
+        title="New project"
         open={creating}
         onClose={() => setCreating(false)}
         footer={
