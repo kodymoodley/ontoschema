@@ -13,6 +13,9 @@ import { Button, Modal } from '../designsystem';
  *
  * The children are built by the caller whether the dialog is open or not, which is free: an
  * element is a description, and `Modal` renders nothing until it opens.
+ *
+ * The state comes back too, for the one dialog that has a second way in: a keyboard shortcut
+ * has to be able to open it without a trigger being clicked.
  */
 export function useDialogAction(options: {
   /** What the trigger says. */
@@ -20,14 +23,21 @@ export function useDialogAction(options: {
   /** The dialog's heading. No ellipsis: a title names where you are, it is not an action. */
   title: string;
   testId: string;
-  children: ReactNode;
+  /**
+   * The dialog's contents. Given a function instead of a node, it is called with a way to
+   * close — which the contents need when choosing something inside them should dismiss the
+   * dialog, and which they cannot get by reaching for a variable that does not exist yet.
+   */
+  children: ReactNode | ((close: () => void) => ReactNode);
   size?: 'default' | 'wide';
   /** Names the trigger when its label is a picture rather than words. */
   triggerLabel?: string;
-}): { action: ReactNode; dialog: ReactNode } {
+}): { action: ReactNode; dialog: ReactNode; open: boolean; setOpen: (open: boolean) => void } {
   const [open, setOpen] = useState(false);
 
   return {
+    open,
+    setOpen,
     action: (
       <Button
         size="small"
@@ -52,7 +62,9 @@ export function useDialogAction(options: {
           </Button>
         }
       >
-        {options.children}
+        {typeof options.children === 'function'
+          ? options.children(() => setOpen(false))
+          : options.children}
       </Modal>
     ),
   };

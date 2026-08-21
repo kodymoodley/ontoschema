@@ -18,7 +18,8 @@ import { useExportAction } from './useExportAction';
 import { useDialogAction } from './useDialogAction';
 import { OntologyMetadataForm } from '../ontologymetadata';
 import { AnnotationEditor } from '../annotationpanel';
-import { AppMark, MetadataIcon, RedoIcon, UndoIcon } from './icons';
+import { EntitySearch } from '../entitysearch';
+import { AppMark, MetadataIcon, RedoIcon, SearchIcon, UndoIcon } from './icons';
 import styles from './appshell.module.css';
 
 /**
@@ -64,7 +65,20 @@ export function App() {
   // Which side panel is showing when the viewport is too narrow for three columns.
   const [drawer, setDrawer] = useState<'none' | 'entities' | 'inspector'>('none');
 
-  useGlobalShortcuts({ undo, redo, deleteSelection });
+  /*
+   * Ctrl+K, because that is where people look. The dialog has a button too: a shortcut nobody
+   * is told about is a feature only its author can use.
+   */
+  const finding = useDialogAction({
+    label: <SearchIcon />,
+    triggerLabel: 'Find an entity (Ctrl+K)',
+    title: 'Find an entity',
+    testId: 'open-search',
+    size: 'default',
+    children: (close: () => void) => <EntitySearch onChoose={close} />,
+  });
+
+  useGlobalShortcuts({ undo, redo, deleteSelection, find: () => finding.setOpen(true) });
 
   const attributeCount = ontology.attributes.length;
   const relationCount = ontology.relations.length;
@@ -212,6 +226,7 @@ export function App() {
                 : 'Laid out automatically — one module per root class, superclasses above.'}
             </span>
             <Spacer />
+            {finding.action}
             <Button
               size="small"
               variant="subtle"
@@ -263,6 +278,7 @@ export function App() {
         <Inspector />
       </div>
 
+      {finding.dialog}
       {metadata.dialog}
       {saving.dialog}
       {exporting.dialog}
@@ -299,8 +315,9 @@ function useGlobalShortcuts(actions: {
   undo: () => void;
   redo: () => void;
   deleteSelection: () => void;
+  find: () => void;
 }) {
-  const { undo, redo, deleteSelection } = actions;
+  const { undo, redo, deleteSelection, find } = actions;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -309,6 +326,15 @@ function useGlobalShortcuts(actions: {
       if (isDialogOpen()) return;
       const typing = isTextEntry(target);
 
+      /*
+       * Unlike the others, this one fires while typing. Ctrl+K means find wherever you are, and
+       * a name field is exactly where you notice you have lost track of something.
+       */
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        find();
+        return;
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
         if (typing) return;
         event.preventDefault();
@@ -330,5 +356,5 @@ function useGlobalShortcuts(actions: {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteSelection]);
+  }, [undo, redo, deleteSelection, find]);
 }
