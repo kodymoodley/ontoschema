@@ -86,3 +86,13 @@ export function MetadataIcon() {
     </svg>
   );
 }
+
+/** A magnifier: the one drawing nobody has to be taught. */
+export function SearchIcon() {
+  return (
+    <svg {...common}>
+      <circle cx="7" cy="7" r="4.25" />
+      <path d="M10.1 10.1L13.5 13.5" />
+    </svg>
+  );
+}

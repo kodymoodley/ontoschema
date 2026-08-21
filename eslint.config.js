@@ -9,6 +9,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
  *   annotationvocabulary  leaf, pure data
  *   ontologymodel         pure; may use annotationvocabulary only
  *   serialization         pure; may use ontologymodel + annotationvocabulary only
+ *   search                pure; may use ontologymodel + annotationvocabulary only
  *   designsystem          leaf UI primitives; imports nothing from src/
  *   projectstore          app state; may use ontologymodel + annotationvocabulary
  *   <ui modules>          may use the layers above, never each other
@@ -27,6 +28,7 @@ const UI_MODULES = [
   'ontologymetadata',
   'exportpanel',
   'projectswitcher',
+  'entitysearch',
 ];
 
 /**
@@ -137,6 +139,15 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': pureLayerRule(
         'Serialization depends on the domain model only, never on UI or app state.',
+      ),
+    },
+  },
+
+  {
+    files: ['src/search/**/*.ts'],
+    rules: {
+      'no-restricted-imports': pureLayerRule(
+        'Search depends on the domain model only, so the same ranking can serve an imported vocabulary later.',
       ),
     },
   },
