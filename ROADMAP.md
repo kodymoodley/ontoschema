@@ -58,9 +58,10 @@ list above:
 
 - **The inspector arc** (todos 27, 29) — the tab strip is gone: Export left, then metadata, then
   Details and Annotations became one scrolling panel. What remains is dropping the toggle that
-  only existed to reveal a panel with nothing in it, and then an entity search. Ordered among themselves and decided; waiting on a
-  slot rather than on an answer. **Since neither sequenced item is ready, this is the work that
-  can actually be picked up today.**
+  only existed to reveal a panel with nothing in it, and then an entity search. Both are decided
+  and in that order. **Todo 27 has one thing to settle first**, though: todo 30 wants the panels
+  to collapse on purpose, and 27 wants selection to open one, so they disagree about what happens
+  when you click a class with the inspector deliberately shut.
 - **Harden the layout annotation** (todo 20) — owed work, named as such: the positions shipped
   with the happy path tested and little else.
 - **Metadata editing as an ordinary form** (todo 18) — scoped now: the ontology's metadata and an
