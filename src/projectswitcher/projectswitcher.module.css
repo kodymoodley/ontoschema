@@ -76,7 +76,14 @@
 }
 
 .nameField {
-  width: 220px;
+  /*
+   * Sized to its text where the browser can do it, so the button beside it sits against the
+   * name rather than against a fixed box with slack in it. `field-sizing` is Chromium-only for
+   * now; everywhere else the 220px stands, which is what it was before, so nothing regresses.
+   */
+  field-sizing: content;
+  min-width: 10ch;
+  max-width: 320px;
   height: 26px;
   padding: 0 var(--space-2);
   border: 1px solid transparent;
@@ -88,6 +95,13 @@
   transition:
     background 120ms ease,
     border-color 120ms ease;
+}
+
+/* Without it, the fixed width it had before -- which is what every browser saw until now. */
+@supports not (field-sizing: content) {
+  .nameField {
+    width: 220px;
+  }
 }
 
 .nameField:hover {

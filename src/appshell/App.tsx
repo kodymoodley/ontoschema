@@ -18,7 +18,7 @@ import { useExportAction } from './useExportAction';
 import { useDialogAction } from './useDialogAction';
 import { OntologyMetadataForm } from '../ontologymetadata';
 import { AnnotationEditor } from '../annotationpanel';
-import { AppMark, RedoIcon, UndoIcon } from './icons';
+import { AppMark, MetadataIcon, RedoIcon, UndoIcon } from './icons';
 import styles from './appshell.module.css';
 
 /**
@@ -50,7 +50,8 @@ export function App() {
    * toolbar stays about the canvas.
    */
   const metadata = useDialogAction({
-    label: 'Metadata',
+    label: <MetadataIcon />,
+    triggerLabel: 'Metadata',
     title: 'Ontology metadata',
     testId: 'open-metadata',
     children: (
@@ -74,81 +75,92 @@ export function App() {
       <ConnectionPicker />
 
       <header className={styles.header}>
-        <div className={styles.brand}>
-          <AppMark />
-          <span className={styles.brandName}>OntoSchema</span>
-        </div>
+        <div className={styles.headerSide}>
+          <div className={styles.brand}>
+            <AppMark />
+            <span className={styles.brandName}>OntoSchema</span>
+          </div>
 
-        {/*
+          {/*
           Below the three-column breakpoint the side panels become drawers. The toggles are
           always in the DOM and always operable — CSS only decides whether they are shown —
           so the narrow layout needs no separate keyboard story.
         */}
-        <Button
-          size="small"
-          variant="subtle"
-          className={styles.drawerToggle}
-          aria-expanded={drawer === 'entities'}
-          aria-controls="ontoschema-entities"
-          onClick={() => setDrawer((current) => (current === 'entities' ? 'none' : 'entities'))}
-          aria-label="Entities"
-          title="Entities"
-        >
-          {/*
+          <Button
+            size="small"
+            variant="subtle"
+            className={styles.drawerToggle}
+            aria-expanded={drawer === 'entities'}
+            aria-controls="ontoschema-entities"
+            onClick={() => setDrawer((current) => (current === 'entities' ? 'none' : 'entities'))}
+            aria-label="Entities"
+            title="Entities"
+          >
+            {/*
             The mark itself is the button on this layout. It was a separate control beside the
             logo, and once the logo became the app's own mark the two sat inches apart looking
             almost the same. One of them had to go, and the one carrying meaning is the mark.
           */}
-          <AppMark />
-        </Button>
-        <ProjectNameField />
-        {metadata.action}
-        <Spacer />
-        <ProjectSwitcher
-          extraActions={
-            <>
-              {saving.action}
-              {exporting.action}
-            </>
-          }
-        />
-        <Divider />
-        <Button
-          size="small"
-          variant="subtle"
-          className={styles.drawerToggle}
-          aria-expanded={drawer === 'inspector'}
-          aria-controls="ontoschema-inspector"
-          onClick={() => setDrawer((current) => (current === 'inspector' ? 'none' : 'inspector'))}
-        >
-          Inspector
-        </Button>
+            <AppMark />
+          </Button>
+        </div>
+
         {/*
+          The document, in the middle of the bar. Its name and the button that edits everything
+          else about it are the same subject, so they travel together.
+        */}
+        <div className={styles.headerTitle}>
+          <ProjectNameField />
+          {metadata.action}
+        </div>
+
+        <div className={`${styles.headerSide} ${styles.headerEnd}`}>
+          <ProjectSwitcher
+            extraActions={
+              <>
+                {saving.action}
+                {exporting.action}
+              </>
+            }
+          />
+          <Divider />
+          <Button
+            size="small"
+            variant="subtle"
+            className={styles.drawerToggle}
+            aria-expanded={drawer === 'inspector'}
+            aria-controls="ontoschema-inspector"
+            onClick={() => setDrawer((current) => (current === 'inspector' ? 'none' : 'inspector'))}
+          >
+            Inspector
+          </Button>
+          {/*
           Only drawn where it can work. Safari on iOS allows fullscreen for video and nothing
           else, and an app launched from the home screen has no chrome left to hide; in both
           cases the button would be present and inert, which misleads rather than merely fails.
         */}
-        {fullscreen.offered ? (
+          {fullscreen.offered ? (
+            <Button
+              size="small"
+              variant="subtle"
+              onClick={fullscreen.toggle}
+              aria-pressed={fullscreen.active}
+              aria-label={fullscreen.active ? 'Leave full screen' : 'Fill the screen'}
+              title={fullscreen.active ? 'Leave full screen' : 'Fill the screen'}
+            >
+              {fullscreen.active ? '⤡' : '⤢'}
+            </Button>
+          ) : null}
           <Button
             size="small"
             variant="subtle"
-            onClick={fullscreen.toggle}
-            aria-pressed={fullscreen.active}
-            aria-label={fullscreen.active ? 'Leave full screen' : 'Fill the screen'}
-            title={fullscreen.active ? 'Leave full screen' : 'Fill the screen'}
+            onClick={toggleTheme}
+            aria-label="Toggle colour theme"
+            title="Toggle colour theme"
           >
-            {fullscreen.active ? '⤡' : '⤢'}
+            {theme === 'dark' ? '☾' : '☀'}
           </Button>
-        ) : null}
-        <Button
-          size="small"
-          variant="subtle"
-          onClick={toggleTheme}
-          aria-label="Toggle colour theme"
-          title="Toggle colour theme"
-        >
-          {theme === 'dark' ? '☾' : '☀'}
-        </Button>
+        </div>
       </header>
 
       <div className={styles.body}>

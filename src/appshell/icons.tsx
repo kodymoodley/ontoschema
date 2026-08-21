@@ -69,3 +69,20 @@ export function UndoIcon() {
 export function RedoIcon() {
   return <CurvedArrow flip />;
 }
+
+/**
+ * Editing the document itself: a card with its top-right corner left open, and a pencil
+ * crossing where the corner would be.
+ *
+ * The open corner is what makes it read as editing rather than as a page — a closed square
+ * with a pencil beside it looks like two objects, where this looks like one act. Sits beside
+ * the project name, so it is about the document, not about what is selected.
+ */
+export function MetadataIcon() {
+  return (
+    <svg {...common}>
+      <path d="M13 8.75v3.5a1.25 1.25 0 0 1-1.25 1.25h-8A1.25 1.25 0 0 1 2.5 12.25v-8A1.25 1.25 0 0 1 3.75 3h3.5" />
+      <path d="M11.6 2.15a1.2 1.2 0 0 1 1.7 1.7L8.4 8.75 6.2 9.3l.55-2.2z" />
+    </svg>
+  );
+}

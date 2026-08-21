@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useDialogAction } from './useDialogAction';
+import { MetadataIcon } from './icons';
 
 /**
  * A trigger and the dialog it opens, handed back separately so the caller can put them in
@@ -81,7 +82,7 @@ describe('a button and the dialog it opens', () => {
   it('names the trigger separately when its label is a picture', () => {
     function IconTrigger() {
       const { action } = useDialogAction({
-        label: <svg aria-hidden="true" />,
+        label: <MetadataIcon />,
         title: 'Ontology metadata',
         testId: 'open-metadata',
         triggerLabel: 'Metadata',
@@ -90,6 +91,10 @@ describe('a button and the dialog it opens', () => {
       return <>{action}</>;
     }
     render(<IconTrigger />);
-    expect(screen.getByRole('button', { name: 'Metadata' })).toBeInTheDocument();
+    const trigger = screen.getByRole('button', { name: 'Metadata' });
+    expect(trigger).toBeInTheDocument();
+    // A picture is not a name, and it must not become part of one either.
+    expect(trigger.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(trigger).toHaveAttribute('title', 'Metadata');
   });
 });

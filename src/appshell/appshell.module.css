@@ -30,6 +30,36 @@
     gap: var(--space-2);
     overflow-x: auto;
   }
+
+  .headerSide {
+    gap: var(--space-2);
+  }
+}
+
+/*
+ * Three groups, so the document's name sits in the middle of the bar rather than wherever the
+ * things to its left happen to end. Equal flex on the two sides is what centres it: the middle
+ * takes only the width it needs and the sides share the rest, however unevenly they are filled.
+ *
+ * No `min-width: 0` on the sides on purpose. A flex item will not shrink below its content
+ * without it, so a narrow window overflows the header and it scrolls sideways -- which is what
+ * it did before, and is better than squashing the controls.
+ */
+.headerSide {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.headerEnd {
+  justify-content: flex-end;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .brand {
