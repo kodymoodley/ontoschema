@@ -185,3 +185,37 @@ test('a class and an attribute are created from the palette with the keyboard', 
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-usage-id]')).toHaveCount(1);
 });
+
+/*
+ * The inspector had a toggle, and on a narrow layout that toggle was how it was reached without
+ * a pointer. It is gone: selecting is what opens the panel now. That only leaves the keyboard
+ * route intact because selecting is itself reachable by keyboard, which is the thing worth
+ * proving rather than assuming.
+ *
+ * Narrow on purpose. On a wide screen the inspector is simply always there, so nothing has to
+ * open and the test would pass without demonstrating anything.
+ */
+test.describe('without a pointer, on a narrow screen', () => {
+  test.use({ viewport: { width: 390, height: 780 } });
+
+  test('selecting from the hierarchy is what opens the inspector', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Entities' }).click();
+    await page.locator('[data-palette-kind="class"]').click();
+    await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
+    await page.getByLabel('Class name').fill('Car');
+    await page.getByLabel('Class name').press('Enter');
+
+    // Deselect, so the panel has to be opened rather than merely still be open.
+    await page.getByTestId('schema-canvas').click({ position: { x: 12, y: 12 } });
+    await expect(page.getByRole('complementary', { name: 'Inspector' })).toBeHidden();
+
+    // From here on, no pointer: reach the class in the hierarchy and choose it.
+    await page.getByRole('button', { name: 'Entities' }).click();
+    await tabTo(page, 'Car');
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByRole('complementary', { name: 'Inspector' })).toBeVisible();
+    await expect(page.getByLabel('Class local name')).toHaveValue('Car');
+  });
+});

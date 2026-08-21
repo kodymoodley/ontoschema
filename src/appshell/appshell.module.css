@@ -96,6 +96,18 @@
 }
 
 /*
+ * The columns do not come and go with the selection, and that was measured rather than assumed.
+ * Collapsing the right column when nothing is selected shrinks the canvas by 340px on every
+ * click, which moves the whole drawing under the pointer and leaves the focus zoom computing
+ * against a width that is about to change -- a focused class filled 49% of the canvas instead
+ * of the 30-40% it aims for.
+ *
+ * On this layout the inspector is simply always there, so "selecting opens it" is already true
+ * without anything having to open. Giving the desktop a collapsed state is todo 30's job, and
+ * when it arrives the rule the owner chose applies: selecting something opens it again.
+ */
+
+/*
  * The drawer toggles only exist below the three-column breakpoint. They stay in the DOM at
  * all widths so the markup — and the keyboard path — is the same everywhere.
  */
@@ -183,7 +195,7 @@
   }
 
   .shell[data-drawer='entities'] .left,
-  .shell[data-drawer='inspector'] .right {
+  .shell[data-inspecting='true'] .right {
     visibility: visible;
     transform: translateX(0);
   }
