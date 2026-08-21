@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createEmptyOntology } from '../ontologymodel';
+import { UNTITLED } from '../projectstore';
 import type { ImportReport, Ontology } from '../ontologymodel';
 import { projectNameFromFilename, summariseImport, worthReporting } from './importSummary';
 
@@ -107,6 +108,7 @@ describe('naming the project after the file', () => {
   });
 
   it('falls back rather than naming a project nothing at all', () => {
-    expect(projectNameFromFilename('   .ttl')).toBe('Untitled ontology');
+    // The same default a new project gets, rather than a second spelling of it.
+    expect(projectNameFromFilename('   .ttl')).toBe(UNTITLED);
   });
 });

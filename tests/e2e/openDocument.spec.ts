@@ -15,7 +15,7 @@ import { downloadExport, openApp, openExamples } from './ontoschema';
  */
 
 const projectNames = (page: Page) =>
-  page.locator('select[aria-label="Active ontology project"] option').allTextContents();
+  page.locator('select[aria-label="Active project"] option').allTextContents();
 
 async function openDocument(page: Page, name: string, content: string) {
   await page

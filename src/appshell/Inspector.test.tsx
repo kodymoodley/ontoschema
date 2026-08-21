@@ -72,3 +72,19 @@ describe('with nothing selected', () => {
     expect(screen.getByText('Metadata')).toBeInTheDocument();
   });
 });
+
+/*
+ * The document is called a schema on screen and an ontology in the file. The exported RDF still
+ * says `owl:Ontology`, exactly as it still says `owl:ObjectProperty` for what the interface
+ * calls a relation: the vocabulary belongs to OWL, the words belong to whoever is reading them.
+ */
+describe('what the document is called', () => {
+  it('says schema, not ontology', () => {
+    store().select({ kind: 'ontology', id: '' });
+    render(<Inspector />);
+
+    // Twice: the badge names the kind and the header names the thing. Both said Ontology before.
+    expect(screen.getAllByText('Schema')).toHaveLength(2);
+    expect(screen.queryByText(/Ontology/)).not.toBeInTheDocument();
+  });
+});

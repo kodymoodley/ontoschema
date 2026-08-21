@@ -296,7 +296,7 @@ test('projects are independent and can be switched between', async ({ page }) =>
   await expect(page.locator('[data-class-name="Car"]')).toHaveCount(0);
 
   // Switching back restores the first ontology intact.
-  await page.getByLabel('Active ontology project').selectOption({ label: 'Automotive' });
+  await page.getByLabel('Active project').selectOption({ label: 'Automotive' });
   await expect(page.locator('[data-class-name="Car"]')).toBeVisible();
   await expect(page.locator('[data-class-name="Book"]')).toHaveCount(0);
 

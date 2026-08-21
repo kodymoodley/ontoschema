@@ -286,12 +286,12 @@ export async function openExamples(page: Page) {
  */
 export async function openMetadata(page: Page) {
   await page.getByTestId('open-metadata').click();
-  await page.getByRole('dialog', { name: 'Ontology metadata' }).waitFor();
+  await page.getByRole('dialog', { name: 'Schema metadata' }).waitFor();
 }
 
 export async function closeMetadata(page: Page) {
   await page
-    .getByRole('dialog', { name: 'Ontology metadata' })
+    .getByRole('dialog', { name: 'Schema metadata' })
     .getByRole('button', { name: 'Close' })
     .click();
 }

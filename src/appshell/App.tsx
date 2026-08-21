@@ -52,7 +52,7 @@ export function App() {
   const metadata = useDialogAction({
     label: <MetadataIcon />,
     triggerLabel: 'Metadata',
-    title: 'Ontology metadata',
+    title: 'Schema metadata',
     testId: 'open-metadata',
     children: (
       <>

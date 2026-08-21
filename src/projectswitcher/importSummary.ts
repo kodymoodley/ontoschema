@@ -1,4 +1,5 @@
 import type { ImportReport, Ontology } from '../ontologymodel';
+import { UNTITLED } from '../projectstore';
 
 /**
  * What to tell someone who has just opened a file written somewhere else.
@@ -88,5 +89,5 @@ export function projectNameFromFilename(filename: string): string {
   );
   const dot = withoutPath.lastIndexOf('.');
   const stem = dot > 0 ? withoutPath.slice(0, dot) : withoutPath;
-  return stem.trim() || 'Untitled ontology';
+  return stem.trim() || UNTITLED;
 }
