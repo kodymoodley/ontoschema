@@ -43,33 +43,11 @@ const apart = (touch: { clientX: number; clientY: number }, from: { x: number; y
   Math.hypot(touch.clientX - from.x, touch.clientY - from.y);
 
 /**
- * Runs something once an element's width has held still for a frame.
- *
- * A CSS transition on a container gives no signal a descendant can hear: `transitionend` fires
- * on the element that transitioned and bubbles upwards, away from everything inside it. Watching
- * the width across frames needs nothing to be told and covers every cause -- a panel folding, a
- * drawer opening, a window being dragged narrower.
- *
- * Costs two frames when nothing is moving, which is invisible in front of a 400ms zoom.
+ * How long after framing a class a change of pane size is still treated as part of the gesture.
+ * Long enough to cover a panel folding and its transition, short enough that an unrelated
+ * resize later is nobody's business but the person doing the resizing.
  */
-function whenWidthSettles(element: HTMLElement | null, run: () => void): () => void {
-  if (!element) return () => {};
-
-  let previous = -1;
-  let frame = 0;
-  const tick = () => {
-    const { width } = element.getBoundingClientRect();
-    if (width === previous) {
-      run();
-      return;
-    }
-    previous = width;
-    frame = requestAnimationFrame(tick);
-  };
-  frame = requestAnimationFrame(tick);
-
-  return () => cancelAnimationFrame(frame);
-}
+const CORRECTION_WINDOW_MS = 600;
 
 /**
  * The free-form schema surface: classes carrying their attributes, and relations drawn
@@ -239,12 +217,57 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   );
 
   /*
+   * Framing one class: the measurement half of the focus gesture, kept separate because the
+   * gesture is not always answered correctly the first time. See the resize observer below.
+   *
+   * The size is taken from the box on screen rather than from React Flow's record of it,
+   * because that record is not always the node as it currently stands. It is seeded from the
+   * estimate a node carries so edges can be routed before anything is measured, and after
+   * that it holds the last size the resize observer saw, which is a frame behind any change
+   * to what the node contains. Both were framing classes wrongly: a new empty class filled
+   * 46% of the canvas instead of 35%, zoomed from its 100px estimate against a real 131px;
+   * and a class focused just after its first attribute was added filled 22%, zoomed from the
+   * 131px it measured while still empty against the 85px it had shrunk to.
+   *
+   * The rendered box has no such lag. It is in screen pixels, so dividing by the zoom puts it
+   * back into the coordinates `position` is expressed in.
+   */
+  const frameClass = useCallback(
+    (classId: string, duration: number): boolean => {
+      const node = getNode(classId);
+      const canvas = surface.current?.getBoundingClientRect();
+      const box = surface.current
+        ?.querySelector<HTMLElement>(`[data-class-node-id="${classId}"]`)
+        ?.getBoundingClientRect();
+      const zoom = getZoom();
+      const width = (box?.width ?? 0) / zoom;
+      const height = (box?.height ?? 0) / zoom;
+      if (!node || !canvas || width <= 0 || height <= 0) return false;
+
+      void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
+        zoom: focusZoom({
+          node: { width, height },
+          canvas: { width: canvas.width, height: canvas.height },
+          minZoom: MIN_ZOOM,
+          maxZoom: MAX_ZOOM,
+        }),
+        duration,
+      });
+      return true;
+    },
+    [getNode, getZoom, setCenter],
+  );
+
+  /*
    * A class node has asked to be brought into focus. It is answered here rather than in the
    * node because moving the viewport is the canvas's business, and the two modules may not
    * import one another.
    */
   const focusRequest = useProjectStore((state) => state.focusRequest);
   const clearFocus = useProjectStore((state) => state.clearFocus);
+  /** What was framed and when, so a pane that changes size just afterwards can correct it. */
+  const framed = useRef<{ classId: string; at: number } | null>(null);
+
   useEffect(() => {
     if (!focusRequest) return;
 
@@ -260,64 +283,41 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
       return;
     }
 
-    /*
-     * The size is taken from the box on screen rather than from React Flow's record of it,
-     * because that record is not always the node as it currently stands. It is seeded from the
-     * estimate a node carries so edges can be routed before anything is measured, and after
-     * that it holds the last size the resize observer saw, which is a frame behind any change
-     * to what the node contains. Both were framing classes wrongly: a new empty class filled
-     * 46% of the canvas instead of 35%, zoomed from its 100px estimate against a real 131px;
-     * and a class focused just after its first attribute was added filled 22%, zoomed from the
-     * 131px it measured while still empty against the 85px it had shrunk to.
-     *
-     * The rendered box has no such lag. It is in screen pixels, so dividing by the zoom puts it
-     * back into the coordinates `position` is expressed in.
-     */
-    const focus = () => {
-      const node = getNode(focusRequest);
-      const canvas = surface.current?.getBoundingClientRect();
-      const box = surface.current
-        ?.querySelector<HTMLElement>(`[data-class-node-id="${focusRequest}"]`)
-        ?.getBoundingClientRect();
-      const zoom = getZoom();
-      const width = (box?.width ?? 0) / zoom;
-      const height = (box?.height ?? 0) / zoom;
-      if (!node || !canvas || width <= 0 || height <= 0) return;
+    if (!frameClass(focusRequest, 400)) return;
+    framed.current = { classId: focusRequest, at: performance.now() };
+    clearFocus();
+  }, [focusRequest, clearFocus, frameClass, nodes, ontology.classes]);
 
-      clearFocus();
-      void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
-        zoom: focusZoom({
-          node: { width, height },
-          canvas: { width: canvas.width, height: canvas.height },
-          minZoom: MIN_ZOOM,
-          maxZoom: MAX_ZOOM,
-        }),
-        duration: 400,
-      });
-    };
+  /*
+   * Framing again if the pane changes size immediately after being framed, which it does.
+   *
+   * Double-clicking a class selects it as well as focusing it, and selecting unfolds the
+   * inspector if it was folded away -- so the zoom above is worked out against a pane 340px
+   * wider than the one the class ends up in, and the class fills 49% of the canvas instead of
+   * the 30-40% it aims for. That is the same miss an earlier auto-folding inspector produced.
+   *
+   * Correcting from the resize rather than trying to be measured after it. Waiting first was
+   * tried and is not sound: React flushes pending passive effects *before* it renders an update
+   * made from one, so the unfold has not reached the DOM when this measures, and no amount of
+   * counting frames afterwards makes the arrival a fact rather than a race -- it failed roughly
+   * one full run in four. A resize observer is told, and is told however late it happens.
+   *
+   * Bounded to the moment after a focus, so dragging the window narrower an hour later does not
+   * yank the viewport back to whatever was last double-clicked.
+   */
+  useEffect(() => {
+    const element = surface.current;
+    if (!element) return;
 
-    /*
-     * Not from inside this effect, and not until the pane has stopped changing size.
-     *
-     * Double-clicking a class selects it as well as focusing it, and selecting unfolds the
-     * inspector if it was folded away. The unfold is a state change made from an effect, and
-     * React flushes pending passive effects -- this one -- *before* it renders that update, so
-     * measuring here reads the pane as it was: 340px wider than the one the class ends up in.
-     * Measured, it framed the class at 49% of the canvas instead of the 30-40% it aims for,
-     * which is exactly the miss an earlier auto-folding inspector produced.
-     *
-     * The timeout puts the measurement after React has finished the whole update; the settle
-     * after that covers the pane still being on its way to its new width.
-     */
-    let cancelSettle = () => {};
-    const later = window.setTimeout(() => {
-      cancelSettle = whenWidthSettles(surface.current, focus);
-    }, 0);
-    return () => {
-      window.clearTimeout(later);
-      cancelSettle();
-    };
-  }, [focusRequest, clearFocus, getNode, getZoom, nodes, ontology.classes, setCenter]);
+    const observer = new ResizeObserver(() => {
+      const recent = framed.current;
+      if (!recent || performance.now() - recent.at > CORRECTION_WINDOW_MS) return;
+      // Shorter than the original, because it is a nudge to a view already on its way there.
+      frameClass(recent.classId, 150);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [frameClass]);
 
   /**
    * Double-clicking, or double-tapping, bare canvas frames the whole schema again — the way
