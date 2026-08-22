@@ -50,9 +50,8 @@ schema too big to scan can be searched by name or description from `Ctrl`+`K`.
 What that leaves is short. Neither of the two sequenced items is ready to start, and saying so is
 the point of listing them: both want a design note before any code.
 
-1. **Relation edges in the taxonomy view**, and **the 7±2 limits** — both want a design note first,
-   for opposite reasons: one risks the very legibility that makes the view worth having, the other
-   is four features in a sentence and would invalidate the bundled examples.
+1. **Relation edges in the taxonomy view** (todo 11) — **ready now.** The question that held it up
+   is answered: a three-way control, _off_ by default, _only the selected class_, or _all_.
 2. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
    size. It is the largest new dependency surface on the list, and the only item that makes this
    tool depend on vocabularies it does not control; everything above it improves what is already
@@ -75,6 +74,11 @@ list above:
   deselecting. It carries a measured warning about how not to do it.
 - **Palette and taxonomy as subtabs** (todo 3) — parked after measuring; the choice of shape is
   the owner's.
+- **Nine, three times over** (todo 9) — parked as a project rather than an item, and decided in
+  principle: nine classes to a module, nine modules to a group, nine groups to a file, so 729
+  classes and the app refuses more. Modules are boxes you need not see inside, as C4 does it.
+  A design note comes first, and the note has five things to answer — they are listed under
+  [Modelling power](#modelling-power).
 
 Why the order is what it is: [How work is ranked](#how-work-is-ranked) at the foot of the file.
 
@@ -163,9 +167,9 @@ lost; a run slightly above means someone tested something new. Neither is a targ
 
 Everything here stays inside the TBox, which is the line the project has drawn from the start.
 
-| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Size |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Cap a schema at 7±2 per module** — nine classes to a module, nine modules, so eighty-one classes; in-degree and out-degree of five, total degree six, and edges capped at 1.5× the node count. Refuse an import that breaks the limits, or offer to extract a sub-module that respects them, and say plainly that larger ontologies are meant to be several files joined later in a tool like Protégé. **Not one piece of work**, and the examples violate it today — the music schema alone has thirteen classes — so it needs a design note and a plan for them before any code. _(todo 9)_ | L    |
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Size |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Nine, three times over — a limit the app enforces** — **parked to the back of the queue** as a project with subfeatures rather than an item, but decided in principle. Nine classes to a module, nine modules to a module-group, nine module-groups to a schema: **729 classes to a file**, and the app refuses more. The reasoning is a design philosophy rather than a technical limit — past 729 classes in one file you are almost certainly overcomplicating the conceptualisation and should be breaking the system into subsystems anyway, and anyone who disagrees can build several files here and sew them together in Protégé. Modules are drawn the way the taxonomy view already draws them: a box around a group, and **you do not have to see what is inside**. That is the C4 idea — zoom out and the node count falls. Edges are capped by **directed graph density of 0.25**, which is 18 edges for a module of nine. _(todo 9)_ | L    |
 
 ## Export and interop
 
@@ -400,7 +404,7 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Subschema filter** — the first thing that bites past about thirty classes, and cheaper than any amount of auto-layout, because hiding is the only thing that scales. Do it before the layout and grouping items below; it may make them unnecessary. Narrow the canvas to a chosen set of classes and relations, or to one class and what it touches, and hide the rest. The answer to a spaghetti diagram that no amount of layout fixes, and the only thing that actually scales. _Was listed twice: also appeared under Editing workflow as "filter schema for subschemas"._                                                                                                                                                                                                                                                                                                                                                                                                            | M    |
 | **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | M    |
 | **Stepped / orthogonal edges as an option** — now that each edge picks a side, right-angled routing is a small step and reads better for dense schemas.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | S    |
-| **Draw relation edges in the taxonomy view** — it shows only subclass links today. Worth pausing on: that is _why_ the taxonomy tab reads cleanly, as noted against the Mermaid item, so this trades legibility for completeness. A toggle may be the answer rather than always drawing them. _(todo 11)_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | M    |
+| **Draw relation edges in the taxonomy view** — it shows only subclass links today, and that is _why_ it reads cleanly, so drawing them always would trade the legibility for completeness. **Decided: a three-way control**, not a switch — _off_, _only the selected class_, and _all_. The middle setting is the one that earns its place: it answers "what does this connect to?" without turning the taxonomy into a second schema view, and it is the only one of the three that keeps the view sparse while still saying something. Off stays the default. _(todo 11)_                                                                                                                                                                                                                                                                                                                                                                                                                 | M    |
 
 ## Editing workflow
 
@@ -419,6 +423,33 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 > _Details_ and _Annotations_ become one panel under 26, and 27 then removes the toggle that only
 > existed to reveal a panel with nothing in it. Done piecemeal in another order, 27 would strand
 > the metadata tab behind a control that no longer opens.
+
+<!-- prettier-ignore -->
+> **Nine, three times over: what still has to be decided.** The principle is settled; these are the
+> parts that a design note has to answer before any code, and two of them were found by checking
+> the arithmetic rather than by reading the sentence.
+>
+> **Density has to be per module, or it does nothing.** 0.25 of a directed graph is
+> `0.25 × N × (N-1)` edges. At nine classes that is 18, which is the number intended. At 729 it is
+> **132,678** — far more than the 13,122 that nine-per-module would allow, so a schema-wide density
+> rule is no rule at all. Per module it bites; anywhere else it is decoration.
+>
+> **Edges between modules need their own answer.** Eighteen per module bounds what happens inside a
+> box. It says nothing about how many arrows cross a boundary, and in C4 terms that is the number
+> that matters most, because it is what decides whether the zoomed-out view is readable.
+>
+> **Every bundled example breaks the rule today**, so all five have to be re-cut into modules
+> before the limit can be enforced: automotive 17 classes, insurance 16, university 16, recipes 15,
+> music 14. That is content work and it moves the e2e assertions that count them.
+>
+> **Two items on this list are already part of this one.** _Grouping in the schema view_ draws
+> bounding boxes per module, and the _subschema filter_ hides everything outside a chosen set;
+> both are subfeatures of this rather than neighbours of it, and should be folded in when the
+> design note is written.
+>
+> **What happens on import.** A foreign file of two thousand classes is the ordinary case, not the
+> edge case. Refusing to open it, opening it and refusing to save, or offering to cut it into
+> modules are three different products, and the import rules as they stand keep everything.
 
 ### Small screens: what the app should be on a phone
 
@@ -623,9 +654,9 @@ list as originally written is in the git history; ask and it comes back.
 | #   | Now lives in           | As                                                                    | Size |
 | --- | ---------------------- | --------------------------------------------------------------------- | ---- |
 | 3   | Editing workflow       | Palette and taxonomy tree as subtabs — parked, needs a design choice  | M    |
-| 9   | Modelling power        | Cap a schema at 7±2 per module                                        | L    |
+| 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project   | L    |
 | 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29         | L    |
-| 11  | Canvas and readability | Draw relation edges in the taxonomy view                              | M    |
+| 11  | Canvas and readability | Relation edges in the taxonomy view — off / selected / all            | M    |
 | 18  | Editing workflow       | Metadata editing as an ordinary form, with the vocabulary as plumbing | M    |
 | 20  | Export and interop     | Harden the layout annotation — parked to the back of the queue        | S–M  |
 | 28  | Editing workflow       | Shrink the inspector on a phone — field layout as much as type        | S    |
