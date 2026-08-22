@@ -21,12 +21,21 @@ import {
 } from './graphRenderers';
 import { useThemePreference } from './useThemePreference';
 import { useFullscreen } from './useFullscreen';
+import { usePanelPreference } from './usePanelPreference';
 import { useExportAction } from './useExportAction';
 import { useDialogAction } from './useDialogAction';
 import { OntologyMetadataForm } from '../ontologymetadata';
 import { AnnotationEditor } from '../annotationpanel';
 import { EntitySearch } from '../entitysearch';
-import { AppMark, MetadataIcon, RedoIcon, SearchIcon, UndoIcon } from './icons';
+import {
+  AppMark,
+  EntitiesPanelIcon,
+  InspectorPanelIcon,
+  MetadataIcon,
+  RedoIcon,
+  SearchIcon,
+  UndoIcon,
+} from './icons';
 import styles from './appshell.module.css';
 
 /**
@@ -78,6 +87,7 @@ export function App() {
   const { create, canCreateAttribute } = usePaletteCreate();
   const { theme, toggleTheme } = useThemePreference();
   const fullscreen = useFullscreen();
+  const panels = usePanelPreference();
   const saving = useExportAction('save');
   const exporting = useExportAction();
   /*
@@ -129,7 +139,13 @@ export function App() {
   const relationCount = ontology.relations.length;
 
   return (
-    <div className={styles.shell} data-drawer={drawer} data-inspecting={inspecting}>
+    <div
+      className={styles.shell}
+      data-drawer={drawer}
+      data-inspecting={inspecting}
+      data-fold-entities={panels.isFolded('entities')}
+      data-fold-inspector={panels.isFolded('inspector')}
+    >
       <RelationMarkers />
       <ConnectionPicker />
 
@@ -254,6 +270,25 @@ export function App() {
           }}
         >
           <Toolbar className={styles.canvasToolbar}>
+            {/*
+              At the ends of the strip, on the side each one folds, so the control points at
+              the thing it acts on. Only on a wide layout: below the breakpoint both panels are
+              already drawers with toggles of their own.
+            */}
+            <Button
+              size="small"
+              variant="subtle"
+              iconOnly
+              className={styles.foldToggle}
+              aria-pressed={!panels.isFolded('entities')}
+              aria-controls="ontoschema-entities"
+              onClick={() => panels.toggle('entities')}
+              aria-label={panels.isFolded('entities') ? 'Show entities' : 'Hide entities'}
+              title={panels.isFolded('entities') ? 'Show entities' : 'Hide entities'}
+              data-testid="fold-entities"
+            >
+              <EntitiesPanelIcon />
+            </Button>
             <Tabs options={VIEW_TABS} value={view} onChange={setView} ariaLabel="Canvas view" />
             <span className={styles.viewHint}>
               {canvasHint({ view, relations: taxonomyRelations, hasSelection: inspecting })}
@@ -293,6 +328,20 @@ export function App() {
               title="Redo (Ctrl+Shift+Z)"
             >
               <RedoIcon />
+            </Button>
+            <Button
+              size="small"
+              variant="subtle"
+              iconOnly
+              className={styles.foldToggle}
+              aria-pressed={!panels.isFolded('inspector')}
+              aria-controls="ontoschema-inspector"
+              onClick={() => panels.toggle('inspector')}
+              aria-label={panels.isFolded('inspector') ? 'Show inspector' : 'Hide inspector'}
+              title={panels.isFolded('inspector') ? 'Show inspector' : 'Hide inspector'}
+              data-testid="fold-inspector"
+            >
+              <InspectorPanelIcon />
             </Button>
           </Toolbar>
 

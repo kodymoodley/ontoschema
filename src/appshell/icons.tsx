@@ -96,3 +96,27 @@ export function SearchIcon() {
     </svg>
   );
 }
+
+/**
+ * The two side panels, as the shell arranges them: a frame with one column filled.
+ *
+ * Mirrored rather than drawn twice, so the pair cannot drift apart -- the same reasoning as the
+ * undo and redo arrows. Which side is filled is which panel the button folds.
+ */
+function PanelGlyph({ right }: { right: boolean }) {
+  return (
+    <svg {...common} style={right ? { transform: 'scaleX(-1)' } : undefined}>
+      <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5" />
+      <path d="M6 2.75v10.5" />
+      <path d="M3.4 5.4h1.2M3.4 8h1.2M3.4 10.6h1.2" />
+    </svg>
+  );
+}
+
+export function EntitiesPanelIcon() {
+  return <PanelGlyph right={false} />;
+}
+
+export function InspectorPanelIcon() {
+  return <PanelGlyph right />;
+}

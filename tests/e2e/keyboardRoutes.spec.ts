@@ -200,7 +200,7 @@ test.describe('without a pointer, on a narrow screen', () => {
 
   test('selecting from the hierarchy is what opens the inspector', async ({ page }) => {
     await openApp(page);
-    await page.getByRole('button', { name: 'Entities' }).click();
+    await page.getByRole('button', { name: 'Entities', exact: true }).click();
     await page.locator('[data-palette-kind="class"]').click();
     await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
     await page.getByLabel('Class name').fill('Car');
@@ -211,7 +211,7 @@ test.describe('without a pointer, on a narrow screen', () => {
     await expect(page.getByRole('complementary', { name: 'Inspector' })).toBeHidden();
 
     // From here on, no pointer: reach the class in the hierarchy and choose it.
-    await page.getByRole('button', { name: 'Entities' }).click();
+    await page.getByRole('button', { name: 'Entities', exact: true }).click();
     await tabTo(page, 'Car');
     await page.keyboard.press('Enter');
 
