@@ -634,6 +634,12 @@ thousand attempts. **Nobody found a cause**, so this is not a fix. See
 [What was known about the WebKit flake](#what-was-known-about-the-webkit-flake), which stays as
 written in case it returns.
 
+**The taxonomy view's caption** — _done by deletion._ "Laid out automatically — one module per
+root class, superclasses above" described a picture that explains itself, in a toolbar where
+every other character is a control. Its removal also settled a smaller complaint: prose that comes
+and goes was moving the relation switch beside it, so the switch now sits ahead of the hint and
+nothing the hint does can shift it.
+
 **A tooltip for the drag-a-relation hint** — _done by deletion._ Put behind a question mark first,
 then removed outright: the palette entries already say what each thing is.
 

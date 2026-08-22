@@ -121,16 +121,36 @@ test('paints the relation names above the lines, not under them', async ({ page 
  */
 test('says what is missing when it is switched on with nothing selected', async ({ page }) => {
   await taxonomyOf(page, 'Music library');
-  const hint = page.getByText(/Laid out automatically|Select a class to see/);
-  await expect(hint).toContainText('Laid out automatically');
+  const hint = page.getByTestId('canvas-hint');
+  // Nothing to say: the taxonomy explains itself, and a caption on it would be noise.
+  await expect(hint).toHaveText('');
 
   await page.getByTestId('toggle-relations').click();
-  await expect(hint).toContainText('Select a class to see its relations');
+  await expect(hint).toHaveText('Select a class to see its relations.');
 
   // And stops saying it the moment there is something to draw.
   await page.locator('[data-taxonomy-class="Track"]').first().click();
-  await expect(hint).toContainText('Laid out automatically');
+  await expect(hint).toHaveText('');
   await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(0);
+});
+
+/*
+ * The hint appears and disappears under the toolbar's own controls. Anything it can push is a
+ * control that moves while someone is reaching for it.
+ */
+test('the switch does not move when the hint comes and goes', async ({ page }) => {
+  await taxonomyOf(page, 'Music library');
+  const toggle = page.getByTestId('toggle-relations');
+  const where = async () => Math.round((await toggle.boundingBox())!.x);
+
+  const before = await where();
+  await toggle.click();
+  await expect(page.getByTestId('canvas-hint')).toHaveText('Select a class to see its relations.');
+  expect(await where(), 'the hint appearing moved the switch').toBe(before);
+
+  await page.locator('[data-taxonomy-class="Track"]').first().click();
+  await expect(page.getByTestId('canvas-hint')).toHaveText('');
+  expect(await where(), 'the hint going away moved the switch').toBe(before);
 });
 
 test('says nothing about selecting while the layer is off', async ({ page }) => {
