@@ -96,3 +96,77 @@ export function SearchIcon() {
     </svg>
   );
 }
+
+/**
+ * The two side panels, as the shell arranges them: a frame with one column filled.
+ *
+ * Mirrored rather than drawn twice, so the pair cannot drift apart -- the same reasoning as the
+ * undo and redo arrows. Which side is filled is which panel the button folds.
+ */
+function PanelGlyph({ right }: { right: boolean }) {
+  return (
+    <svg {...common} style={right ? { transform: 'scaleX(-1)' } : undefined}>
+      <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5" />
+      <path d="M6 2.75v10.5" />
+      <path d="M3.4 5.4h1.2M3.4 8h1.2M3.4 10.6h1.2" />
+    </svg>
+  );
+}
+
+export function EntitiesPanelIcon() {
+  return <PanelGlyph right={false} />;
+}
+
+export function InspectorPanelIcon() {
+  return <PanelGlyph right />;
+}
+
+/**
+ * The two panels shoved out to the edges, or pulled back in from them.
+ *
+ * It was four corner brackets, which was a mistake: React Flow's own fit-view control draws the
+ * same four brackets, and the two buttons sat inches apart on the same strip meaning different
+ * things. This is about the *panels*, so it draws them -- a bar at each edge, and arrows saying
+ * which way they are about to go.
+ *
+ * The arrows turn round when both are folded, the way the full-screen button does. A control
+ * that undoes itself should look different in its two states, or the second press is a guess.
+ */
+function PanelsAsideGlyph({ inward }: { inward: boolean }) {
+  return (
+    <svg {...common}>
+      {/* The panels, at the edges they live at. */}
+      <path d="M1.75 3v10" />
+      <path d="M14.25 3v10" />
+      {/*
+        Heads kept a clear two pixels apart in the middle. Meeting there turns the pair into a
+        bowtie, which at 16px reads as a shape rather than as two arrows.
+      */}
+      {inward ? (
+        <>
+          <path d="M3.7 8h1.9" />
+          <path d="M12.3 8h-1.9" />
+          <path d="M5.6 6.6 7 8 5.6 9.4z" fill="currentColor" stroke="none" />
+          <path d="M10.4 6.6 9 8l1.4 1.4z" fill="currentColor" stroke="none" />
+        </>
+      ) : (
+        <>
+          <path d="M7.2 8H4.6" />
+          <path d="M8.8 8h2.6" />
+          <path d="M4.6 6.6 3.2 8l1.4 1.4z" fill="currentColor" stroke="none" />
+          <path d="M11.4 6.6 12.8 8l-1.4 1.4z" fill="currentColor" stroke="none" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+/** Both panels away, the canvas taking the whole window. */
+export function PanelsAsideIcon() {
+  return <PanelsAsideGlyph inward={false} />;
+}
+
+/** Both panels back where they were. */
+export function PanelsBackIcon() {
+  return <PanelsAsideGlyph inward />;
+}

@@ -25,6 +25,8 @@ import { OWNS_DOUBLE_CLICK } from './gestures';
 import { NODE_TYPE, sameClassNode, sameRelationEdge, schemaEdges, schemaNodes } from './graphmodel';
 import { CLASS_NODE_WIDTH, focusZoom, nextFreePosition } from './layout';
 import { provideViewCentre, viewCentre } from './viewcentre';
+import { provideFraming } from './framing';
+import { useFramingCorrection } from './framingcorrection';
 
 /** How far the viewport may be pushed, including by a focus request. */
 const MIN_ZOOM = 0.2;
@@ -60,6 +62,11 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const { screenToFlowPosition, getIntersectingNodes, getNode, getZoom, setCenter, fitView } =
     useReactFlow();
   const surface = useRef<HTMLDivElement>(null);
+  /*
+   * Every camera move here goes through this: the gestures that frame something are often the
+   * same gestures that change the size of the pane it is being framed into.
+   */
+  const frame = useFramingCorrection(surface);
 
   const select = useProjectStore((state) => state.select);
   const createClass = useProjectStore((state) => state.createClass);
@@ -209,6 +216,48 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   );
 
   /*
+   * Framing one class: the measurement half of the focus gesture, kept separate because the
+   * gesture is not always answered correctly the first time. See the resize observer below.
+   *
+   * The size is taken from the box on screen rather than from React Flow's record of it,
+   * because that record is not always the node as it currently stands. It is seeded from the
+   * estimate a node carries so edges can be routed before anything is measured, and after
+   * that it holds the last size the resize observer saw, which is a frame behind any change
+   * to what the node contains. Both were framing classes wrongly: a new empty class filled
+   * 46% of the canvas instead of 35%, zoomed from its 100px estimate against a real 131px;
+   * and a class focused just after its first attribute was added filled 22%, zoomed from the
+   * 131px it measured while still empty against the 85px it had shrunk to.
+   *
+   * The rendered box has no such lag. It is in screen pixels, so dividing by the zoom puts it
+   * back into the coordinates `position` is expressed in.
+   */
+  const frameClass = useCallback(
+    (classId: string, duration: number): boolean => {
+      const node = getNode(classId);
+      const canvas = surface.current?.getBoundingClientRect();
+      const box = surface.current
+        ?.querySelector<HTMLElement>(`[data-class-node-id="${classId}"]`)
+        ?.getBoundingClientRect();
+      const zoom = getZoom();
+      const width = (box?.width ?? 0) / zoom;
+      const height = (box?.height ?? 0) / zoom;
+      if (!node || !canvas || width <= 0 || height <= 0) return false;
+
+      void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
+        zoom: focusZoom({
+          node: { width, height },
+          canvas: { width: canvas.width, height: canvas.height },
+          minZoom: MIN_ZOOM,
+          maxZoom: MAX_ZOOM,
+        }),
+        duration,
+      });
+      return true;
+    },
+    [getNode, getZoom, setCenter],
+  );
+
+  /*
    * A class node has asked to be brought into focus. It is answered here rather than in the
    * node because moving the viewport is the canvas's business, and the two modules may not
    * import one another.
@@ -230,40 +279,11 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
       return;
     }
 
-    /*
-     * The size is taken from the box on screen rather than from React Flow's record of it,
-     * because that record is not always the node as it currently stands. It is seeded from the
-     * estimate a node carries so edges can be routed before anything is measured, and after
-     * that it holds the last size the resize observer saw, which is a frame behind any change
-     * to what the node contains. Both were framing classes wrongly: a new empty class filled
-     * 46% of the canvas instead of 35%, zoomed from its 100px estimate against a real 131px;
-     * and a class focused just after its first attribute was added filled 22%, zoomed from the
-     * 131px it measured while still empty against the 85px it had shrunk to.
-     *
-     * The rendered box has no such lag. It is in screen pixels, so dividing by the zoom puts it
-     * back into the coordinates `position` is expressed in.
-     */
-    const node = getNode(focusRequest);
-    const canvas = surface.current?.getBoundingClientRect();
-    const box = surface.current
-      ?.querySelector<HTMLElement>(`[data-class-node-id="${focusRequest}"]`)
-      ?.getBoundingClientRect();
-    const zoom = getZoom();
-    const width = (box?.width ?? 0) / zoom;
-    const height = (box?.height ?? 0) / zoom;
-    if (!node || !canvas || width <= 0 || height <= 0) return;
-
+    // A canvas that cannot measure the node yet leaves the request standing, and the effect
+    // runs again as soon as it can -- `nodes` is in the dependencies for exactly that.
+    if (!frame((duration) => frameClass(focusRequest, duration), 400)) return;
     clearFocus();
-    void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
-      zoom: focusZoom({
-        node: { width, height },
-        canvas: { width: canvas.width, height: canvas.height },
-        minZoom: MIN_ZOOM,
-        maxZoom: MAX_ZOOM,
-      }),
-      duration: 400,
-    });
-  }, [focusRequest, clearFocus, getNode, getZoom, nodes, ontology.classes, setCenter]);
+  }, [focusRequest, clearFocus, frame, frameClass, nodes, ontology.classes]);
 
   /**
    * Double-clicking, or double-tapping, bare canvas frames the whole schema again — the way
@@ -274,8 +294,13 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
    * its own element sitting over the pane.
    */
   const frameEverything = useCallback(() => {
-    void fitView({ padding: 0.2, maxZoom: 1, duration: 400 });
-  }, [fitView]);
+    frame((duration) => {
+      void fitView({ padding: 0.2, maxZoom: 1, duration });
+    }, 400);
+  }, [fitView, frame]);
+
+  // The toolbar's button is the same action, reached from outside React Flow's provider.
+  useEffect(() => provideFraming(frameEverything), [frameEverything]);
 
   const onSurfaceDoubleClick = useCallback(
     (event: React.MouseEvent) => {

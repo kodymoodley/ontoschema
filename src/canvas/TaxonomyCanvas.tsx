@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -12,6 +12,8 @@ import '@xyflow/react/dist/style.css';
 import { useOntology, useProjectStore, useSelection, useTaxonomyRelations } from '../projectstore';
 import styles from './canvas.module.css';
 import { NODE_TYPE, classIdFromTaxonomyNode, taxonomyGraph } from './graphmodel';
+import { provideFraming } from './framing';
+import { useFramingCorrection } from './framingcorrection';
 
 /**
  * The read-optimised taxonomy surface: one auto-laid-out top-down tree per root class,
@@ -41,17 +43,31 @@ function TaxonomyCanvasInner({ nodeTypes, edgeTypes }: TaxonomyCanvasProps) {
   // hierarchy changes. Fitting through the instance (rather than the `fitView` prop) is
   // what reliably honours maxZoom, so a two-class taxonomy is not blown up to fill the pane.
   const { fitView } = useReactFlow();
+  /*
+   * The same correction the schema canvas uses, and needed for the same reason: the toolbar's
+   * control folds both panels and frames in one press, so the pane this is fitted into is not
+   * the pane it was measured against.
+   */
+  const surface = useRef<HTMLDivElement>(null);
+  const frame = useFramingCorrection(surface);
+  const frameEverything = useCallback(() => {
+    frame((duration) => {
+      void fitView({ padding: 0.18, maxZoom: 1, duration });
+    }, 180);
+  }, [fitView, frame]);
+
   const shape = nodes.map((node) => node.id).join('|');
   useEffect(() => {
     if (!shape) return;
-    const frame = requestAnimationFrame(() => {
-      void fitView({ padding: 0.18, maxZoom: 1, duration: 180 });
-    });
+    const frame = requestAnimationFrame(frameEverything);
     return () => cancelAnimationFrame(frame);
-  }, [fitView, shape]);
+  }, [frameEverything, shape]);
+
+  // The toolbar's button, which is rendered outside React Flow and cannot fit the view itself.
+  useEffect(() => provideFraming(frameEverything), [frameEverything]);
 
   return (
-    <div className={styles.canvas} data-testid="taxonomy-canvas">
+    <div ref={surface} className={styles.canvas} data-testid="taxonomy-canvas">
       <ReactFlow
         nodes={nodes}
         edges={edges}

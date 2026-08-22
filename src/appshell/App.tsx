@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Palette, SchemaCanvas, TaxonomyCanvas, usePaletteCreate } from '../canvas';
+import { useEffect, useRef, useState } from 'react';
+import { Palette, SchemaCanvas, TaxonomyCanvas, frameAll, usePaletteCreate } from '../canvas';
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
 import { ConnectionPicker, RelationMarkers } from '../relationeditor';
@@ -11,6 +11,7 @@ import {
   useTaxonomyRelations,
 } from '../projectstore';
 import type { CanvasView, TaxonomyRelations } from '../projectstore';
+import type { EntityRef } from '../ontologymodel';
 import { Button, Divider, RelationIcon, Spacer, Switch, Tabs, Toolbar } from '../designsystem';
 import { Inspector } from './Inspector';
 import {
@@ -21,12 +22,24 @@ import {
 } from './graphRenderers';
 import { useThemePreference } from './useThemePreference';
 import { useFullscreen } from './useFullscreen';
+import { FOLD_DURATION_MS, usePanelPreference } from './usePanelPreference';
+import type { SidePanel } from './usePanelPreference';
 import { useExportAction } from './useExportAction';
 import { useDialogAction } from './useDialogAction';
 import { OntologyMetadataForm } from '../ontologymetadata';
 import { AnnotationEditor } from '../annotationpanel';
 import { EntitySearch } from '../entitysearch';
-import { AppMark, MetadataIcon, RedoIcon, SearchIcon, UndoIcon } from './icons';
+import {
+  AppMark,
+  EntitiesPanelIcon,
+  InspectorPanelIcon,
+  MetadataIcon,
+  PanelsAsideIcon,
+  PanelsBackIcon,
+  RedoIcon,
+  SearchIcon,
+  UndoIcon,
+} from './icons';
 import styles from './appshell.module.css';
 
 /**
@@ -78,6 +91,7 @@ export function App() {
   const { create, canCreateAttribute } = usePaletteCreate();
   const { theme, toggleTheme } = useThemePreference();
   const fullscreen = useFullscreen();
+  const panels = usePanelPreference();
   const saving = useExportAction('save');
   const exporting = useExportAction();
   /*
@@ -100,15 +114,42 @@ export function App() {
   // Which side panel is showing when the viewport is too narrow for three columns.
   const [drawer, setDrawer] = useState<'none' | 'entities'>('none');
   /*
-   * The inspector has no toggle of its own. It is open exactly when something is selected, on
-   * every width -- selecting a class is already the gesture that means "tell me about this", and
-   * a button whose only job was revealing an empty panel is one control fewer to explain.
+   * Selecting is what opens the inspector, on every width -- clicking a class is already the
+   * gesture that means "tell me about this". On a narrow layout that slides the drawer in; on a
+   * wide one the column is already there, unless it has been folded away, and then the
+   * selection borrows it for as long as there is something to show. See `useRevealInspector`
+   * for what borrowing means and why it is keyed on the selection changing.
    *
    * The same rule on both layouts is a decision, not an accident: a drawer that appears on a
-   * phone and a column that appears on a desktop are the same idea at two sizes, and giving the
-   * desktop the width back when nothing is selected is most of what the collapsing item wanted.
+   * phone and a column that appears on a desktop are the same idea at two sizes.
    */
-  const inspecting = useSelection() !== null;
+  const selection = useSelection();
+  const inspecting = selection !== null;
+  useRevealInspector(selection, panels.reveal, panels.conceal);
+
+  /*
+   * The whole window for the canvas, and the way back. Folding is what makes the canvas bigger
+   * and fitting is what makes the drawing fill it; either on its own leaves half the job undone,
+   * which is why they are one gesture rather than two controls.
+   *
+   * Which way the next press goes is read off the panels themselves rather than remembered. A
+   * flag would go stale the moment either panel was folded by its own toggle, or the moment a
+   * selection unfolded the inspector -- and a control whose picture disagrees with the window is
+   * worse than one with fewer states.
+   */
+  const bothFolded = panels.isFolded('entities') && panels.isFolded('inspector');
+  const toggleBothPanels = () => {
+    const move = bothFolded ? panels.show : panels.hide;
+    move('entities');
+    move('inspector');
+    /*
+     * After the columns have finished moving, not before. React Flow measures the pane at the
+     * moment `fitView` is called, so fitting first frames the drawing into a canvas 680px away
+     * from the one it lands in. Framing on the way back matters just as much: the canvas has
+     * shrunk, and a drawing left at the wider zoom would sit half outside it.
+     */
+    window.setTimeout(frameAll, FOLD_DURATION_MS + 20);
+  };
 
   /*
    * Ctrl+K, because that is where people look. The dialog has a button too: a shortcut nobody
@@ -123,13 +164,25 @@ export function App() {
     children: (close: () => void) => <EntitySearch onChoose={close} />,
   });
 
-  useGlobalShortcuts({ undo, redo, deleteSelection, find: () => finding.setOpen(true) });
+  useGlobalShortcuts({
+    undo,
+    redo,
+    deleteSelection,
+    find: () => finding.setOpen(true),
+    frame: toggleBothPanels,
+  });
 
   const attributeCount = ontology.attributes.length;
   const relationCount = ontology.relations.length;
 
   return (
-    <div className={styles.shell} data-drawer={drawer} data-inspecting={inspecting}>
+    <div
+      className={styles.shell}
+      data-drawer={drawer}
+      data-inspecting={inspecting}
+      data-fold-entities={panels.isFolded('entities')}
+      data-fold-inspector={panels.isFolded('inspector')}
+    >
       <RelationMarkers />
       <ConnectionPicker />
 
@@ -254,6 +307,25 @@ export function App() {
           }}
         >
           <Toolbar className={styles.canvasToolbar}>
+            {/*
+              At the ends of the strip, on the side each one folds, so the control points at
+              the thing it acts on. Only on a wide layout: below the breakpoint both panels are
+              already drawers with toggles of their own.
+            */}
+            <Button
+              size="small"
+              variant="subtle"
+              iconOnly
+              className={styles.foldToggle}
+              aria-pressed={!panels.isFolded('entities')}
+              aria-controls="ontoschema-entities"
+              onClick={() => panels.toggle('entities')}
+              aria-label={panels.isFolded('entities') ? 'Show palette' : 'Hide palette'}
+              title={panels.isFolded('entities') ? 'Show palette' : 'Hide palette'}
+              data-testid="fold-entities"
+            >
+              <EntitiesPanelIcon />
+            </Button>
             <Tabs options={VIEW_TABS} value={view} onChange={setView} ariaLabel="Canvas view" />
             <span className={styles.viewHint}>
               {canvasHint({ view, relations: taxonomyRelations, hasSelection: inspecting })}
@@ -273,6 +345,22 @@ export function App() {
               </Switch>
             ) : null}
             <Spacer />
+            <Button
+              size="small"
+              variant="subtle"
+              iconOnly
+              onClick={toggleBothPanels}
+              aria-pressed={bothFolded}
+              aria-label={bothFolded ? 'Show both panels' : 'Hide both panels'}
+              title={
+                bothFolded
+                  ? 'Show both panels and fit the schema (Shift+F)'
+                  : 'Hide both panels and fit the schema (Shift+F)'
+              }
+              data-testid="fold-both"
+            >
+              {bothFolded ? <PanelsBackIcon /> : <PanelsAsideIcon />}
+            </Button>
             {finding.action}
             <Button
               size="small"
@@ -293,6 +381,20 @@ export function App() {
               title="Redo (Ctrl+Shift+Z)"
             >
               <RedoIcon />
+            </Button>
+            <Button
+              size="small"
+              variant="subtle"
+              iconOnly
+              className={styles.foldToggle}
+              aria-pressed={!panels.isFolded('inspector')}
+              aria-controls="ontoschema-inspector"
+              onClick={() => panels.toggle('inspector')}
+              aria-label={panels.isFolded('inspector') ? 'Show inspector' : 'Hide inspector'}
+              title={panels.isFolded('inspector') ? 'Show inspector' : 'Hide inspector'}
+              data-testid="fold-inspector"
+            >
+              <InspectorPanelIcon />
             </Button>
           </Toolbar>
 
@@ -334,6 +436,41 @@ export function App() {
 }
 
 /**
+ * Selecting an entity opens the inspector, at every width, however it was selected — and
+ * deselecting gives the space back if that is all it was open for.
+ *
+ * On a narrow layout this has always been true: the inspector is a drawer that slides in when
+ * something is selected and out again when nothing is. On a wide one the column is simply always
+ * there — until todo 30 gave it a folded state, at which point clicking a class put its details
+ * in a panel nobody could see. The owner's rule for that case was that the two layouts should
+ * behave the same, so a folded inspector is lent to a selection and taken back afterwards.
+ *
+ * Lent, not opened: `reveal` leaves what the owner asked for alone, so an inspector that was
+ * folded is folded again the moment nothing is selected, and is still folded after a reload.
+ * A panel that was open all along is untouched by either call.
+ *
+ * Keyed on the selection *changing*, not on there being one, so clicking from one class to the
+ * next does not move the column — that was the measured hazard, and it is the reason this is
+ * two edges rather than a condition.
+ */
+function useRevealInspector(
+  selection: EntityRef | null,
+  reveal: (panel: SidePanel) => void,
+  conceal: (panel: SidePanel) => void,
+) {
+  const key = selection ? `${selection.kind}:${selection.id}` : null;
+  // Seeded with the first value, so a schema that opens with something already selected is not
+  // treated as a click that has just happened.
+  const previous = useRef(key);
+
+  useEffect(() => {
+    if (key === null) conceal('inspector');
+    else if (key !== previous.current) reveal('inspector');
+    previous.current = key;
+  }, [key, reveal, conceal]);
+}
+
+/**
  * Undo, redo and delete are global gestures, but must not fire while the user is typing
  * into a field — otherwise Ctrl+Z in a text box would roll back the model instead of the
  * text, and Delete would remove the selected class mid-word.
@@ -363,8 +500,9 @@ function useGlobalShortcuts(actions: {
   redo: () => void;
   deleteSelection: () => void;
   find: () => void;
+  frame: () => void;
 }) {
-  const { undo, redo, deleteSelection, find } = actions;
+  const { undo, redo, deleteSelection, find, frame } = actions;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -395,6 +533,17 @@ function useGlobalShortcuts(actions: {
         redo();
         return;
       }
+      /*
+       * Shift+F, and it toggles like the button. Bare `f` was turned down: single letters
+       * are the keys a future shortcut will want, and one that fires on an ordinary letter has
+       * only the typing guard between it and a name field.
+       */
+      if (event.shiftKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'f') {
+        if (typing) return;
+        event.preventDefault();
+        frame();
+        return;
+      }
       if ((event.key === 'Delete' || event.key === 'Backspace') && !typing) {
         event.preventDefault();
         deleteSelection();
@@ -403,5 +552,5 @@ function useGlobalShortcuts(actions: {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteSelection, find]);
+  }, [undo, redo, deleteSelection, find, frame]);
 }

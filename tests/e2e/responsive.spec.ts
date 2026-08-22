@@ -40,8 +40,14 @@ test.describe('wide', () => {
     await openApp(page);
     await expect(entities(page)).toBeVisible();
     await expect(inspector(page)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Entities' })).toBeHidden();
-    await expect(page.getByRole('button', { name: 'Inspector' })).toBeHidden();
+    /*
+     * Exact, because the wide layout has a *fold* button named "Hide palette" and Playwright
+     * matches an accessible name by substring unless told otherwise. Two different controls, and
+     * they never appear together -- this one is the narrow layout's drawer toggle.
+     */
+    await expect(page.getByRole('button', { name: 'Entities', exact: true })).toBeHidden();
+    // There is no Inspector drawer toggle at any width: selecting something is what opens it.
+    await expect(page.getByRole('button', { name: 'Inspector', exact: true })).toHaveCount(0);
   });
 });
 
@@ -67,8 +73,8 @@ test.describe('narrow', () => {
 
     await expect(entities(page)).toBeHidden();
     await expect(inspector(page)).toBeHidden();
-    await expect(page.getByRole('button', { name: 'Entities' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Inspector' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Entities', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Inspector', exact: true })).toHaveCount(0);
 
     const canvas = await page.getByTestId('schema-canvas').boundingBox();
     expect(canvas?.width ?? 0).toBeGreaterThan(NARROW.width * 0.9);
@@ -84,7 +90,7 @@ test.describe('narrow', () => {
 
   test('opens and closes the entities drawer', async ({ page }) => {
     await openApp(page);
-    const toggle = page.getByRole('button', { name: 'Entities' });
+    const toggle = page.getByRole('button', { name: 'Entities', exact: true });
 
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await toggle.click();
@@ -103,7 +109,7 @@ test.describe('narrow', () => {
   test('opens the inspector by selecting, and closes it by deselecting', async ({ page }) => {
     await openApp(page);
     // The palette lives in the entities drawer here, and creating from it closes that drawer.
-    await page.getByRole('button', { name: 'Entities' }).click();
+    await page.getByRole('button', { name: 'Entities', exact: true }).click();
     await page.locator('[data-palette-kind="class"]').click();
 
     /*
@@ -122,9 +128,9 @@ test.describe('narrow', () => {
 
   test('shows one drawer at a time', async ({ page }) => {
     await openApp(page);
-    await page.getByRole('button', { name: 'Entities' }).click();
+    await page.getByRole('button', { name: 'Entities', exact: true }).click();
     await page.locator('[data-palette-kind="class"]').click();
-    await page.getByRole('button', { name: 'Entities' }).click();
+    await page.getByRole('button', { name: 'Entities', exact: true }).click();
     await expect(entities(page)).toBeVisible();
 
     // Selecting opens the inspector, and the entities drawer gets out of its way.
@@ -135,7 +141,7 @@ test.describe('narrow', () => {
 
   test('creating from the palette closes the drawer over the canvas', async ({ page }) => {
     await openApp(page);
-    await page.getByRole('button', { name: 'Entities' }).click();
+    await page.getByRole('button', { name: 'Entities', exact: true }).click();
 
     // Dragging out of an overlay onto the canvas beneath it is awkward, so the palette's
     // click path is the narrow-viewport route — and it gets out of the way afterwards.
@@ -147,7 +153,7 @@ test.describe('narrow', () => {
 
   test('the whole editing workflow still works', async ({ page }) => {
     await openApp(page);
-    await page.getByRole('button', { name: 'Entities' }).click();
+    await page.getByRole('button', { name: 'Entities', exact: true }).click();
     await page.locator('[data-palette-kind="class"]').click();
 
     await page.locator('[data-class-node-id]').first().locator('header [title]').dblclick();
