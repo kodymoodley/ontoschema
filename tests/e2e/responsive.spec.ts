@@ -359,6 +359,76 @@ test.describe('on a phone', () => {
     );
   });
 
+  /*
+   * The drawers open below the canvas toolbar, not below the header. When they opened below the
+   * header they lay over the strip: at this width, with a class selected, Undo, Redo, Find and
+   * the hide-both-panels control were all covered and only the two view tabs answered a tap.
+   * Selecting is how you edit, so undo was unreachable exactly when it was wanted.
+   *
+   * Hit-testing rather than geometry, because that is the actual question -- whether a tap on
+   * the button reaches the button.
+   */
+  test('leaves every control on the canvas toolbar reachable', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+    await expect(inspector(page)).toBeVisible();
+
+    const covered = await page.evaluate(() => {
+      const bar = document.querySelector('[class*="canvasToolbar"]');
+      const blocked: string[] = [];
+      for (const control of Array.from(bar?.querySelectorAll('button, [role="switch"]') ?? [])) {
+        const rect = control.getBoundingClientRect();
+        if (rect.width === 0) continue;
+        const at = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        if (at === control || control.contains(at)) continue;
+        blocked.push(control.getAttribute('aria-label') ?? control.textContent?.trim() ?? '?');
+      }
+      return blocked;
+    });
+
+    expect(covered, `covered by the drawer: ${covered.join(', ')}`).toEqual([]);
+  });
+
+  /*
+   * The same gesture and the same result as on a desktop. It used to change its own label here
+   * and leave the drawer where it was: the inspector is a drawer at this width rather than a
+   * column, and it opened on selection alone with nothing consulting the fold.
+   */
+  test('hides both panels and brings them back, as it does on a desktop', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+    await page.getByRole('button', { name: 'Entities', exact: true }).click();
+    await expect(entities(page)).toBeVisible();
+
+    const both = page.getByTestId('fold-both');
+    await both.click();
+    await expect(inspector(page)).toBeHidden();
+    await expect(entities(page)).toBeHidden();
+    await expect(both).toHaveAttribute('aria-label', 'Show both panels');
+
+    await both.click();
+    await expect(inspector(page)).toBeVisible();
+    await expect(entities(page)).toBeVisible();
+    await expect(both).toHaveAttribute('aria-label', 'Hide both panels');
+    /*
+     * Putting the panels away was not deselecting. Asserted here rather than while they were
+     * away: a panel hidden with `visibility` leaves the accessibility tree, so there is nothing
+     * to read the field from until it comes back.
+     */
+    await expect(page.getByLabel('Class local name')).toHaveValue('Track');
+  });
+
+  /* Selecting opens the inspector at every width, and that has to survive being put away. */
+  test('opens the inspector again on the next selection', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+    await page.getByTestId('fold-both').click();
+    await expect(inspector(page)).toBeHidden();
+
+    await find(page, 'Album');
+    await expect(inspector(page)).toBeVisible();
+  });
+
   /* The panel's title is the thing being edited, and it was showing as `performe…`. */
   test('shows the name of what is being edited in full', async ({ page }) => {
     await musicLibrary(page);

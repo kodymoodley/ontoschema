@@ -182,7 +182,17 @@
   .right {
     position: absolute;
     z-index: 20;
-    top: var(--header-height);
+    /*
+     * Below the canvas toolbar, not merely below the header. Starting at the header put these
+     * over the toolbar, and at 320px with a class selected that covered Undo, Redo, Find and
+     * the hide-both-panels control -- everything on the strip but the two view tabs.
+     *
+     * The height comes from the shell, which measures the strip. It is content-sized: a
+     * different set of controls per view, a type scale that steps down at this width, and it
+     * wraps if it must. The fallback of 0px is the old behaviour, for the frame before the
+     * first measurement arrives.
+     */
+    top: calc(var(--header-height) + var(--canvas-toolbar-height, 0px));
     bottom: 0;
     /*
      * Half what it was. At 320px the drawer covered 82% of a portrait phone, so creating an
@@ -232,6 +242,22 @@
   .shell[data-inspecting='true'] .right {
     visibility: visible;
     transform: translateX(0);
+  }
+
+  /*
+   * Except when it has been put away. The inspector is a drawer here rather than a column, and
+   * it opens on selection alone -- so without this the control that hides both panels changed
+   * its own label on a phone and left the drawer sitting there.
+   *
+   * Only the inspector needs the rule. The left drawer has a state of its own at this width and
+   * the shell closes it directly; folding it here as well would leave its toggle unable to open
+   * it again.
+   *
+   * After this rule, so it wins on equal specificity.
+   */
+  .shell[data-fold-inspector='true'] .right {
+    visibility: hidden;
+    transform: translateX(100%);
   }
 }
 

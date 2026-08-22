@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Palette, SchemaCanvas, TaxonomyCanvas, frameAll, usePaletteCreate } from '../canvas';
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
@@ -23,6 +24,7 @@ import {
 import { useThemePreference } from './useThemePreference';
 import { useFullscreen } from './useFullscreen';
 import { FOLD_DURATION_MS, usePanelPreference } from './usePanelPreference';
+import { useMeasuredHeight } from './useMeasuredHeight';
 import type { SidePanel } from './usePanelPreference';
 import { useExportAction } from './useExportAction';
 import { useDialogAction } from './useDialogAction';
@@ -96,6 +98,11 @@ export function App() {
   const { theme, toggleTheme } = useThemePreference();
   const fullscreen = useFullscreen();
   const panels = usePanelPreference();
+  /*
+   * How far down the drawers start on a narrow screen. They used to start below the header,
+   * which put them over the canvas toolbar and its Undo, Redo and Find.
+   */
+  const { measure: measureToolbar, height: toolbarHeight } = useMeasuredHeight();
   const saving = useExportAction('save');
   const exporting = useExportAction();
   /*
@@ -147,6 +154,12 @@ export function App() {
     move('entities');
     move('inspector');
     /*
+     * Below the breakpoint the left panel is an overlay drawer with a state of its own, which
+     * the fold does not reach. Same gesture, same result at both sizes: both panels away, or
+     * both back. On a wide layout this line changes nothing anyone can see.
+     */
+    setDrawer(bothFolded ? 'entities' : 'none');
+    /*
      * After the columns have finished moving, not before. React Flow measures the pane at the
      * moment `fitView` is called, so fitting first frames the drawing into a canvas 680px away
      * from the one it lands in. Framing on the way back matters just as much: the canvas has
@@ -182,6 +195,7 @@ export function App() {
   return (
     <div
       className={styles.shell}
+      style={{ '--canvas-toolbar-height': `${toolbarHeight}px` } as CSSProperties}
       data-drawer={drawer}
       data-inspecting={inspecting}
       data-fold-entities={panels.isFolded('entities')}
@@ -310,7 +324,7 @@ export function App() {
             if (drawer !== 'none') setDrawer('none');
           }}
         >
-          <Toolbar className={styles.canvasToolbar}>
+          <Toolbar ref={measureToolbar} className={styles.canvasToolbar}>
             {/*
               At the ends of the strip, on the side each one folds, so the control points at
               the thing it acts on. Only on a wide layout: below the breakpoint both panels are

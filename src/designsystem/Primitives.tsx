@@ -405,8 +405,21 @@ export function Modal({ title, open, onClose, children, footer, size = 'default'
 
 /* --------------------------------------------------------------- Toolbar */
 
-export function Toolbar({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx(styles.toolbar, className)}>{children}</div>;
+export function Toolbar({
+  children,
+  className,
+  ref,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Taken so the shell can measure the strip; the drawers open below whatever height it is. */
+  ref?: React.Ref<HTMLDivElement>;
+}) {
+  return (
+    <div ref={ref} className={cx(styles.toolbar, className)}>
+      {children}
+    </div>
+  );
 }
 
 export function Spacer() {
