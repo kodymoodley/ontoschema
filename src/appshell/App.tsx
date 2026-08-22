@@ -32,9 +32,10 @@ import { EntitySearch } from '../entitysearch';
 import {
   AppMark,
   EntitiesPanelIcon,
-  FitIcon,
   InspectorPanelIcon,
   MetadataIcon,
+  PanelsAsideIcon,
+  PanelsBackIcon,
   RedoIcon,
   SearchIcon,
   UndoIcon,
@@ -127,21 +128,25 @@ export function App() {
   useRevealInspector(selection, panels.show);
 
   /*
-   * The whole schema, with the room to see it. Folding is what makes the canvas bigger, and
-   * fitting is what makes the drawing fill it; either on its own leaves half the job undone.
+   * The whole window for the canvas, and the way back. Folding is what makes the canvas bigger
+   * and fitting is what makes the drawing fill it; either on its own leaves half the job undone,
+   * which is why they are one gesture rather than two controls.
    *
-   * One-way on purpose. The two fold toggles sit at the ends of this same strip and are how the
-   * panels come back, so a second control that put them back would be a third way to say the
-   * same thing. Pressing this again simply re-frames, which is what it is wanted for after
-   * panning around.
+   * Which way the next press goes is read off the panels themselves rather than remembered. A
+   * flag would go stale the moment either panel was folded by its own toggle, or the moment a
+   * selection unfolded the inspector -- and a control whose picture disagrees with the window is
+   * worse than one with fewer states.
    */
-  const frameCanvas = () => {
-    panels.hide('entities');
-    panels.hide('inspector');
+  const bothFolded = panels.isFolded('entities') && panels.isFolded('inspector');
+  const toggleBothPanels = () => {
+    const move = bothFolded ? panels.show : panels.hide;
+    move('entities');
+    move('inspector');
     /*
-     * After the columns have finished moving, not before. The canvas is measured by React Flow
-     * at the moment `fitView` is called, and calling it first fits the drawing to a pane that
-     * is still 680px narrower than it is about to be.
+     * After the columns have finished moving, not before. React Flow measures the pane at the
+     * moment `fitView` is called, so fitting first frames the drawing into a canvas 680px away
+     * from the one it lands in. Framing on the way back matters just as much: the canvas has
+     * shrunk, and a drawing left at the wider zoom would sit half outside it.
      */
     window.setTimeout(frameAll, FOLD_DURATION_MS + 20);
   };
@@ -164,7 +169,7 @@ export function App() {
     redo,
     deleteSelection,
     find: () => finding.setOpen(true),
-    frame: frameCanvas,
+    frame: toggleBothPanels,
   });
 
   const attributeCount = ontology.attributes.length;
@@ -344,12 +349,17 @@ export function App() {
               size="small"
               variant="subtle"
               iconOnly
-              onClick={frameCanvas}
-              aria-label="Fit everything on screen"
-              title="Fit everything on screen (Shift+F)"
-              data-testid="frame-canvas"
+              onClick={toggleBothPanels}
+              aria-pressed={bothFolded}
+              aria-label={bothFolded ? 'Show both panels' : 'Hide both panels'}
+              title={
+                bothFolded
+                  ? 'Show both panels and fit the schema (Shift+F)'
+                  : 'Hide both panels and fit the schema (Shift+F)'
+              }
+              data-testid="fold-both"
             >
-              <FitIcon />
+              {bothFolded ? <PanelsBackIcon /> : <PanelsAsideIcon />}
             </Button>
             {finding.action}
             <Button
@@ -514,7 +524,7 @@ function useGlobalShortcuts(actions: {
         return;
       }
       /*
-       * Shift+F for fit. Bare `f` was the obvious choice and was turned down: single letters
+       * Shift+F, and it toggles like the button. Bare `f` was turned down: single letters
        * are the keys a future shortcut will want, and one that fires on an ordinary letter has
        * only the typing guard between it and a name field.
        */

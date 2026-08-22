@@ -178,13 +178,14 @@ test.describe('on a narrow screen', () => {
 });
 
 /**
- * One control for "show me everything": both panels away, the whole drawing framed.
+ * One control for "show me everything": both panels away, the whole drawing framed -- and the
+ * same control to put them back.
  *
  * The two halves are what makes it worth having as a single thing. Folding without fitting
  * leaves the drawing the size it was in a pane twice as wide; fitting without folding frames it
  * into the space the panels left over.
  */
-test.describe('fitting everything on screen', () => {
+test.describe('hiding both panels', () => {
   test.use({ viewport: { width: 1440, height: 820 } });
 
   /** The share of the canvas the drawing spans, edge to edge across every class on it. */
@@ -203,7 +204,7 @@ test.describe('fitting everything on screen', () => {
     await openApp(page);
     await openMusicLibrary(page);
 
-    await page.getByTestId('frame-canvas').click();
+    await page.getByTestId('fold-both').click();
 
     await expect(page.getByTestId('fold-entities')).toHaveAttribute('aria-label', 'Show palette');
     await expect(page.getByTestId('fold-inspector')).toHaveAttribute(
@@ -234,13 +235,74 @@ test.describe('fitting everything on screen', () => {
     await openApp(page);
     await openMusicLibrary(page);
 
-    await expect(page.getByTestId('frame-canvas')).toHaveAttribute(
+    await expect(page.getByTestId('fold-both')).toHaveAttribute(
       'title',
-      'Fit everything on screen (Shift+F)',
+      'Hide both panels and fit the schema (Shift+F)',
     );
 
     await page.keyboard.press('Shift+F');
     await expect.poll(() => canvasWidth(page)).toBe(1440);
+
+    // And back, so the keyboard is not a one-way door either.
+    await page.keyboard.press('Shift+F');
+    await expect.poll(() => canvasWidth(page)).toBeLessThan(1440);
+  });
+
+  /*
+   * The way back. A control that only goes one way leaves the two fold toggles as the only way
+   * out, which is two presses to undo one -- and the icon would say nothing about which of its
+   * two states the window is in.
+   */
+  test('puts both panels back when it is pressed again, and re-fits', async ({ page }) => {
+    await openApp(page);
+    await openMusicLibrary(page);
+    const both = page.getByTestId('fold-both');
+
+    await both.click();
+    await expect.poll(() => canvasWidth(page)).toBe(1440);
+    await expect(both).toHaveAttribute('aria-label', 'Show both panels');
+    await expect(both).toHaveAttribute('aria-pressed', 'true');
+    await settledViewport(page);
+    const wide = await drawingSpan(page);
+
+    await both.click();
+    await expect.poll(() => canvasWidth(page)).toBeLessThan(1440);
+    await expect(both).toHaveAttribute('aria-label', 'Hide both panels');
+    await expect(both).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('fold-entities')).toHaveAttribute('aria-label', 'Hide palette');
+    await expect(page.getByTestId('fold-inspector')).toHaveAttribute(
+      'aria-label',
+      'Hide inspector',
+    );
+
+    /*
+     * Re-fitted rather than left at the wider zoom, which would leave the drawing hanging out
+     * of a canvas that has just lost 620px. Same share of a smaller pane, so the span holds.
+     */
+    await settledViewport(page);
+    const narrow = await drawingSpan(page);
+    expect(narrow.span).toBeGreaterThan(0.6);
+    for (const box of narrow.drawn) {
+      expect(box.x + box.width).toBeLessThanOrEqual(narrow.canvas.x + narrow.canvas.width + 1);
+    }
+    expect(wide.span).toBeGreaterThan(0.6);
+  });
+
+  /*
+   * It reads the panels rather than remembering what it did, so it cannot disagree with the
+   * window it is describing.
+   */
+  test('offers to hide again once something has reopened a panel', async ({ page }) => {
+    await openApp(page);
+    await openMusicLibrary(page);
+    const both = page.getByTestId('fold-both');
+
+    await both.click();
+    await expect(both).toHaveAttribute('aria-label', 'Show both panels');
+
+    // Selecting a class unfolds the inspector, so the two are no longer both away.
+    await selectClass(page, 'Album');
+    await expect(both).toHaveAttribute('aria-label', 'Hide both panels');
   });
 
   /* A capital F is a letter before it is a shortcut. */
@@ -263,7 +325,7 @@ test.describe('fitting everything on screen', () => {
     await page.getByRole('tab', { name: 'Taxonomy' }).click();
     await expect(page.getByTestId('taxonomy-canvas')).toBeVisible();
 
-    await page.getByTestId('frame-canvas').click();
+    await page.getByTestId('fold-both').click();
     await expect
       .poll(async () =>
         Math.round((await page.getByTestId('taxonomy-canvas').boundingBox())!.width),

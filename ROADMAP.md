@@ -45,8 +45,9 @@ the one thing RDF cannot carry. The file menu was tidied into four groups on the
 **Both side panels now fold away on a wide screen** (todo 30), with two follow-ups that came
 out of using it. Selecting an entity unfolds the inspector again (todo 33) — the rule from todo
 27, that selecting is what opens it, had to keep holding once there was a folded state for it to
-hold against. And one control folds both panels and frames the whole schema at once (todo 34),
-because the two halves of "show me everything" are worth having on one button.
+hold against. And one control puts both panels away and frames the whole schema at
+once, and puts them back again (todo 34), because the two halves of "show me everything" are
+worth having on one button.
 
 **The inspector arc is finished too** — todos 23 to 29. The tab strip is gone: export left, then
 the schema's own metadata, then Details and Annotations became one scrolling panel. There is no
