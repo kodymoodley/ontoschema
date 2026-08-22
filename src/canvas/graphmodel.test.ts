@@ -98,7 +98,12 @@ describe('schemaEdges', () => {
     expect(edge?.targetHandle).toBe('target-top');
   });
 
-  it('keeps a subclass link vertical, flipping it when the child sits above the parent', () => {
+  /*
+   * The hierarchy belongs to the taxonomy view, which lays it out rather than drawing it over
+   * wherever the classes have been dragged. Here it was a second set of lines through the same
+   * crowded middle, saying what every class box already says in its own header.
+   */
+  it('draws no subclass links at all', () => {
     const {
       ontology,
       source: parent,
@@ -106,15 +111,11 @@ describe('schemaEdges', () => {
     } = twoClasses({ x: 0, y: 0 }, { x: 0, y: 600 });
     const linked = addSubClassOf(ontology, child, parent);
 
-    const subclassEdge = (model: Ontology) =>
-      schemaEdges(model).find((edge) => edge.type === EDGE_TYPE.subClassOf);
-
-    expect(subclassEdge(linked)?.sourceHandle).toBe('source-top');
-    expect(subclassEdge(linked)?.targetHandle).toBe('target-bottom');
-
-    const flipped = moveClass(linked, child, { x: 0, y: -600 });
-    expect(subclassEdge(flipped)?.sourceHandle).toBe('source-bottom');
-    expect(subclassEdge(flipped)?.targetHandle).toBe('target-top');
+    expect(schemaEdges(linked).some((edge) => edge.type === EDGE_TYPE.subClassOf)).toBe(false);
+    // And the model still holds it: this is about what is drawn, not about what exists.
+    expect(
+      taxonomyGraph(linked, null, 'off').edges.some((edge) => edge.type === EDGE_TYPE.subClassOf),
+    ).toBe(true);
   });
 
   it('accounts for the attributes a class carries when picking sides', () => {

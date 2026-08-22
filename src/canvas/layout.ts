@@ -136,17 +136,6 @@ export function chooseSides(source: Box, target: Box): { source: Side; target: S
   return dy >= 0 ? { source: 'bottom', target: 'top' } : { source: 'top', target: 'bottom' };
 }
 
-/**
- * Subclass links stay vertical whatever the layout, because a hierarchy that reads upward is
- * the whole point of drawing them differently — but they flip end for end so a child placed
- * above its parent does not loop all the way around.
- */
-export function chooseHierarchySides(child: Box, parent: Box): { source: Side; target: Side } {
-  return centreOf(child).y >= centreOf(parent).y
-    ? { source: 'top', target: 'bottom' }
-    : { source: 'bottom', target: 'top' };
-}
-
 export const sourceHandleId = (side: Side) => `source-${side}`;
 export const targetHandleId = (side: Side) => `target-${side}`;
 

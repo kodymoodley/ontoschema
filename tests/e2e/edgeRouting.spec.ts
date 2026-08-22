@@ -86,12 +86,6 @@ const relationEdge = async (page: Page, name: string) => {
   return ends;
 };
 
-const subclassEdge = async (page: Page) => {
-  const ends = await edgeEnds(page, '.react-flow__edge[data-id^="subclass:"]');
-  if (!ends) throw new Error('no subclass edge rendered');
-  return ends;
-};
-
 /** How many of the schema's classes are actually within the visible canvas. */
 async function onScreen(page: Page) {
   return page.locator('[data-class-node-id]').evaluateAll((nodes) => {
@@ -269,25 +263,26 @@ test('a relation can be drawn by hand from any side', async ({ page }) => {
   await expect(page.locator('[data-relation-name="hasEngine"]')).toBeVisible();
 });
 
-test('a subclass link stays vertical when the child is dragged above its parent', async ({
-  page,
-}) => {
+/*
+ * The hierarchy is the taxonomy view's subject and it draws it laid out. On the schema canvas
+ * the same links crossed the crowded middle to say what the class box already says in its own
+ * header, so they are not drawn here -- and nothing about the model changed, which is what the
+ * other half of this checks.
+ */
+test('the schema canvas draws no subclass links', async ({ page }) => {
   await openApp(page);
   await newClass(page, 'Vehicle', 300, 300);
   await newClass(page, 'Car', 300, 620);
   await page.locator('[data-class-name="Car"] header').click();
   await page.getByLabel('Superclass').selectOption({ label: 'Vehicle' });
-  await expect(page.locator('.react-flow__edge[data-id^="subclass:"]')).toHaveCount(1);
 
-  // The usual arrangement: child below, so the link leaves its top.
-  expect(await sideOf(page, 'Car', (await subclassEdge(page)).start)).toBe('top');
+  // The class says whose subclass it is, where it has always said so.
+  await expect(page.locator('[data-class-name="Car"]')).toContainText('Vehicle');
+  await expect(page.locator('.react-flow__edge[data-id^="subclass:"]')).toHaveCount(0);
 
-  await dragClassBy(page, 'Car', 0, -500);
-
-  // Still vertical — hierarchy stays legible — but flipped end for end rather than looping.
-  const after = await subclassEdge(page);
-  expect(await sideOf(page, 'Car', after.start)).toBe('bottom');
-  expect(await sideOf(page, 'Vehicle', after.end)).toBe('top');
+  // And the taxonomy view, whose job this is, draws it.
+  await page.getByRole('tab', { name: 'Taxonomy' }).click();
+  await expect(page.locator('.react-flow__edge[data-id*="subclass:"]')).toHaveCount(1);
 });
 
 test('double-clicking bare canvas frames the whole schema again', async ({ page }) => {
@@ -440,10 +435,9 @@ test('a relation label passing over a class does not cover it', async ({ page })
 });
 
 /**
- * Rigid right angles rather than a curve, which is how the taxonomy view draws its relations
- * and how the subclass links beside these have always been drawn. A curve through a crowded
- * schema takes the shortest way regardless of what is in the middle, and reads as one of
- * several lines going roughly the same way; a stepped line is followable.
+ * Rigid right angles rather than a curve, which is how the taxonomy view draws its relations.
+ * A curve through a crowded schema takes the shortest way regardless of what is in the middle,
+ * and reads as one of several lines going roughly the same way; a stepped line is followable.
  */
 test('a relation is drawn as straight runs and right angles, never as a curve', async ({
   page,
@@ -470,23 +464,6 @@ test('a relation is drawn as straight runs and right angles, never as a curve', 
       `run ${index} goes from ${run.from.x},${run.from.y} to ${run.to.x},${run.to.y}`,
     ).toBe(true);
   }
-});
-
-/* The two kinds of line differ by colour and arrowhead, not by how they are drawn. */
-test('a relation and a subclass link are drawn the same way', async ({ page }) => {
-  await openApp(page);
-  await openExamples(page);
-  await page.getByText('Music library', { exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-
-  const usageId = await page
-    .locator('[data-relation-name="hasMember"]')
-    .first()
-    .getAttribute('data-usage-id');
-  const relation = await pathMoves(page, `.react-flow__edge[data-id="${usageId}"]`);
-  const subclass = await pathMoves(page, '.react-flow__edge[data-id^="subclass:"]');
-
-  expect(new Set(relation.commands)).toEqual(new Set(subclass.commands));
 });
 
 /*

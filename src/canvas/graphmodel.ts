@@ -5,7 +5,6 @@ import {
   CLASS_NODE_WIDTH,
   TAXONOMY_NODE_HEIGHT,
   TAXONOMY_NODE_WIDTH,
-  chooseHierarchySides,
   chooseSides,
   estimateClassHeight,
   layoutTaxonomyModule,
@@ -238,31 +237,15 @@ export function schemaEdges(ontology: Ontology): Edge[] {
     });
   }
 
-  // Subclass links also show on the schema canvas, in the taxonomy's own visual language,
-  // so the two views never disagree about what the model contains. They stay vertical
-  // whatever the layout, which is what keeps hierarchy legible next to the relations.
-  const hierarchy: Edge[] = subClassEdges(ontology).map(({ childId, parentId }) => {
-    const child = boxes.get(childId);
-    const parent = boxes.get(parentId);
-    const sides =
-      child && parent
-        ? chooseHierarchySides(child, parent)
-        : { source: 'top' as const, target: 'bottom' as const };
-
-    return {
-      id: `subclass:${childId}:${parentId}`,
-      type: EDGE_TYPE.subClassOf,
-      zIndex: EDGE_LAYER,
-      source: childId,
-      target: parentId,
-      sourceHandle: sourceHandleId(sides.source),
-      targetHandle: targetHandleId(sides.target),
-      selectable: false,
-      data: {},
-    };
-  });
-
-  return [...relations, ...hierarchy];
+  /*
+   * Relations only. Subclass links used to be drawn here too, in the taxonomy's visual language,
+   * so that the two views never disagreed about what the model contains -- but the taxonomy view
+   * exists to show the hierarchy and shows it better, laid out rather than wherever the classes
+   * happen to have been dragged. Here they were another set of lines crossing the same crowded
+   * middle, saying something the class box already says: every class names its superclasses in
+   * its own header.
+   */
+  return relations;
 }
 
 /* ---------------------------------------------------------- taxonomy view */

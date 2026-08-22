@@ -634,6 +634,13 @@ thousand attempts. **Nobody found a cause**, so this is not a fix. See
 [What was known about the WebKit flake](#what-was-known-about-the-webkit-flake), which stays as
 written in case it returns.
 
+**Subclass links on the schema canvas** — _removed, by the owner._ They were drawn there as well
+as in the taxonomy view so the two views could not disagree about what the model holds. In
+practice they were a second set of lines through the same crowded middle, saying what each class
+box already says in its own header, and the taxonomy view shows a hierarchy far better because it
+lays one out rather than drawing it over wherever the classes were dragged. The schema canvas now
+draws relations only. Nothing changed in the model or in any export.
+
 **The taxonomy view's caption** — _done by deletion._ "Laid out automatically — one module per
 root class, superclasses above" described a picture that explains itself, in a toolbar where
 every other character is a control. Its removal also settled a smaller complaint: prose that comes
