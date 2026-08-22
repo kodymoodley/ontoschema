@@ -42,6 +42,11 @@ one annotation, the SHACL shapes in a file of their own, and a report of what a 
 left behind. The private project format is gone from everyday use, and a workspace backup covers
 the one thing RDF cannot carry. The file menu was tidied into four groups on the way through.
 
+**The inspector arc is finished too** — todos 23 to 29. The tab strip is gone: export left, then
+the schema's own metadata, then Details and Annotations became one scrolling panel. There is no
+Inspector toggle any more, because selecting something is what opens it, at every width. And a
+schema too big to scan can be searched by name or description from `Ctrl`+`K`.
+
 What that leaves is short. Neither of the two sequenced items is ready to start, and saying so is
 the point of listing them: both want a design note before any code.
 
@@ -56,16 +61,16 @@ the point of listing them: both want a design note before any code.
 **Filed, and deliberately not sequenced.** None of these is a commitment until it appears in the
 list above:
 
-- **Find an entity by name or description** (todo 29) — the last of the inspector arc, and the
-  only part of it left. Decided and ready.
 - **Harden the layout annotation** (todo 20) — owed work, named as such: the positions shipped
   with the happy path tested and little else.
 - **Metadata editing as an ordinary form** (todo 18) — scoped now: the ontology's metadata and an
   entity's details and annotations, and nowhere else. Export keeps its jargon, because the RDF is
   what that panel is for. Waits on a proposal rather than a slot — what the forms hold, in what
   order, under what labels — which the owner approves before any of it is built.
-- **Let the side panels slide away on desktop** (todo 30) — ready, but settle it against todo 27
-  first: one has selection open the inspector, the other has you close it on purpose.
+- **Let the side panels slide away on desktop** (todo 30) — ready, and settled: todo 27 is built,
+  so the rule is that selecting something opens the inspector at every width. What is left for
+  this item is the _left_ panel, and a way to put the inspector away on a wide screen without
+  deselecting. It carries a measured warning about how not to do it.
 - **Palette and taxonomy as subtabs** (todo 3) — parked after measuring; the choice of shape is
   the owner's.
 
@@ -622,8 +627,8 @@ list as originally written is in the git history; ask and it comes back.
 | 18  | Editing workflow       | Metadata editing as an ordinary form, with the vocabulary as plumbing        | M    |
 | 20  | Export and interop     | Harden the layout annotation: real tests, and fault tolerance worth the name | S–M  |
 | 28  | Editing workflow       | Shrink the inspector on a phone — field layout as much as type               | S    |
-| 30  | Canvas and readability | Let the side panels slide away on desktop — settle against 27 first          | S–M  |
+| 30  | Canvas and readability | Let the side panels slide away on desktop — the left panel, mainly           | S–M  |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 27, 31 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 27, 29, 31 — kept as numbers so a commit message naming one can still be resolved.
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
