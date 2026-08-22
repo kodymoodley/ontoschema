@@ -429,14 +429,26 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 > parts that a design note has to answer before any code, and two of them were found by checking
 > the arithmetic rather than by reading the sentence.
 >
-> **Density has to be per module, or it does nothing.** 0.25 of a directed graph is
-> `0.25 × N × (N-1)` edges. At nine classes that is 18, which is the number intended. At 729 it is
-> **132,678** — far more than the 13,122 that nine-per-module would allow, so a schema-wide density
-> rule is no rule at all. Per module it bites; anywhere else it is decoration.
+> **Decided: the same rule at every level, counting arrows between boxes.** The limit is about what
+> you see at one altitude, not about relations in the model. Three levels fall out of nine three
+> times over — a module of classes, a group of modules, a schema of groups — and the same rule at
+> each means **every view has at most nine boxes and eighteen arrows**. That is the C4 property made
+> literal, and it is what "zoom out so the node count falls" was asking for.
 >
-> **Edges between modules need their own answer.** Eighteen per module bounds what happens inside a
-> box. It says nothing about how many arrows cross a boundary, and in C4 terms that is the number
-> that matters most, because it is what decides whether the zoomed-out view is readable.
+> An arrow means *these two boxes are related somehow*, not *this is one relation*. Two modules
+> joined by forty class-to-class relations are one arrow when you are looking at modules, because
+> that is the honest picture at that altitude. So the limit bites on **how many boxes touch each
+> other, not on how much they say to each other**: once two modules are connected, further
+> relations between them are free.
+>
+> Why not count crossing relations individually: the number being enforced would be invisible at
+> the level you are looking at, so a refusal could not be explained by anything on screen.
+>
+> **Density therefore has to be per level, or it does nothing.** 0.25 of a directed graph is
+> `0.25 × N × (N-1)` edges. At nine boxes that is 18, which is the number intended, and it is the
+> same 18 at all three levels because every level has nine boxes. Applied to a whole schema of 729
+> classes it would allow **132,678** — far more than the 13,122 that nine-per-module already
+> permits, so a schema-wide density rule is no rule at all.
 >
 > **Every bundled example breaks the rule today**, so all five have to be re-cut into modules
 > before the limit can be enforced: automotive 17 classes, insurance 16, university 16, recipes 15,
