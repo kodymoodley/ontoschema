@@ -29,6 +29,20 @@ test('offers the toggle only where it applies, and starts off', async ({ page })
   await expect(page.getByTestId('toggle-relations')).toHaveAttribute('aria-checked', 'false');
 });
 
+/*
+ * The switch shows a drawing of a relation rather than the word. A drawing is not a name, so
+ * the name has to be carried separately -- otherwise the one control that reveals the relation
+ * layer announces itself as "Show".
+ */
+test('is a switch, and says what it is for even though it shows a picture', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('tab', { name: 'Taxonomy' }).click();
+
+  const toggle = page.getByRole('switch', { name: 'Show relations' });
+  await expect(toggle).toBeVisible();
+  await expect(toggle.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+});
+
 test("draws the selected class's relations, and nobody else's", async ({ page }) => {
   await taxonomyOf(page, 'Music library');
   await page.getByTestId('toggle-relations').click();

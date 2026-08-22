@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import styles from './primitives.module.css';
 
 /**
@@ -14,12 +15,17 @@ export function Switch({
   checked,
   onChange,
   label,
+  children,
   ...rest
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
-  /** Shown beside the switch and used as its name, so the two can never disagree. */
+  /**
+   * The switch's name, always. Shown beside it too unless `children` are given, in which case
+   * it stays as the accessible name — a drawing is not a name, however clear it is to look at.
+   */
   label: string;
+  children?: ReactNode;
   'data-testid'?: string | undefined;
 }) {
   return (
@@ -28,13 +34,14 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       className={styles.switch}
+      aria-label={label}
       onClick={() => onChange(!checked)}
       {...rest}
     >
       <span className={styles.switchTrack} aria-hidden="true">
         <span className={styles.switchKnob} />
       </span>
-      <span className={styles.switchLabel}>{label}</span>
+      <span className={styles.switchLabel}>{children ?? label}</span>
     </button>
   );
 }

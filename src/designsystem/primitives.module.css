@@ -510,9 +510,18 @@
 }
 
 .switchLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: var(--text-sm);
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* The relation drawing sits on the text baseline rather than above it. */
+.switchLabel svg {
+  display: block;
+  color: var(--accent-relation);
 }
 
 .switch:focus-visible {

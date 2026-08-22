@@ -10,7 +10,7 @@ import {
   useSelection,
   useTaxonomyRelations,
 } from '../projectstore';
-import { Button, Divider, Spacer, Switch, Tabs, Toolbar } from '../designsystem';
+import { Button, Divider, RelationIcon, Spacer, Switch, Tabs, Toolbar } from '../designsystem';
 import { Inspector } from './Inspector';
 import {
   schemaEdgeTypes,
@@ -241,9 +241,11 @@ export function App() {
               <Switch
                 checked={taxonomyRelations === 'selected'}
                 onChange={(on) => setTaxonomyRelations(on ? 'selected' : 'off')}
-                label="Relations"
+                label="Show relations"
                 data-testid="toggle-relations"
-              />
+              >
+                <RelationIcon />
+              </Switch>
             ) : null}
             <Spacer />
             {finding.action}
