@@ -13,8 +13,8 @@ import {
   targetHandleId,
 } from './layout';
 import type { Box } from './layout';
-import { detourAround } from './routing';
-import type { Rect } from './routing';
+import { orthogonalPath, routeEdges } from './routing';
+import type { EdgeEnds, Rect } from './routing';
 
 /**
  * Derives the React Flow graph from the ontology.
@@ -76,10 +76,10 @@ export interface RelationEdgeData extends Record<string, unknown> {
   /** True when the same property is also used elsewhere in the schema. */
   shared: boolean;
   /**
-   * A point to bend the line through, so it passes around the classes it has nothing to do
-   * with rather than through them. Absent when the straight line was already clear.
+   * The right-angled route the canvas worked out: out of one class, along a lane clear of
+   * everything, and down into the other. Absent on the schema canvas, which routes its own.
    */
-  detour?: { x: number; y: number };
+  route?: { path: string; label: { x: number; y: number } };
 }
 
 /* ------------------------------------------------------------ schema view */
@@ -421,12 +421,18 @@ function relationEdges(
     });
   }
 
-  const centreOf = (id: string) => {
-    const rect = rects.get(id);
-    return rect ? { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 } : { x: 0, y: 0 };
-  };
+  /*
+   * Collected before any of them is routed. Lanes only make sense together: which edge gets
+   * which lane depends on all the others, so the geometry cannot be decided one at a time.
+   */
+  const pending: {
+    id: string;
+    usage: PropertyUsage;
+    property: Relation;
+    source: string;
+    target: string;
+  }[] = [];
 
-  const edges: Edge[] = [];
   for (const usage of ontology.usages) {
     const property = index.relationById.get(usage.propertyId);
     if (!property || usage.objectClassId === null) continue;
@@ -436,29 +442,41 @@ function relationEdges(
     const targets = appearances.get(usage.objectClassId) ?? [];
     for (const source of sources) {
       for (const target of targets) {
-        const obstacles = [...rects.entries()]
-          .filter(([id]) => id !== source && id !== target)
-          .map(([, rect]) => rect);
-        const detour = detourAround(centreOf(source), centreOf(target), obstacles);
-
-        edges.push({
-          // Scoped by endpoint as well as by usage: one usage can be drawn more than once.
+        pending.push({
           id: `relation:${usage.id}:${source}:${target}`,
-          type: EDGE_TYPE.relation,
+          usage,
+          property,
           source,
           target,
-          selectable: false,
-          data: {
-            usage,
-            property,
-            shared: (index.usagesByProperty.get(usage.propertyId) ?? []).length > 1,
-            ...(detour ? { detour } : {}),
-          } satisfies RelationEdgeData,
         });
       }
     }
   }
-  return edges;
+  const ends: EdgeEnds[] = pending
+    .map((entry) => ({
+      id: entry.id,
+      from: rects.get(entry.source),
+      to: rects.get(entry.target),
+    }))
+    .filter((entry): entry is EdgeEnds => Boolean(entry.from && entry.to));
+  const routes = new Map(routeEdges(ends, [...rects.values()]).map((r) => [r.id, r]));
+
+  return pending.map((entry) => {
+    const route = routes.get(entry.id);
+    return {
+      id: entry.id,
+      type: EDGE_TYPE.relation,
+      source: entry.source,
+      target: entry.target,
+      selectable: false,
+      data: {
+        usage: entry.usage,
+        property: entry.property,
+        shared: (index.usagesByProperty.get(entry.usage.propertyId) ?? []).length > 1,
+        ...(route ? { route: { path: orthogonalPath(route.points), label: route.label } } : {}),
+      } satisfies RelationEdgeData,
+    };
+  });
 }
 
 /*

@@ -27,7 +27,7 @@ export function RelationEdge({
     usage?: PropertyUsage;
     property?: Relation;
     shared?: boolean;
-    detour?: { x: number; y: number };
+    route?: { path: string; label: { x: number; y: number } };
   };
   const select = useProjectStore((state) => state.select);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
@@ -42,19 +42,16 @@ export function RelationEdge({
   });
 
   /*
-   * A detour is a single point the canvas worked out, put there so the line passes around the
-   * classes it has nothing to do with. Drawn as one quadratic curve through it rather than as a
-   * polyline: the bend stays smooth, and the control point is doubled back from the midpoint so
-   * the curve actually reaches the detour rather than merely leaning towards it.
+   * A route is the right-angled path the canvas worked out: out of one class, along a lane
+   * clear of every node, and down into the other. It arrives drawn rather than as points,
+   * because the geometry belongs to the canvas and this module may not reach into it. Only the
+   * taxonomy view supplies one; the schema canvas positions its classes by hand and a curve
+   * suits it.
    */
-  const detour = payload.detour;
-  const path = detour
-    ? `M ${sourceX},${sourceY} Q ${2 * detour.x - (sourceX + targetX) / 2},${
-        2 * detour.y - (sourceY + targetY) / 2
-      } ${targetX},${targetY}`
-    : bezier;
-  const labelX = detour ? detour.x : bezierLabelX;
-  const labelY = detour ? detour.y : bezierLabelY;
+  const route = payload.route;
+  const path = route ? route.path : bezier;
+  const labelX = route ? route.label.x : bezierLabelX;
+  const labelY = route ? route.label.y : bezierLabelY;
 
   return (
     <>

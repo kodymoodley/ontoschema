@@ -10,7 +10,7 @@ import {
   useSelection,
   useTaxonomyRelations,
 } from '../projectstore';
-import { Button, Divider, Spacer, Tabs, Toolbar } from '../designsystem';
+import { Button, Divider, Spacer, Switch, Tabs, Toolbar } from '../designsystem';
 import { Inspector } from './Inspector';
 import {
   schemaEdgeTypes,
@@ -238,18 +238,12 @@ export function App() {
               would be present and inert there, which misleads rather than merely fails.
             */}
             {view === 'taxonomy' ? (
-              <Button
-                size="small"
-                variant="subtle"
-                aria-pressed={taxonomyRelations === 'selected'}
+              <Switch
+                checked={taxonomyRelations === 'selected'}
+                onChange={(on) => setTaxonomyRelations(on ? 'selected' : 'off')}
+                label="Relations"
                 data-testid="toggle-relations"
-                title="Show the selected class's relations"
-                onClick={() =>
-                  setTaxonomyRelations(taxonomyRelations === 'off' ? 'selected' : 'off')
-                }
-              >
-                Relations
-              </Button>
+              />
             ) : null}
             <Spacer />
             {finding.action}

@@ -26,7 +26,7 @@ test('offers the toggle only where it applies, and starts off', async ({ page })
   await expect(page.getByTestId('toggle-relations')).toHaveCount(0);
 
   await page.getByRole('tab', { name: 'Taxonomy' }).click();
-  await expect(page.getByTestId('toggle-relations')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('toggle-relations')).toHaveAttribute('aria-checked', 'false');
 });
 
 test("draws the selected class's relations, and nobody else's", async ({ page }) => {
@@ -67,7 +67,7 @@ test('remembers the setting across a trip to the schema view', async ({ page }) 
   await page.getByRole('tab', { name: 'Schema' }).click();
   await page.getByRole('tab', { name: 'Taxonomy' }).click();
 
-  await expect(page.getByTestId('toggle-relations')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('toggle-relations')).toHaveAttribute('aria-checked', 'true');
 });
 
 /*

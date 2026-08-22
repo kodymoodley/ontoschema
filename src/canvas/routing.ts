@@ -1,19 +1,20 @@
 /**
- * Steering an edge around the classes that have nothing to do with it.
+ * Routing relation edges through the empty canvas above and below the diagram.
  *
- * A relation drawn straight between two distant classes runs through whatever lies between
- * them, and in the taxonomy view that is usually three or four other classes. The line reads
- * as though it touched each one, which is the opposite of what it says.
+ * The taxonomy view lays its modules out in rows and leaves a great deal of space over and
+ * under them. A relation drawn as a curve between two classes ignores that space and takes the
+ * shortest way through the middle, so a handful of them pile into the same few hundred pixels,
+ * cross each other, and run through whatever classes lie between.
  *
- * The alternative was moving the uninvolved classes aside while the edge is shown and putting
- * them back afterwards. That was rejected: the taxonomy layout is derived, and shifting it
- * under someone who has just clicked a class costs them the picture they were reading. Bending
- * the line is the smaller change, and it is the line that is at fault.
+ * These are drawn the way the subclass links are: rigid, right-angled, no curves. Each one
+ * leaves its class vertically, runs along a **lane** clear of every node, and comes back down
+ * into the other. Lanes are stacked, so two edges sharing a direction never sit on top of one
+ * another, and the horizontal run is where the label goes — out in the open, on a straight
+ * line, rather than in the middle of the crowd.
  *
- * The route is deliberately simple — one detour, above or below whichever is nearer, past the
- * whole run of obstacles. Anything cleverer (a visibility graph, orthogonal routing with
- * corners) is a great deal of machinery for a view that shows one class's relations at a time,
- * and the extra bends would cost more legibility than they bought.
+ * The alternative was moving the uninvolved classes aside while an edge is shown. It was
+ * rejected because the layout is derived, and shifting it under someone who has just clicked a
+ * class costs them the picture they were reading. Here nothing moves but the line.
  */
 
 export interface Rect {
@@ -28,66 +29,113 @@ export interface Point {
   y: number;
 }
 
-/** How far clear of an obstacle a detour passes. Enough to read as "around", not "through". */
-const CLEARANCE = 22;
+/** Vertical distance between neighbouring lanes, and between the first lane and the diagram. */
+const LANE_GAP = 34;
 
-/**
- * A point to route through, or `null` when the straight line is already clear.
- *
- * One point rather than a path: the caller draws a curve through it, and a curve through one
- * well-chosen point is smoother than a polyline through several.
- */
-export function detourAround(from: Point, to: Point, obstacles: readonly Rect[]): Point | null {
-  const hit = obstacles.filter((rect) => segmentCrossesRect(from, to, rect));
-  if (hit.length === 0) return null;
+export interface EdgeEnds {
+  id: string;
+  /** The boxes being joined. The line leaves from an edge of each, never from the centre. */
+  from: Rect;
+  to: Rect;
+}
 
-  const midX = (from.x + to.x) / 2;
-  const top = Math.min(...hit.map((rect) => rect.y));
-  const bottom = Math.max(...hit.map((rect) => rect.y + rect.height));
-
-  // Over or under, whichever is the shorter way out from where the line already is.
-  const midY = (from.y + to.y) / 2;
-  return midY - top < bottom - midY
-    ? { x: midX, y: top - CLEARANCE }
-    : { x: midX, y: bottom + CLEARANCE };
+export interface Route {
+  id: string;
+  points: Point[];
+  /** Where the name goes: the middle of the horizontal run, clear of everything. */
+  label: Point;
 }
 
 /**
- * Whether a line segment passes through a rectangle.
+ * Lays every visible relation out at once, because lanes only make sense together.
  *
- * The cheap half first: a segment whose bounding box misses the rectangle cannot cross it, and
- * that rejects nearly everything. Only then is each of the four sides tested.
+ * Above or below is chosen per edge by which side its two ends are nearer, so an edge between
+ * two classes low in the diagram does not climb over everything to reach a lane at the top.
+ * Within a side the lanes are handed out shortest-first, which puts the widest run furthest
+ * out: a short edge then nests inside a long one instead of crossing it on the way past.
  */
-export function segmentCrossesRect(from: Point, to: Point, rect: Rect): boolean {
-  const right = rect.x + rect.width;
-  const bottom = rect.y + rect.height;
+export function routeEdges(edges: readonly EdgeEnds[], obstacles: readonly Rect[]): Route[] {
+  if (edges.length === 0) return [];
 
-  if (Math.max(from.x, to.x) < rect.x || Math.min(from.x, to.x) > right) return false;
-  if (Math.max(from.y, to.y) < rect.y || Math.min(from.y, to.y) > bottom) return false;
+  const top = Math.min(...obstacles.map((rect) => rect.y));
+  const bottom = Math.max(...obstacles.map((rect) => rect.y + rect.height));
+  const middle = (top + bottom) / 2;
 
-  // An endpoint inside the rectangle counts: the line is through it whatever the sides say.
-  if (inside(from, rect) || inside(to, rect)) return true;
+  const centreY = (rect: Rect) => rect.y + rect.height / 2;
+  const centreX = (rect: Rect) => rect.x + rect.width / 2;
 
-  const corners: Point[] = [
-    { x: rect.x, y: rect.y },
-    { x: right, y: rect.y },
-    { x: right, y: bottom },
-    { x: rect.x, y: bottom },
-  ];
-  return corners.some((corner, index) =>
-    segmentsIntersect(from, to, corner, corners[(index + 1) % corners.length] as Point),
-  );
+  const withSide = edges.map((edge) => ({
+    edge,
+    // Whichever way out is nearer, so an edge low in the diagram does not climb over it all.
+    above: (centreY(edge.from) + centreY(edge.to)) / 2 < middle,
+    span: Math.abs(centreX(edge.to) - centreX(edge.from)),
+  }));
+
+  const routes: Route[] = [];
+  for (const goingAbove of [true, false]) {
+    const side = withSide
+      .filter((entry) => entry.above === goingAbove)
+      // Shortest first, so it takes the nearest lane and the widest run ends up outermost.
+      .sort((a, b) => a.span - b.span);
+
+    side.forEach(({ edge }, index) => {
+      const laneY = goingAbove ? top - LANE_GAP * (index + 1) : bottom + LANE_GAP * (index + 1);
+
+      // The drops start at the box's own edge, so a line never runs up through what it leaves.
+      const attach = (rect: Rect) => ({
+        x: centreX(rect),
+        y: goingAbove ? rect.y : rect.y + rect.height,
+      });
+      const start = attach(edge.from);
+      const end = attach(edge.to);
+
+      routes.push({
+        id: edge.id,
+        points: [start, { x: start.x, y: laneY }, { x: end.x, y: laneY }, end],
+        label: { x: (start.x + end.x) / 2, y: laneY },
+      });
+    });
+  }
+  return routes;
 }
 
-const inside = (point: Point, rect: Rect) =>
-  point.x >= rect.x &&
-  point.x <= rect.x + rect.width &&
-  point.y >= rect.y &&
-  point.y <= rect.y + rect.height;
+/**
+ * An SVG path through the points, with the corners rounded just enough to read as a turn.
+ *
+ * Rounded rather than square for the same reason the subclass links are: a hard corner at this
+ * stroke width reads as a join between two separate lines.
+ */
+export function orthogonalPath(points: readonly Point[], radius = 8): string {
+  if (points.length === 0) return '';
+  if (points.length < 3) {
+    return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
+  }
 
-/** Orientation test, the standard one: two segments cross when each straddles the other. */
-function segmentsIntersect(a: Point, b: Point, c: Point, d: Point): boolean {
-  const side = (p: Point, q: Point, r: Point) =>
-    Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
-  return side(a, b, c) !== side(a, b, d) && side(c, d, a) !== side(c, d, b);
+  let path = `M ${points[0]!.x},${points[0]!.y}`;
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const previous = points[index - 1]!;
+    const corner = points[index]!;
+    const next = points[index + 1]!;
+
+    // Never round more than half of either leg, or short segments turn inside out.
+    const back = Math.min(radius, distance(previous, corner) / 2);
+    const forward = Math.min(radius, distance(corner, next) / 2);
+
+    path += ` L ${towards(corner, previous, back).x},${towards(corner, previous, back).y}`;
+    path += ` Q ${corner.x},${corner.y} ${towards(corner, next, forward).x},${
+      towards(corner, next, forward).y
+    }`;
+  }
+  const last = points.at(-1)!;
+  return `${path} L ${last.x},${last.y}`;
+}
+
+const distance = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
+
+function towards(from: Point, to: Point, by: number): Point {
+  const length = distance(from, to) || 1;
+  return {
+    x: from.x + ((to.x - from.x) / length) * by,
+    y: from.y + ((to.y - from.y) / length) * by,
+  };
 }
