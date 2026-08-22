@@ -26,6 +26,7 @@ import { NODE_TYPE, sameClassNode, sameRelationEdge, schemaEdges, schemaNodes } 
 import { CLASS_NODE_WIDTH, focusZoom, nextFreePosition } from './layout';
 import { provideViewCentre, viewCentre } from './viewcentre';
 import { provideFraming } from './framing';
+import { useFramingCorrection } from './framingcorrection';
 
 /** How far the viewport may be pushed, including by a focus request. */
 const MIN_ZOOM = 0.2;
@@ -41,13 +42,6 @@ const NEW_CLASS_HALF_HEIGHT = 65;
 /** Distance between a touch and a point remembered from an earlier one. */
 const apart = (touch: { clientX: number; clientY: number }, from: { x: number; y: number }) =>
   Math.hypot(touch.clientX - from.x, touch.clientY - from.y);
-
-/**
- * How long after framing a class a change of pane size is still treated as part of the gesture.
- * Long enough to cover a panel folding and its transition, short enough that an unrelated
- * resize later is nobody's business but the person doing the resizing.
- */
-const CORRECTION_WINDOW_MS = 600;
 
 /**
  * The free-form schema surface: classes carrying their attributes, and relations drawn
@@ -68,6 +62,11 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const { screenToFlowPosition, getIntersectingNodes, getNode, getZoom, setCenter, fitView } =
     useReactFlow();
   const surface = useRef<HTMLDivElement>(null);
+  /*
+   * Every camera move here goes through this: the gestures that frame something are often the
+   * same gestures that change the size of the pane it is being framed into.
+   */
+  const frame = useFramingCorrection(surface);
 
   const select = useProjectStore((state) => state.select);
   const createClass = useProjectStore((state) => state.createClass);
@@ -265,9 +264,6 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
    */
   const focusRequest = useProjectStore((state) => state.focusRequest);
   const clearFocus = useProjectStore((state) => state.clearFocus);
-  /** What was framed and when, so a pane that changes size just afterwards can correct it. */
-  const framed = useRef<{ classId: string; at: number } | null>(null);
-
   useEffect(() => {
     if (!focusRequest) return;
 
@@ -283,41 +279,11 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
       return;
     }
 
-    if (!frameClass(focusRequest, 400)) return;
-    framed.current = { classId: focusRequest, at: performance.now() };
+    // A canvas that cannot measure the node yet leaves the request standing, and the effect
+    // runs again as soon as it can -- `nodes` is in the dependencies for exactly that.
+    if (!frame((duration) => frameClass(focusRequest, duration), 400)) return;
     clearFocus();
-  }, [focusRequest, clearFocus, frameClass, nodes, ontology.classes]);
-
-  /*
-   * Framing again if the pane changes size immediately after being framed, which it does.
-   *
-   * Double-clicking a class selects it as well as focusing it, and selecting unfolds the
-   * inspector if it was folded away -- so the zoom above is worked out against a pane 340px
-   * wider than the one the class ends up in, and the class fills 49% of the canvas instead of
-   * the 30-40% it aims for. That is the same miss an earlier auto-folding inspector produced.
-   *
-   * Correcting from the resize rather than trying to be measured after it. Waiting first was
-   * tried and is not sound: React flushes pending passive effects *before* it renders an update
-   * made from one, so the unfold has not reached the DOM when this measures, and no amount of
-   * counting frames afterwards makes the arrival a fact rather than a race -- it failed roughly
-   * one full run in four. A resize observer is told, and is told however late it happens.
-   *
-   * Bounded to the moment after a focus, so dragging the window narrower an hour later does not
-   * yank the viewport back to whatever was last double-clicked.
-   */
-  useEffect(() => {
-    const element = surface.current;
-    if (!element) return;
-
-    const observer = new ResizeObserver(() => {
-      const recent = framed.current;
-      if (!recent || performance.now() - recent.at > CORRECTION_WINDOW_MS) return;
-      // Shorter than the original, because it is a nudge to a view already on its way there.
-      frameClass(recent.classId, 150);
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [frameClass]);
+  }, [focusRequest, clearFocus, frame, frameClass, nodes, ontology.classes]);
 
   /**
    * Double-clicking, or double-tapping, bare canvas frames the whole schema again — the way
@@ -328,8 +294,10 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
    * its own element sitting over the pane.
    */
   const frameEverything = useCallback(() => {
-    void fitView({ padding: 0.2, maxZoom: 1, duration: 400 });
-  }, [fitView]);
+    frame((duration) => {
+      void fitView({ padding: 0.2, maxZoom: 1, duration });
+    }, 400);
+  }, [fitView, frame]);
 
   // The toolbar's button is the same action, reached from outside React Flow's provider.
   useEffect(() => provideFraming(frameEverything), [frameEverything]);

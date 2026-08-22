@@ -30,6 +30,16 @@ async function classShareOfCanvas(page: Page, className: string) {
   return (node.width * node.height) / (canvas.width * canvas.height);
 }
 
+/**
+ * Clicks bare canvas, which is how anything is deselected. The top-left corner of the pane is
+ * the one part of it no class is laid out on.
+ */
+async function deselect(page: Page) {
+  const canvas = (await page.getByTestId('schema-canvas').boundingBox())!;
+  await page.mouse.click(canvas.x + 12, canvas.y + 12);
+  await expect(page.getByLabel('Class local name')).toHaveCount(0);
+}
+
 /** An example with enough classes that fitting and focusing are different pictures. */
 async function openMusicLibrary(page: Page) {
   await openExamples(page);
@@ -121,6 +131,92 @@ test.describe('on a wide screen', () => {
     await page.getByLabel('Search by name or description').fill('Artist');
     await page.locator('[data-result="Artist"]').click();
     await expect.poll(() => inspectorWidth(page)).toBeGreaterThan(0);
+  });
+
+  /*
+   * The other half of that: what a selection opens, it opens only for as long as there is
+   * something to show. The space was lent, not given away.
+   */
+  test('folds it again when the selection goes away', async ({ page }) => {
+    await openApp(page);
+    await openMusicLibrary(page);
+    await page.getByTestId('fold-inspector').click();
+    await expect.poll(() => inspectorWidth(page)).toBe(0);
+
+    await selectClass(page, 'Album');
+    await expect.poll(() => inspectorWidth(page)).toBeGreaterThan(0);
+
+    await deselect(page);
+    await expect.poll(() => inspectorWidth(page)).toBe(0);
+    // And the button still describes a folded panel, because that is what it is.
+    await expect(page.getByTestId('fold-inspector')).toHaveAttribute(
+      'aria-label',
+      'Show inspector',
+    );
+  });
+
+  /*
+   * Double-clicking bare canvas is two things at once: the first click deselects, which hands
+   * the inspector's space back and makes the canvas 340px wider, and the double-click frames
+   * everything into it. Framing against the narrower pane would leave the drawing small and
+   * off to one side, which is the same failure the focus zoom had.
+   */
+  test('frames everything against the canvas deselecting has just widened', async ({ page }) => {
+    await openApp(page);
+    await openMusicLibrary(page);
+    await page.getByTestId('fold-inspector').click();
+    await selectClass(page, 'Album');
+    await expect.poll(() => inspectorWidth(page)).toBeGreaterThan(0);
+
+    const canvas = (await page.getByTestId('schema-canvas').boundingBox())!;
+    await page.mouse.dblclick(canvas.x + 12, canvas.y + 12);
+    await expect.poll(() => inspectorWidth(page)).toBe(0);
+    await settledViewport(page);
+
+    const boxes = await Promise.all(
+      (await page.locator('[data-class-name]').all()).map((node) => node.boundingBox()),
+    );
+    const drawn = boxes.filter((box) => box !== null);
+    const wider = (await page.getByTestId('schema-canvas').boundingBox())!;
+    const left = Math.min(...drawn.map((box) => box.x));
+    const right = Math.max(...drawn.map((box) => box.x + box.width));
+    const span = (right - left) / wider.width;
+
+    expect(span, `the drawing spanned ${(span * 100).toFixed(0)}% of the canvas`).toBeGreaterThan(
+      0.6,
+    );
+  });
+
+  /* Deselecting is not a reason to take away a panel nobody folded. */
+  test('leaves an inspector that was never folded alone', async ({ page }) => {
+    await openApp(page);
+    await openMusicLibrary(page);
+    const open = await inspectorWidth(page);
+
+    await selectClass(page, 'Album');
+    await deselect(page);
+
+    expect(await inspectorWidth(page)).toBe(open);
+  });
+
+  /*
+   * What persists is what its owner asked for, not what a selection borrowed. Reloading while
+   * the inspector is only open because something is selected must not save it open.
+   */
+  test('does not let a borrowed reveal become the remembered state', async ({ page }) => {
+    await openApp(page);
+    await openMusicLibrary(page);
+    await page.getByTestId('fold-inspector').click();
+    await selectClass(page, 'Album');
+    await expect.poll(() => inspectorWidth(page)).toBeGreaterThan(0);
+
+    await page.reload();
+
+    await expect(page.getByTestId('fold-inspector')).toHaveAttribute(
+      'aria-label',
+      'Show inspector',
+    );
+    await expect.poll(() => inspectorWidth(page)).toBe(0);
   });
 
   /*

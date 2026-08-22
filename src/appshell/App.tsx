@@ -117,15 +117,15 @@ export function App() {
    * Selecting is what opens the inspector, on every width -- clicking a class is already the
    * gesture that means "tell me about this". On a narrow layout that slides the drawer in; on a
    * wide one the column is already there, unless it has been folded away, and then the
-   * selection unfolds it. See `useRevealInspector` for why that is keyed on the selection
-   * changing rather than on there being one.
+   * selection borrows it for as long as there is something to show. See `useRevealInspector`
+   * for what borrowing means and why it is keyed on the selection changing.
    *
    * The same rule on both layouts is a decision, not an accident: a drawer that appears on a
    * phone and a column that appears on a desktop are the same idea at two sizes.
    */
   const selection = useSelection();
   const inspecting = selection !== null;
-  useRevealInspector(selection, panels.show);
+  useRevealInspector(selection, panels.reveal, panels.conceal);
 
   /*
    * The whole window for the canvas, and the way back. Folding is what makes the canvas bigger
@@ -436,28 +436,38 @@ export function App() {
 }
 
 /**
- * Selecting an entity opens the inspector, at every width, however it was selected.
+ * Selecting an entity opens the inspector, at every width, however it was selected — and
+ * deselecting gives the space back if that is all it was open for.
  *
  * On a narrow layout this has always been true: the inspector is a drawer that slides in when
- * something is selected. On a wide one the column is simply always there — until todo 30 gave
- * it a folded state, at which point clicking a class put its details in a panel nobody could
- * see. The owner's rule for that case was that the two layouts should behave the same, so a
- * fold gives way to a selection.
+ * something is selected and out again when nothing is. On a wide one the column is simply always
+ * there — until todo 30 gave it a folded state, at which point clicking a class put its details
+ * in a panel nobody could see. The owner's rule for that case was that the two layouts should
+ * behave the same, so a folded inspector is lent to a selection and taken back afterwards.
  *
- * Keyed on the selection *changing*, not on there being one. Folding the inspector while a
- * class happens to be selected has to stick, and an effect that unfolds whenever something is
- * selected would fight the button that folded it and win.
+ * Lent, not opened: `reveal` leaves what the owner asked for alone, so an inspector that was
+ * folded is folded again the moment nothing is selected, and is still folded after a reload.
+ * A panel that was open all along is untouched by either call.
+ *
+ * Keyed on the selection *changing*, not on there being one, so clicking from one class to the
+ * next does not move the column — that was the measured hazard, and it is the reason this is
+ * two edges rather than a condition.
  */
-function useRevealInspector(selection: EntityRef | null, show: (panel: SidePanel) => void) {
+function useRevealInspector(
+  selection: EntityRef | null,
+  reveal: (panel: SidePanel) => void,
+  conceal: (panel: SidePanel) => void,
+) {
   const key = selection ? `${selection.kind}:${selection.id}` : null;
   // Seeded with the first value, so a schema that opens with something already selected is not
   // treated as a click that has just happened.
   const previous = useRef(key);
 
   useEffect(() => {
-    if (key !== null && key !== previous.current) show('inspector');
+    if (key === null) conceal('inspector');
+    else if (key !== previous.current) reveal('inspector');
     previous.current = key;
-  }, [key, show]);
+  }, [key, reveal, conceal]);
 }
 
 /**
