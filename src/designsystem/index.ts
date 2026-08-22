@@ -21,6 +21,8 @@ export type { TabOption } from './Primitives';
 
 export { HamburgerIcon, Menu, MenuGroup, MenuSeparator } from './Menu';
 
-export { DeleteIcon } from './icons';
+export { DeleteIcon, RelationIcon } from './icons';
+
+export { Switch } from './Switch';
 
 export { DOUBLE_TAP_MS, TAP_SLOP_PX, useDoubleTap } from './doubletap';

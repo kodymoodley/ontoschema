@@ -9,7 +9,12 @@ import type { Workspace } from './workspace';
 import { createOntologyActions } from './ontologyactions';
 import type { OntologyActions } from './ontologyactions';
 import { createInteractionActions } from './interactionactions';
-import type { CanvasView, InteractionActions, PendingConnection } from './interactionactions';
+import type {
+  CanvasView,
+  InteractionActions,
+  PendingConnection,
+  TaxonomyRelations,
+} from './interactionactions';
 import { createWorkspaceActions } from './workspaceactions';
 import type { WorkspaceActions } from './workspaceactions';
 
@@ -29,6 +34,7 @@ export type { CanvasView, PendingConnection } from './interactionactions';
 interface SessionState extends Workspace {
   selection: EntityRef | null;
   view: CanvasView;
+  taxonomyRelations: TaxonomyRelations;
   history: History;
   pendingConnection: PendingConnection | null;
   /** A class the canvas has been asked to bring into focus, if any. */
@@ -54,6 +60,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
     activeProjectId: restored.activeProjectId,
     selection: null,
     view: 'schema',
+    taxonomyRelations: 'off',
     history: EMPTY_HISTORY,
     pendingConnection: null,
     focusRequest: null,

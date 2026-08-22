@@ -14,6 +14,19 @@ import type { ProjectStoreState } from './store';
 
 export type CanvasView = 'schema' | 'taxonomy';
 
+/**
+ * Whether the taxonomy view draws the selected class's relations.
+ *
+ * There was a third setting, _all_, and using it settled the question: the taxonomy view reads
+ * cleanly because it draws one kind of edge, and drawing every relation took that away without
+ * giving anything back that the schema view does not already do better. What is left is the
+ * setting that earns its place — the relations of the one class you are looking at.
+ *
+ * A view preference, held here rather than in the canvas so it survives switching tabs, and
+ * not written to the file: it is how someone is looking at a schema, not part of the schema.
+ */
+export type TaxonomyRelations = 'off' | 'selected';
+
 /** A connection the user has drawn but not yet assigned a property to. */
 export interface PendingConnection {
   subjectClassId: string;
@@ -24,6 +37,7 @@ export interface InteractionActions {
   select(ref: EntityRef | null): void;
   deleteSelection(): void;
   setView(view: CanvasView): void;
+  setTaxonomyRelations(relations: TaxonomyRelations): void;
 
   /** Ask the canvas to bring a class into focus. Cleared once it has. */
   focusClass(classId: string): void;
@@ -53,6 +67,9 @@ export function createInteractionActions(
     },
     setView(view) {
       set((state) => ({ ...state, view }));
+    },
+    setTaxonomyRelations(taxonomyRelations) {
+      set((state) => ({ ...state, taxonomyRelations }));
     },
 
     /*

@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react';
 import type { EdgeTypes, NodeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useOntology, useProjectStore, useSelection } from '../projectstore';
+import { useOntology, useProjectStore, useSelection, useTaxonomyRelations } from '../projectstore';
 import styles from './canvas.module.css';
 import { NODE_TYPE, classIdFromTaxonomyNode, taxonomyGraph } from './graphmodel';
 
@@ -31,9 +31,10 @@ function TaxonomyCanvasInner({ nodeTypes, edgeTypes }: TaxonomyCanvasProps) {
   const selection = useSelection();
   const select = useProjectStore((state) => state.select);
 
+  const relations = useTaxonomyRelations();
   const { nodes, edges } = useMemo(
-    () => taxonomyGraph(ontology, selection?.id ?? null),
-    [ontology, selection?.id],
+    () => taxonomyGraph(ontology, selection?.id ?? null, relations),
+    [ontology, selection?.id, relations],
   );
 
   // The layout is derived, so the camera is framed explicitly whenever the shape of the
@@ -58,10 +59,33 @@ function TaxonomyCanvasInner({ nodeTypes, edgeTypes }: TaxonomyCanvasProps) {
         edgeTypes={edgeTypes}
         nodesDraggable={false}
         nodesConnectable={false}
+        /*
+         * The layers here are the ones `graphmodel.ts` sets, and nothing else adjusts them.
+         *
+         * This is why the labels were unreadable, and it took a while to find because it is not
+         * a z-index problem at all. By default React Flow gives an edge the z-index of the nodes
+         * it joins **whenever those nodes have a parent** -- see `getElevatedEdgeZIndex` in
+         * `@xyflow/system`, where `sourceNode.parentId ? sourceNode.internals.z : 0` runs before
+         * any of the elevate flags are consulted. Every taxonomy class lives inside a module, and
+         * a selected node carries a thousand, so selecting a class put its own relations at 1001
+         * and every line was painted straight through its own name. Turning off the two elevate
+         * props does nothing, because that branch never reads them.
+         *
+         * `manual` says: use the numbers given and compute nothing. Safe here precisely because
+         * these nodes cannot be dragged or stacked -- there is no pile for a selection to climb
+         * out of, which is the thing the automatic mode exists for.
+         */
+        zIndexMode="manual"
         onNodeClick={(_event, node) => {
-          if (node.type === NODE_TYPE.taxonomyClass) {
-            select({ kind: 'class', id: classIdFromTaxonomyNode(node.id) });
-          }
+          if (node.type !== NODE_TYPE.taxonomyClass) return;
+          const classId = classIdFromTaxonomyNode(node.id);
+          /*
+           * Clicking the class that is already selected puts it away. With relations shown, the
+           * click that revealed them is the obvious one to hide them with, and hunting for empty
+           * canvas to click instead is the sort of small tax that makes an interface feel
+           * stubborn -- the same reasoning that made touching the canvas dismiss a drawer.
+           */
+          select(selection?.id === classId ? null : { kind: 'class', id: classId });
         }}
         onPaneClick={() => select(null)}
         zoomOnDoubleClick={false}

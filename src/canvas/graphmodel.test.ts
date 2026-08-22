@@ -18,6 +18,7 @@ import {
   sameRelationEdge,
   schemaEdges,
   schemaNodes,
+  taxonomyGraph,
 } from './graphmodel';
 import { CLASS_NODE_WIDTH } from './layout';
 
@@ -292,5 +293,89 @@ describe('how widely an attribute is used', () => {
 
     // The second class is still one other class, however many rows the first one shows.
     expect(rowsOf(twice, ids[0]!)[0]?.usedOnOtherClasses).toBe(1);
+  });
+});
+
+/**
+ * The relation layer in the taxonomy view.
+ *
+ * The view reads cleanly because it draws one kind of edge, so what is worth testing is that
+ * the other kind stays out of the way until it is asked for, and that asking for part of it
+ * gives a part rather than everything.
+ */
+describe('relations in the taxonomy view', () => {
+  /** Two roots, a child under each, and one relation between the two children. */
+  function twoModules() {
+    let ontology = createEmptyOntology();
+    const vehicle = addClass(ontology, { localName: 'Vehicle' });
+    ontology = vehicle.ontology;
+    const car = addClass(ontology, { localName: 'Car' });
+    ontology = addSubClassOf(car.ontology, car.id, vehicle.id);
+
+    const org = addClass(ontology, { localName: 'Organisation' });
+    ontology = org.ontology;
+    const dealer = addClass(ontology, { localName: 'Dealership' });
+    ontology = addSubClassOf(dealer.ontology, dealer.id, org.id);
+
+    const related = addRelationBetween(ontology, {
+      subjectClassId: car.id,
+      objectClassId: dealer.id,
+      localName: 'offeredBy',
+    });
+    return { ontology: related.ontology, car: car.id, dealer: dealer.id, vehicle: vehicle.id };
+  }
+
+  const relationEdgesOf = (edges: { type?: string }[]) =>
+    edges.filter((edge) => edge.type === EDGE_TYPE.relation);
+
+  it('draws none by default, which is why the view reads cleanly', () => {
+    const { ontology } = twoModules();
+    const { edges } = taxonomyGraph(ontology, null);
+
+    expect(relationEdgesOf(edges)).toHaveLength(0);
+    // The subclass links are still there: this hides one layer, not the view.
+    expect(edges.filter((edge) => edge.type === EDGE_TYPE.subClassOf).length).toBeGreaterThan(0);
+  });
+
+  it("draws only the selected class's relations in between", () => {
+    const { ontology, car, vehicle } = twoModules();
+
+    expect(relationEdgesOf(taxonomyGraph(ontology, car, 'selected').edges)).toHaveLength(1);
+    // Vehicle is in the same module as Car and takes part in nothing.
+    expect(relationEdgesOf(taxonomyGraph(ontology, vehicle, 'selected').edges)).toHaveLength(0);
+    // Nothing selected, so there is nothing to draw the relations of.
+    expect(relationEdgesOf(taxonomyGraph(ontology, null, 'selected').edges)).toHaveLength(0);
+  });
+
+  it('counts the far end too, not only the class the relation starts at', () => {
+    const { ontology, dealer } = twoModules();
+    expect(relationEdgesOf(taxonomyGraph(ontology, dealer, 'selected').edges)).toHaveLength(1);
+  });
+
+  it('joins nodes that exist, so React Flow has both ends of every edge', () => {
+    const { ontology, dealer } = twoModules();
+    const { nodes, edges } = taxonomyGraph(ontology, dealer, 'selected');
+    const ids = new Set(nodes.map((node) => node.id));
+
+    for (const edge of relationEdgesOf(edges) as { source: string; target: string }[]) {
+      expect(ids.has(edge.source)).toBe(true);
+      expect(ids.has(edge.target)).toBe(true);
+    }
+  });
+
+  /*
+   * A class reachable from two roots is drawn inside both modules, so one relation has two
+   * pairs of endpoints. Both are drawn: showing it attached to one copy and not the other
+   * would be a picture of something that is not the case.
+   */
+  it('draws a relation once per pair of endpoints on screen', () => {
+    const { ontology, car, dealer, vehicle } = twoModules();
+    // Dealership now hangs under Vehicle as well, so it appears in two modules.
+    const shared = addSubClassOf(ontology, dealer, vehicle);
+    const { edges } = taxonomyGraph(shared, car, 'selected');
+
+    expect(relationEdgesOf(edges)).toHaveLength(2);
+    expect(new Set(relationEdgesOf(edges).map((edge) => (edge as { id: string }).id)).size).toBe(2);
+    expect(car).toBeTruthy();
   });
 });

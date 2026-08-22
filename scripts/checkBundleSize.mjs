@@ -41,8 +41,13 @@ const BUDGETS = {
    * Raised again from 40 for reading a document back: 38.00 before, 41.2 after. That is the
    * whole importer -- the rules about what this app models, the Turtle path, and the report of
    * what a file left behind. The RDF/XML parser is not in this number; see LAZY below.
+   *
+   * 44 to 48 with the entity search and the taxonomy's relation layer, which between them took
+   * it to 43.9 -- close enough that the next unrelated change would have tripped over a budget
+   * for no reason of its own. Measured: 42.9 after the search, 43.9 after the lane routing and
+   * the switch. Still no new dependency.
    */
-  'index.js': 44,
+  'index.js': 48,
   'react.js': 65,
   'canvas.js': 80, // @xyflow/react and dagre
   'rdf.js': 55, // n3

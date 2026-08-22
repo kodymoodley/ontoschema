@@ -23,11 +23,16 @@ export function RelationEdge({
   selected,
   data,
 }: EdgeProps) {
-  const payload = data as { usage?: PropertyUsage; property?: Relation; shared?: boolean };
+  const payload = data as {
+    usage?: PropertyUsage;
+    property?: Relation;
+    shared?: boolean;
+    route?: { path: string; label: { x: number; y: number } };
+  };
   const select = useProjectStore((state) => state.select);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
 
-  const [path, labelX, labelY] = getBezierPath({
+  const [bezier, bezierLabelX, bezierLabelY] = getBezierPath({
     sourceX,
     sourceY,
     targetX,
@@ -35,6 +40,18 @@ export function RelationEdge({
     sourcePosition,
     targetPosition,
   });
+
+  /*
+   * A route is the right-angled path the canvas worked out: out of one class, along a lane
+   * clear of every node, and down into the other. It arrives drawn rather than as points,
+   * because the geometry belongs to the canvas and this module may not reach into it. Only the
+   * taxonomy view supplies one; the schema canvas positions its classes by hand and a curve
+   * suits it.
+   */
+  const route = payload.route;
+  const path = route ? route.path : bezier;
+  const labelX = route ? route.label.x : bezierLabelX;
+  const labelY = route ? route.label.y : bezierLabelY;
 
   return (
     <>

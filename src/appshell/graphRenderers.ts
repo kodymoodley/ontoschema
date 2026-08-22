@@ -23,6 +23,12 @@ export const taxonomyNodeTypes: NodeTypes = {
   [NODE_TYPE.taxonomyModule]: TaxonomyModuleNode,
 };
 
+/*
+ * The taxonomy view draws relations too now, behind a control that is off by default. Same
+ * renderer as the schema view: two views disagreeing about what a relation looks like would be
+ * two visual languages for one thing.
+ */
 export const taxonomyEdgeTypes: EdgeTypes = {
+  [EDGE_TYPE.relation]: RelationEdge,
   [EDGE_TYPE.subClassOf]: SubClassEdge,
 };

@@ -3,8 +3,15 @@ import { Palette, SchemaCanvas, TaxonomyCanvas, usePaletteCreate } from '../canv
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
 import { ConnectionPicker, RelationMarkers } from '../relationeditor';
-import { useCanvasView, useOntology, useProjectStore, useSelection } from '../projectstore';
-import { Button, Divider, Spacer, Tabs, Toolbar } from '../designsystem';
+import {
+  useCanvasView,
+  useOntology,
+  useProjectStore,
+  useSelection,
+  useTaxonomyRelations,
+} from '../projectstore';
+import type { CanvasView, TaxonomyRelations } from '../projectstore';
+import { Button, Divider, RelationIcon, Spacer, Switch, Tabs, Toolbar } from '../designsystem';
 import { Inspector } from './Inspector';
 import {
   schemaEdgeTypes,
@@ -27,6 +34,32 @@ import styles from './appshell.module.css';
  * This is the only file permitted to import from more than one feature module.
  */
 
+/**
+ * The one line of prose in the canvas toolbar, which says whatever is most worth knowing.
+ *
+ * The case that matters is the third: switching the relation layer on with nothing selected
+ * draws nothing, because there is no class whose relations to draw. Without a word about it the
+ * switch reports a state that has no visible effect, which reads as a control that does not
+ * work. It says so here rather than on the canvas, and stops saying it the moment a class is
+ * clicked — a message that outlives the condition it describes is worse than none.
+ *
+ * Selecting something on the person's behalf was the alternative and was turned down: selection
+ * opens the inspector, so a drawing option would have slid an editing panel open and changed
+ * what they were working on.
+ */
+function canvasHint(state: {
+  view: CanvasView;
+  relations: TaxonomyRelations;
+  hasSelection: boolean;
+}): string {
+  if (state.view === 'schema')
+    return 'Drag from a class edge to another class to create a relation.';
+  if (state.relations === 'selected' && !state.hasSelection) {
+    return 'Select a class to see its relations.';
+  }
+  return 'Laid out automatically — one module per root class, superclasses above.';
+}
+
 const VIEW_TABS = [
   { value: 'schema' as const, label: 'Schema' },
   { value: 'taxonomy' as const, label: 'Taxonomy' },
@@ -36,6 +69,8 @@ export function App() {
   const view = useCanvasView();
   const ontology = useOntology();
   const setView = useProjectStore((state) => state.setView);
+  const taxonomyRelations = useTaxonomyRelations();
+  const setTaxonomyRelations = useProjectStore((state) => state.setTaxonomyRelations);
   const undo = useProjectStore((state) => state.undo);
   const redo = useProjectStore((state) => state.redo);
   const deleteSelection = useProjectStore((state) => state.deleteSelection);
@@ -221,10 +256,22 @@ export function App() {
           <Toolbar className={styles.canvasToolbar}>
             <Tabs options={VIEW_TABS} value={view} onChange={setView} ariaLabel="Canvas view" />
             <span className={styles.viewHint}>
-              {view === 'schema'
-                ? 'Drag from a class edge to another class to create a relation.'
-                : 'Laid out automatically — one module per root class, superclasses above.'}
+              {canvasHint({ view, relations: taxonomyRelations, hasSelection: inspecting })}
             </span>
+            {/*
+              Only where it applies. The schema view always draws relations, so the control
+              would be present and inert there, which misleads rather than merely fails.
+            */}
+            {view === 'taxonomy' ? (
+              <Switch
+                checked={taxonomyRelations === 'selected'}
+                onChange={(on) => setTaxonomyRelations(on ? 'selected' : 'off')}
+                label="Show relations"
+                data-testid="toggle-relations"
+              >
+                Show <RelationIcon />
+              </Switch>
+            ) : null}
             <Spacer />
             {finding.action}
             <Button

@@ -37,3 +37,22 @@ export function DeleteIcon() {
     </svg>
   );
 }
+
+/**
+ * A relation as the canvas draws one: a line, broken by its name, with an arrowhead.
+ *
+ * The palette's relation swatch was the other candidate and says less — it is a rounded
+ * rectangle in the relation colour, which tells you the colour and nothing else. This is a
+ * small picture of the thing the control reveals, including the part that took longest to get
+ * right: the name sits *in* the line rather than under it.
+ */
+export function RelationIcon() {
+  return (
+    <svg {...common} strokeWidth={1.4}>
+      <path d="M0.9 8h3" />
+      <rect x="3.9" y="6" width="7.6" height="4" rx="2" />
+      <path d="M11.5 8h1.9" />
+      <path d="M13.1 6.9 15.1 8l-2 1.1z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
