@@ -351,6 +351,22 @@
   padding: var(--space-3) var(--space-3) 0;
 }
 
+/*
+ * On a phone the badge and the name cannot share 160px, and the name is the half that was being
+ * cut: `performedBy` showed as `performe…`. It wraps under its badge instead, which costs a line
+ * once and never truncates the thing the panel is about.
+ */
+@media (max-width: 1024px) {
+  .selectionHeader {
+    flex-wrap: wrap;
+  }
+
+  .selectionName {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
 .selectionName {
   font-size: var(--text-lg);
   font-weight: 600;
