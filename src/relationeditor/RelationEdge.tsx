@@ -1,4 +1,4 @@
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import type { Relation, PropertyUsage } from '../ontologymodel';
 import { useProjectStore } from '../projectstore';
@@ -32,26 +32,38 @@ export function RelationEdge({
   const select = useProjectStore((state) => state.select);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
 
-  const [bezier, bezierLabelX, bezierLabelY] = getBezierPath({
+  /*
+   * Right angles, not a curve, and the same generator the subclass links beside it already use
+   * -- with the same corner radius, so the two kinds of line differ by colour and arrowhead
+   * rather than by how they are drawn. `chooseSides` has already picked the pair of sides the
+   * classes face each other across, so the step needed here is the plain one between them.
+   */
+  const [stepped, steppedLabelX, steppedLabelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     targetX,
     targetY,
     sourcePosition,
     targetPosition,
+    borderRadius: 6,
   });
 
   /*
-   * A route is the right-angled path the canvas worked out: out of one class, along a lane
-   * clear of every node, and down into the other. It arrives drawn rather than as points,
-   * because the geometry belongs to the canvas and this module may not reach into it. Only the
-   * taxonomy view supplies one; the schema canvas positions its classes by hand and a curve
-   * suits it.
+   * A route is a path the canvas worked out for itself: out of one class, along a lane clear of
+   * every node, and down into the other. It arrives drawn rather than as points, because the
+   * geometry belongs to the canvas and this module may not reach into it.
+   *
+   * Only the taxonomy view supplies one, and only because it can. Its layout is derived and its
+   * nodes cannot be dragged, so there is a known top and bottom to the diagram and lanes can be
+   * handed out for every visible edge at once. Schema classes are placed by hand, anywhere, and
+   * moved while you watch; lanes there would have to be re-found on every frame of a drag. So
+   * the schema view steps between the facing sides instead, which follows a class as it moves
+   * and costs nothing to work out.
    */
   const route = payload.route;
-  const path = route ? route.path : bezier;
-  const labelX = route ? route.label.x : bezierLabelX;
-  const labelY = route ? route.label.y : bezierLabelY;
+  const path = route ? route.path : stepped;
+  const labelX = route ? route.label.x : steppedLabelX;
+  const labelY = route ? route.label.y : steppedLabelY;
 
   return (
     <>
