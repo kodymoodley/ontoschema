@@ -110,8 +110,8 @@ export function schemaNodes(ontology: Ontology): Node[] {
     return {
       id: entity.id,
       type: NODE_TYPE.ontologyClass,
-      // Above the edge labels, so a label crossing a class never covers it. See CLASS_LAYER.
-      zIndex: CLASS_LAYER,
+      // Above the edge labels, so a label crossing a class never covers it.
+      zIndex: SCHEMA_CLASS_LAYER,
       position: entity.position,
       /*
        * React Flow hides a node until it knows how big it is, and every edit rebuilds this
@@ -225,6 +225,7 @@ export function schemaEdges(ontology: Ontology): Edge[] {
       // The edge is the usage, not the property: one property can be drawn many times.
       id: usage.id,
       type: EDGE_TYPE.relation,
+      zIndex: EDGE_LAYER,
       source: usage.subjectClassId,
       target: usage.objectClassId,
       sourceHandle: sourceHandleId(sides.source),
@@ -251,6 +252,7 @@ export function schemaEdges(ontology: Ontology): Edge[] {
     return {
       id: `subclass:${childId}:${parentId}`,
       type: EDGE_TYPE.subClassOf,
+      zIndex: EDGE_LAYER,
       source: childId,
       target: parentId,
       sourceHandle: sourceHandleId(sides.source),
@@ -346,7 +348,7 @@ export function taxonomyGraph(
         // A class reachable from two roots appears in both modules, so ids are scoped.
         id: taxonomyNodeId(module.root.id, entity.id),
         type: NODE_TYPE.taxonomyClass,
-        zIndex: CLASS_LAYER,
+        zIndex: TAXONOMY_CLASS_LAYER,
         parentId: moduleNodeId,
         extent: 'parent',
         draggable: false,
@@ -365,6 +367,7 @@ export function taxonomyGraph(
       edges.push({
         id: `${module.root.id}:subclass:${childId}:${parentId}`,
         type: EDGE_TYPE.subClassOf,
+        zIndex: EDGE_LAYER,
         source: taxonomyNodeId(module.root.id, childId),
         target: taxonomyNodeId(module.root.id, parentId),
         selectable: false,
@@ -466,6 +469,7 @@ function relationEdges(
     return {
       id: entry.id,
       type: EDGE_TYPE.relation,
+      zIndex: EDGE_LAYER,
       source: entry.source,
       target: entry.target,
       selectable: false,
@@ -480,18 +484,29 @@ function relationEdges(
 }
 
 /*
- * Three layers, because a label has to clear one kind of node and not the other.
+ * Stacking, and the reason it is not one number.
  *
- * React Flow paints edges, then edge labels, then nodes, which put every label under every
- * node. That is right for a class -- a relation between two distant classes would otherwise
- * park its label on whatever lies between them and swallow clicks aimed at it -- and wrong for
- * a module box, which is a container the edges cross rather than something they collide with.
+ * React Flow paints edges, then edge labels, then nodes, and the label layer's z-index is set
+ * in `canvas.module.css`. Two things have to be true at once and they pull in opposite
+ * directions: a label must not cover a class on the schema canvas, where it would swallow
+ * clicks aimed at one, and a label must not go under an edge in the taxonomy, where the whole
+ * point is reading the name of the line you are looking at.
  *
- * `.react-flow__nodes` sets no z-index of its own, so a node's own `zIndex` competes directly
- * with the label layer's. Modules below it, classes above it.
+ * They can both be true only because the two views nest their nodes differently, and that is
+ * the part that cost an afternoon. **React Flow forces an edge's z-index to the greater of the
+ * nodes it joins whenever those nodes are nested inside a parent.** The taxonomy's classes live
+ * inside module boxes, so its edges always ride at the class layer whatever the edge asks for;
+ * the schema's classes have no parent, so its edges keep the layer they are given.
+ *
+ * Hence: taxonomy classes sit *below* the labels, which is harmless because the lanes put every
+ * label outside the diagram anyway, and schema classes sit *above* them, which is what stops a
+ * label parking on a class. The label layer is 2, between the two.
  */
 export const MODULE_LAYER = 0;
-export const CLASS_LAYER = 2;
+export const TAXONOMY_CLASS_LAYER = 1;
+export const SCHEMA_CLASS_LAYER = 3;
+/** What an edge asks for. Honoured on the schema canvas; overridden in the taxonomy, see above. */
+export const EDGE_LAYER = 0;
 
 export function taxonomyNodeId(rootId: string, classId: string): string {
   return `${rootId}__${classId}`;

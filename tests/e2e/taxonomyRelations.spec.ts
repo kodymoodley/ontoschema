@@ -71,23 +71,32 @@ test('remembers the setting across a trip to the schema view', async ({ page }) 
 });
 
 /*
- * The names have to clear the module boxes the edges cross. They sat under every node, which is
- * right for a class and wrong for a container: a box that hides the names of the edges crossing
- * it tells you less than empty canvas would.
+ * The names have to be painted over the lines, and this is checked by comparing the layers
+ * rather than by asking what is under the pointer.
+ *
+ * That distinction is the whole point of the test. `elementFromPoint` says the label is on top,
+ * because an SVG path with `pointer-events: none` is invisible to hit-testing -- and the line
+ * was being painted straight through the middle of its own name the entire time it said so.
+ * What went wrong was React Flow giving each edge the z-index of the nodes it joins whenever
+ * those nodes have a parent, which every taxonomy class does.
  */
-test('shows the relation names over the module boxes they cross', async ({ page }) => {
+test('paints the relation names above the lines, not under them', async ({ page }) => {
   await taxonomyOf(page, 'Music library');
   await page.getByTestId('toggle-relations').click();
   await page.locator('[data-taxonomy-class="Track"]').first().click();
+  await expect(relationEdges(page).first()).toBeVisible();
 
-  const label = relationEdges(page).first();
-  await expect(label).toBeVisible();
+  const layers = await page.evaluate(() => {
+    const labelLayer = document.querySelector('.react-flow__edgelabel-renderer');
+    const zOf = (el: Element | null) => Number(getComputedStyle(el as HTMLElement).zIndex) || 0;
+    return {
+      labels: zOf(labelLayer),
+      edges: [...document.querySelectorAll('.react-flow__edges > svg')].map(zOf),
+    };
+  });
 
-  const box = await label.boundingBox();
-  const topmost = await page.evaluate(
-    ([x, y]) =>
-      document.elementFromPoint(x as number, y as number)?.closest('[data-relation-name]') !== null,
-    [box!.x + box!.width / 2, box!.y + box!.height / 2],
-  );
-  expect(topmost).toBe(true);
+  expect(layers.edges.length).toBeGreaterThan(0);
+  for (const edge of layers.edges) {
+    expect(edge, 'an edge layer is at or above the labels').toBeLessThan(layers.labels);
+  }
 });

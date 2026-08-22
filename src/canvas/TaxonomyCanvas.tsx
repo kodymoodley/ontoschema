@@ -59,6 +59,23 @@ function TaxonomyCanvasInner({ nodeTypes, edgeTypes }: TaxonomyCanvasProps) {
         edgeTypes={edgeTypes}
         nodesDraggable={false}
         nodesConnectable={false}
+        /*
+         * The layers here are the ones `graphmodel.ts` sets, and nothing else adjusts them.
+         *
+         * This is why the labels were unreadable, and it took a while to find because it is not
+         * a z-index problem at all. By default React Flow gives an edge the z-index of the nodes
+         * it joins **whenever those nodes have a parent** -- see `getElevatedEdgeZIndex` in
+         * `@xyflow/system`, where `sourceNode.parentId ? sourceNode.internals.z : 0` runs before
+         * any of the elevate flags are consulted. Every taxonomy class lives inside a module, and
+         * a selected node carries a thousand, so selecting a class put its own relations at 1001
+         * and every line was painted straight through its own name. Turning off the two elevate
+         * props does nothing, because that branch never reads them.
+         *
+         * `manual` says: use the numbers given and compute nothing. Safe here precisely because
+         * these nodes cannot be dragged or stacked -- there is no pile for a selection to climb
+         * out of, which is the thing the automatic mode exists for.
+         */
+        zIndexMode="manual"
         onNodeClick={(_event, node) => {
           if (node.type !== NODE_TYPE.taxonomyClass) return;
           const classId = classIdFromTaxonomyNode(node.id);

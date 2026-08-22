@@ -87,12 +87,11 @@
  * on whatever lies between them, covering the class and swallowing gestures aimed at it.
  *
  * `auto` was the answer to that and went one step too far the other way, putting labels under
- * the taxonomy's module boxes as well, where a box hid the names of the edges crossing it. One
- * above modules and below classes: see `MODULE_LAYER` and `CLASS_LAYER` in `graphmodel.ts`,
- * which is where the two node layers are set.
+ * the edges and under the taxonomy's module boxes. The layers are set out in `graphmodel.ts`;
+ * this is the middle one, above every edge and above the taxonomy's classes, below the schema's.
  */
 .canvas :global(.react-flow__edgelabel-renderer) {
-  z-index: 1;
+  z-index: 2;
 }
 
 /* ---------------------------------------------------------------- palette */
