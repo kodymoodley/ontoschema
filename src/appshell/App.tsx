@@ -3,7 +3,13 @@ import { Palette, SchemaCanvas, TaxonomyCanvas, usePaletteCreate } from '../canv
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
 import { ConnectionPicker, RelationMarkers } from '../relationeditor';
-import { useCanvasView, useOntology, useProjectStore, useSelection } from '../projectstore';
+import {
+  useCanvasView,
+  useOntology,
+  useProjectStore,
+  useSelection,
+  useTaxonomyRelations,
+} from '../projectstore';
 import { Button, Divider, Spacer, Tabs, Toolbar } from '../designsystem';
 import { Inspector } from './Inspector';
 import {
@@ -32,10 +38,24 @@ const VIEW_TABS = [
   { value: 'taxonomy' as const, label: 'Taxonomy' },
 ];
 
+/*
+ * Three settings rather than a switch. The taxonomy view reads cleanly because it draws one
+ * kind of edge, so drawing relations always would trade that legibility for completeness. The
+ * middle setting is the one that earns its place: it answers "what does this connect to?"
+ * without turning the taxonomy into a second schema view.
+ */
+const RELATION_TABS = [
+  { value: 'off' as const, label: 'No relations' },
+  { value: 'selected' as const, label: 'Selected' },
+  { value: 'all' as const, label: 'All' },
+];
+
 export function App() {
   const view = useCanvasView();
   const ontology = useOntology();
   const setView = useProjectStore((state) => state.setView);
+  const taxonomyRelations = useTaxonomyRelations();
+  const setTaxonomyRelations = useProjectStore((state) => state.setTaxonomyRelations);
   const undo = useProjectStore((state) => state.undo);
   const redo = useProjectStore((state) => state.redo);
   const deleteSelection = useProjectStore((state) => state.deleteSelection);
@@ -225,6 +245,18 @@ export function App() {
                 ? 'Drag from a class edge to another class to create a relation.'
                 : 'Laid out automatically — one module per root class, superclasses above.'}
             </span>
+            {/*
+              Only where it applies. The schema view always draws relations, so the control
+              would be present and inert there, which misleads rather than merely fails.
+            */}
+            {view === 'taxonomy' ? (
+              <Tabs
+                options={RELATION_TABS}
+                value={taxonomyRelations}
+                onChange={setTaxonomyRelations}
+                ariaLabel="Relation edges"
+              />
+            ) : null}
             <Spacer />
             {finding.action}
             <Button

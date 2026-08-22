@@ -50,9 +50,7 @@ schema too big to scan can be searched by name or description from `Ctrl`+`K`.
 What that leaves is short. Neither of the two sequenced items is ready to start, and saying so is
 the point of listing them: both want a design note before any code.
 
-1. **Relation edges in the taxonomy view** (todo 11) — **ready now.** The question that held it up
-   is answered: a three-way control, _off_ by default, _only the selected class_, or _all_.
-2. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
+1. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
    size. It is the largest new dependency surface on the list, and the only item that makes this
    tool depend on vocabularies it does not control; everything above it improves what is already
    here.
@@ -404,7 +402,6 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Subschema filter** — the first thing that bites past about thirty classes, and cheaper than any amount of auto-layout, because hiding is the only thing that scales. Do it before the layout and grouping items below; it may make them unnecessary. Narrow the canvas to a chosen set of classes and relations, or to one class and what it touches, and hide the rest. The answer to a spaghetti diagram that no amount of layout fixes, and the only thing that actually scales. _Was listed twice: also appeared under Editing workflow as "filter schema for subschemas"._                                                                                                                                                                                                                                                                                                                                                                                                            | M    |
 | **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | M    |
 | **Stepped / orthogonal edges as an option** — now that each edge picks a side, right-angled routing is a small step and reads better for dense schemas.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | S    |
-| **Draw relation edges in the taxonomy view** — it shows only subclass links today, and that is _why_ it reads cleanly, so drawing them always would trade the legibility for completeness. **Decided: a three-way control**, not a switch — _off_, _only the selected class_, and _all_. The middle setting is the one that earns its place: it answers "what does this connect to?" without turning the taxonomy into a second schema view, and it is the only one of the three that keeps the view sparse while still saying something. Off stays the default. _(todo 11)_                                                                                                                                                                                                                                                                                                                                                                                                                 | M    |
 
 ## Editing workflow
 
@@ -668,12 +665,11 @@ list as originally written is in the git history; ask and it comes back.
 | 3   | Editing workflow       | Palette and taxonomy tree as subtabs — parked, needs a design choice  | M    |
 | 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project   | L    |
 | 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29         | L    |
-| 11  | Canvas and readability | Relation edges in the taxonomy view — off / selected / all            | M    |
 | 18  | Editing workflow       | Metadata editing as an ordinary form, with the vocabulary as plumbing | M    |
 | 20  | Export and interop     | Harden the layout annotation — parked to the back of the queue        | S–M  |
 | 28  | Editing workflow       | Shrink the inspector on a phone — field layout as much as type        | S    |
 | 30  | Canvas and readability | Let the side panels slide away on desktop — the left panel, mainly    | S–M  |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 27, 29, 31 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 31 — kept as numbers so a commit message naming one can still be resolved.
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.

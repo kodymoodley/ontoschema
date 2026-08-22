@@ -264,9 +264,20 @@ const MAX_ROW_WIDTH = 1800;
  * containing a top-down dagre tree. Boxes flow left to right and wrap, which keeps large
  * ontologies legible instead of turning into one wide spaghetti graph.
  */
+/**
+ * How much of the relation layer the taxonomy view draws.
+ *
+ * The view reads cleanly because it draws one kind of edge, so drawing them always would trade
+ * the legibility for completeness. `selected` is the setting that earns its place: it answers
+ * "what does this connect to?" in place, without turning the taxonomy into a second schema
+ * view. Off is the default.
+ */
+export type TaxonomyRelations = 'off' | 'selected' | 'all';
+
 export function taxonomyGraph(
   ontology: Ontology,
   selectedId: string | null,
+  relations: TaxonomyRelations = 'off',
 ): { nodes: Node[]; edges: Edge[] } {
   const modules = taxonomyModules(ontology);
   const index = indexOntology(ontology);
@@ -351,7 +362,70 @@ export function taxonomyGraph(
     rowHeight = Math.max(rowHeight, boxHeight);
   }
 
+  if (relations !== 'off') {
+    edges.push(...relationEdges(ontology, index, nodes, selectedId, relations));
+  }
+
   return { nodes, edges };
+}
+
+/**
+ * The relation layer, drawn between whichever taxonomy nodes are on screen.
+ *
+ * A class reachable from two roots appears in both modules, so one usage can have more than
+ * one pair of endpoints. Every visible pair is drawn: leaving some out would show a relation
+ * as attached to one copy of a class and not the other, which is a picture of nothing.
+ */
+function relationEdges(
+  ontology: Ontology,
+  index: ReturnType<typeof indexOntology>,
+  nodes: readonly Node[],
+  selectedId: string | null,
+  mode: TaxonomyRelations,
+): Edge[] {
+  /** Every taxonomy node showing a given class, keyed by the class it shows. */
+  const appearances = new Map<string, string[]>();
+  for (const node of nodes) {
+    if (node.type !== NODE_TYPE.taxonomyClass) continue;
+    const { classId } = node.data as TaxonomyClassNodeData;
+    const existing = appearances.get(classId);
+    if (existing) existing.push(node.id);
+    else appearances.set(classId, [node.id]);
+  }
+
+  const edges: Edge[] = [];
+  for (const usage of ontology.usages) {
+    const property = index.relationById.get(usage.propertyId);
+    if (!property || usage.objectClassId === null) continue;
+    if (
+      mode === 'selected' &&
+      selectedId !== usage.subjectClassId &&
+      selectedId !== usage.objectClassId
+    ) {
+      continue;
+    }
+
+    const sources = appearances.get(usage.subjectClassId) ?? [];
+    const targets = appearances.get(usage.objectClassId) ?? [];
+    for (const source of sources) {
+      for (const target of targets) {
+        edges.push({
+          // Scoped by endpoint as well as by usage: one usage can be drawn more than once.
+          id: `relation:${usage.id}:${source}:${target}`,
+          type: EDGE_TYPE.relation,
+          source,
+          target,
+          selectable: false,
+          data: {
+            usage,
+            property,
+            shared: (index.usagesByProperty.get(usage.propertyId) ?? []).length > 1,
+          } satisfies RelationEdgeData,
+        });
+      }
+    }
+  }
+  return edges;
 }
 
 export function taxonomyNodeId(rootId: string, classId: string): string {

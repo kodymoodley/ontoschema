@@ -6,6 +6,7 @@ export { UNTITLED } from './workspace';
 
 export { useProjectStore, activeOntology } from './store';
 export type { ProjectStoreState, CanvasView, PendingConnection } from './store';
+export type { TaxonomyRelations } from './interactionactions';
 export {
   STORAGE_KEY,
   clearWorkspace,
@@ -39,6 +40,10 @@ export function useProjects(): Project[] {
 
 export function useSelection(): EntityRef | null {
   return useProjectStore((state) => state.selection);
+}
+
+export function useTaxonomyRelations() {
+  return useProjectStore((state) => state.taxonomyRelations);
 }
 
 export function useCanvasView() {

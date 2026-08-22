@@ -14,6 +14,14 @@ import type { ProjectStoreState } from './store';
 
 export type CanvasView = 'schema' | 'taxonomy';
 
+/**
+ * How much of the relation layer the taxonomy view draws: none, the selected class's, or all.
+ *
+ * A view preference, held here rather than in the canvas so it survives switching tabs, and
+ * not written to the file: it is how someone is looking at a schema, not part of the schema.
+ */
+export type TaxonomyRelations = 'off' | 'selected' | 'all';
+
 /** A connection the user has drawn but not yet assigned a property to. */
 export interface PendingConnection {
   subjectClassId: string;
@@ -24,6 +32,7 @@ export interface InteractionActions {
   select(ref: EntityRef | null): void;
   deleteSelection(): void;
   setView(view: CanvasView): void;
+  setTaxonomyRelations(relations: TaxonomyRelations): void;
 
   /** Ask the canvas to bring a class into focus. Cleared once it has. */
   focusClass(classId: string): void;
@@ -53,6 +62,9 @@ export function createInteractionActions(
     },
     setView(view) {
       set((state) => ({ ...state, view }));
+    },
+    setTaxonomyRelations(taxonomyRelations) {
+      set((state) => ({ ...state, taxonomyRelations }));
     },
 
     /*

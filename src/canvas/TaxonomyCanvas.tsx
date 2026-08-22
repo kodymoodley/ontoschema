@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react';
 import type { EdgeTypes, NodeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useOntology, useProjectStore, useSelection } from '../projectstore';
+import { useOntology, useProjectStore, useSelection, useTaxonomyRelations } from '../projectstore';
 import styles from './canvas.module.css';
 import { NODE_TYPE, classIdFromTaxonomyNode, taxonomyGraph } from './graphmodel';
 
@@ -31,9 +31,10 @@ function TaxonomyCanvasInner({ nodeTypes, edgeTypes }: TaxonomyCanvasProps) {
   const selection = useSelection();
   const select = useProjectStore((state) => state.select);
 
+  const relations = useTaxonomyRelations();
   const { nodes, edges } = useMemo(
-    () => taxonomyGraph(ontology, selection?.id ?? null),
-    [ontology, selection?.id],
+    () => taxonomyGraph(ontology, selection?.id ?? null, relations),
+    [ontology, selection?.id, relations],
   );
 
   // The layout is derived, so the camera is framed explicitly whenever the shape of the
