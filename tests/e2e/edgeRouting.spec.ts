@@ -86,12 +86,6 @@ const relationEdge = async (page: Page, name: string) => {
   return ends;
 };
 
-const subclassEdge = async (page: Page) => {
-  const ends = await edgeEnds(page, '.react-flow__edge[data-id^="subclass:"]');
-  if (!ends) throw new Error('no subclass edge rendered');
-  return ends;
-};
-
 /** How many of the schema's classes are actually within the visible canvas. */
 async function onScreen(page: Page) {
   return page.locator('[data-class-node-id]').evaluateAll((nodes) => {
@@ -159,6 +153,39 @@ async function sideOf(page: Page, className: string, point: { x: number; y: numb
     },
     { name: className, at: point },
   );
+}
+
+/**
+ * The line an edge draws, taken apart into the moves it makes.
+ *
+ * Read from the `d` attribute rather than sampled along the path, because the question is what
+ * kind of line this is, and the answer is in the commands: a curve is one long cubic, a rigid
+ * line is straight runs joined by small arcs at the corners.
+ */
+async function pathMoves(page: Page, edgeSelector: string) {
+  const d = await page.evaluate((selector) => {
+    const path = document.querySelector<SVGPathElement>(`${selector} path.react-flow__edge-path`);
+    return path?.getAttribute('d') ?? null;
+  }, edgeSelector);
+  if (!d) throw new Error(`no line drawn for ${edgeSelector}`);
+
+  const moves = d.match(/[A-Za-z][^A-Za-z]*/g) ?? [];
+  const straight: { from: Point; to: Point }[] = [];
+  let at: Point = { x: 0, y: 0 };
+
+  for (const move of moves) {
+    const numbers = (move.slice(1).match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+    const to = { x: numbers.at(-2) ?? 0, y: numbers.at(-1) ?? 0 };
+    if (move[0] === 'L') straight.push({ from: at, to });
+    at = to;
+  }
+
+  return { commands: moves.map((move) => move[0]).join(''), straight };
+}
+
+interface Point {
+  x: number;
+  y: number;
 }
 
 test('a relation to the right leaves the right side and arrives at the left', async ({ page }) => {
@@ -236,25 +263,26 @@ test('a relation can be drawn by hand from any side', async ({ page }) => {
   await expect(page.locator('[data-relation-name="hasEngine"]')).toBeVisible();
 });
 
-test('a subclass link stays vertical when the child is dragged above its parent', async ({
-  page,
-}) => {
+/*
+ * The hierarchy is the taxonomy view's subject and it draws it laid out. On the schema canvas
+ * the same links crossed the crowded middle to say what the class box already says in its own
+ * header, so they are not drawn here -- and nothing about the model changed, which is what the
+ * other half of this checks.
+ */
+test('the schema canvas draws no subclass links', async ({ page }) => {
   await openApp(page);
   await newClass(page, 'Vehicle', 300, 300);
   await newClass(page, 'Car', 300, 620);
   await page.locator('[data-class-name="Car"] header').click();
   await page.getByLabel('Superclass').selectOption({ label: 'Vehicle' });
-  await expect(page.locator('.react-flow__edge[data-id^="subclass:"]')).toHaveCount(1);
 
-  // The usual arrangement: child below, so the link leaves its top.
-  expect(await sideOf(page, 'Car', (await subclassEdge(page)).start)).toBe('top');
+  // The class says whose subclass it is, where it has always said so.
+  await expect(page.locator('[data-class-name="Car"]')).toContainText('Vehicle');
+  await expect(page.locator('.react-flow__edge[data-id^="subclass:"]')).toHaveCount(0);
 
-  await dragClassBy(page, 'Car', 0, -500);
-
-  // Still vertical — hierarchy stays legible — but flipped end for end rather than looping.
-  const after = await subclassEdge(page);
-  expect(await sideOf(page, 'Car', after.start)).toBe('bottom');
-  expect(await sideOf(page, 'Vehicle', after.end)).toBe('top');
+  // And the taxonomy view, whose job this is, draws it.
+  await page.getByRole('tab', { name: 'Taxonomy' }).click();
+  await expect(page.locator('.react-flow__edge[data-id*="subclass:"]')).toHaveCount(1);
 });
 
 test('double-clicking bare canvas frames the whole schema again', async ({ page }) => {
@@ -404,4 +432,61 @@ test('a relation label passing over a class does not cover it', async ({ page })
 
   expect(covering.insideTheLabel, `on top: ${covering.what}`).toBe(false);
   expect(covering.insideTheClass, `on top: ${covering.what}`).toBe(true);
+});
+
+/**
+ * Rigid right angles rather than a curve, which is how the taxonomy view draws its relations.
+ * A curve through a crowded schema takes the shortest way regardless of what is in the middle,
+ * and reads as one of several lines going roughly the same way; a stepped line is followable.
+ */
+test('a relation is drawn as straight runs and right angles, never as a curve', async ({
+  page,
+}) => {
+  await openApp(page);
+  await newClass(page, 'Car', 60, 60);
+  await newClass(page, 'Dealership', 560, 400);
+  await relate(page, 'Car', 'Dealership', 'offeredBy');
+
+  const usageId = await page
+    .locator('[data-relation-name="offeredBy"]')
+    .getAttribute('data-usage-id');
+  const line = await pathMoves(page, `.react-flow__edge[data-id="${usageId}"]`);
+
+  // A cubic is what a bezier draws, and there is no other reason for one to appear here.
+  expect(line.commands, `drawn as ${line.commands}`).not.toContain('C');
+  expect(line.straight.length, 'nothing straight was drawn').toBeGreaterThan(0);
+
+  for (const [index, run] of line.straight.entries()) {
+    const level = Math.abs(run.from.y - run.to.y) < 0.5;
+    const upright = Math.abs(run.from.x - run.to.x) < 0.5;
+    expect(
+      level || upright,
+      `run ${index} goes from ${run.from.x},${run.from.y} to ${run.to.x},${run.to.y}`,
+    ).toBe(true);
+  }
+});
+
+/*
+ * The reason the schema view steps between the facing sides rather than routing through lanes
+ * as the taxonomy does: here the classes move, and the line has to keep up with them.
+ */
+test('stays rigid after the class it leaves has been dragged', async ({ page }) => {
+  await openApp(page);
+  await newClass(page, 'Car', 60, 60);
+  await newClass(page, 'Dealership', 560, 400);
+  await relate(page, 'Car', 'Dealership', 'offeredBy');
+
+  await dragClassBy(page, 'Car', 240, 420);
+
+  const usageId = await page
+    .locator('[data-relation-name="offeredBy"]')
+    .getAttribute('data-usage-id');
+  const line = await pathMoves(page, `.react-flow__edge[data-id="${usageId}"]`);
+
+  expect(line.commands).not.toContain('C');
+  for (const run of line.straight) {
+    const level = Math.abs(run.from.y - run.to.y) < 0.5;
+    const upright = Math.abs(run.from.x - run.to.x) < 0.5;
+    expect(level || upright, `${run.from.x},${run.from.y} to ${run.to.x},${run.to.y}`).toBe(true);
+  }
 });

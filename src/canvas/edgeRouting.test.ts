@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLASS_NODE_WIDTH,
-  chooseHierarchySides,
   chooseSides,
   estimateClassHeight,
   sourceHandleId,
@@ -90,30 +89,6 @@ describe('chooseSides', () => {
     const empty: Box = { x: 0, y: 0, width: 0, height: 0 };
     expect(() => chooseSides(empty, empty)).not.toThrow();
     expect(chooseSides(empty, { x: 100, y: 0, width: 0, height: 0 }).source).toBe('right');
-  });
-});
-
-describe('chooseHierarchySides', () => {
-  it('leaves the child at the top and arrives at the parent below it', () => {
-    // The usual layout: parent above, child beneath.
-    expect(chooseHierarchySides(box(0, 400), box(0, 0))).toEqual({
-      source: 'top',
-      target: 'bottom',
-    });
-  });
-
-  it('flips end for end when the child has been dragged above its parent', () => {
-    // Still vertical — hierarchy stays legible — but no longer looping all the way round.
-    expect(chooseHierarchySides(box(0, 0), box(0, 400))).toEqual({
-      source: 'bottom',
-      target: 'top',
-    });
-  });
-
-  it('stays vertical however far apart the two are horizontally', () => {
-    const sides = chooseHierarchySides(box(2_000, 400), box(0, 0));
-    expect(['top', 'bottom']).toContain(sides.source);
-    expect(['top', 'bottom']).toContain(sides.target);
   });
 });
 

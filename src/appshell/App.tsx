@@ -48,9 +48,9 @@ import styles from './appshell.module.css';
  */
 
 /**
- * The one line of prose in the canvas toolbar, which says whatever is most worth knowing.
+ * The one line of prose in the canvas toolbar, which speaks only when it has something to say.
  *
- * The case that matters is the third: switching the relation layer on with nothing selected
+ * The case it exists for is the second: switching the relation layer on with nothing selected
  * draws nothing, because there is no class whose relations to draw. Without a word about it the
  * switch reports a state that has no visible effect, which reads as a control that does not
  * work. It says so here rather than on the canvas, and stops saying it the moment a class is
@@ -59,6 +59,10 @@ import styles from './appshell.module.css';
  * Selecting something on the person's behalf was the alternative and was turned down: selection
  * opens the inspector, so a drawing option would have slid an editing panel open and changed
  * what they were working on.
+ *
+ * The taxonomy view used to describe its own layout here whenever it had nothing else to say.
+ * That was a caption on a picture that explains itself, sitting in a toolbar where every other
+ * character is a control, and it is gone.
  */
 function canvasHint(state: {
   view: CanvasView;
@@ -70,7 +74,7 @@ function canvasHint(state: {
   if (state.relations === 'selected' && !state.hasSelection) {
     return 'Select a class to see its relations.';
   }
-  return 'Laid out automatically — one module per root class, superclasses above.';
+  return '';
 }
 
 const VIEW_TABS = [
@@ -327,12 +331,14 @@ export function App() {
               <EntitiesPanelIcon />
             </Button>
             <Tabs options={VIEW_TABS} value={view} onChange={setView} ariaLabel="Canvas view" />
-            <span className={styles.viewHint}>
-              {canvasHint({ view, relations: taxonomyRelations, hasSelection: inspecting })}
-            </span>
             {/*
               Only where it applies. The schema view always draws relations, so the control
               would be present and inert there, which misleads rather than merely fails.
+
+              Ahead of the hint rather than after it, because the hint comes and goes with what
+              is selected and a sentence that changes length drags whatever follows it along.
+              A control that moves while you are reaching for it is the one thing a toolbar must
+              not do; putting it before the prose costs nothing and needs no reserved width.
             */}
             {view === 'taxonomy' ? (
               <Switch
@@ -344,6 +350,9 @@ export function App() {
                 Show <RelationIcon />
               </Switch>
             ) : null}
+            <span className={styles.viewHint} data-testid="canvas-hint">
+              {canvasHint({ view, relations: taxonomyRelations, hasSelection: inspecting })}
+            </span>
             <Spacer />
             <Button
               size="small"
