@@ -114,3 +114,28 @@ test('paints the relation names above the lines, not under them', async ({ page 
     expect(edge, 'an edge layer is at or above the labels').toBeLessThan(layers.labels);
   }
 });
+
+/*
+ * Switching the layer on with nothing selected draws nothing, because there is no class whose
+ * relations to draw. Unexplained, that reads as a control that does not work.
+ */
+test('says what is missing when it is switched on with nothing selected', async ({ page }) => {
+  await taxonomyOf(page, 'Music library');
+  const hint = page.getByText(/Laid out automatically|Select a class to see/);
+  await expect(hint).toContainText('Laid out automatically');
+
+  await page.getByTestId('toggle-relations').click();
+  await expect(hint).toContainText('Select a class to see its relations');
+
+  // And stops saying it the moment there is something to draw.
+  await page.locator('[data-taxonomy-class="Track"]').first().click();
+  await expect(hint).toContainText('Laid out automatically');
+  await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(0);
+});
+
+test('says nothing about selecting while the layer is off', async ({ page }) => {
+  await taxonomyOf(page, 'Music library');
+  // Off, so a class being selected or not makes no difference to what is drawn.
+  await page.locator('[data-taxonomy-class="Track"]').first().click();
+  await expect(page.getByText('Select a class to see its relations')).toHaveCount(0);
+});
