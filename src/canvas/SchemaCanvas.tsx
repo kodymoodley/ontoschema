@@ -25,6 +25,7 @@ import { OWNS_DOUBLE_CLICK } from './gestures';
 import { NODE_TYPE, sameClassNode, sameRelationEdge, schemaEdges, schemaNodes } from './graphmodel';
 import { CLASS_NODE_WIDTH, focusZoom, nextFreePosition } from './layout';
 import { provideViewCentre, viewCentre } from './viewcentre';
+import { provideFraming } from './framing';
 
 /** How far the viewport may be pushed, including by a focus request. */
 const MIN_ZOOM = 0.2;
@@ -40,6 +41,35 @@ const NEW_CLASS_HALF_HEIGHT = 65;
 /** Distance between a touch and a point remembered from an earlier one. */
 const apart = (touch: { clientX: number; clientY: number }, from: { x: number; y: number }) =>
   Math.hypot(touch.clientX - from.x, touch.clientY - from.y);
+
+/**
+ * Runs something once an element's width has held still for a frame.
+ *
+ * A CSS transition on a container gives no signal a descendant can hear: `transitionend` fires
+ * on the element that transitioned and bubbles upwards, away from everything inside it. Watching
+ * the width across frames needs nothing to be told and covers every cause -- a panel folding, a
+ * drawer opening, a window being dragged narrower.
+ *
+ * Costs two frames when nothing is moving, which is invisible in front of a 400ms zoom.
+ */
+function whenWidthSettles(element: HTMLElement | null, run: () => void): () => void {
+  if (!element) return () => {};
+
+  let previous = -1;
+  let frame = 0;
+  const tick = () => {
+    const { width } = element.getBoundingClientRect();
+    if (width === previous) {
+      run();
+      return;
+    }
+    previous = width;
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+
+  return () => cancelAnimationFrame(frame);
+}
 
 /**
  * The free-form schema surface: classes carrying their attributes, and relations drawn
@@ -243,26 +273,50 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
      * The rendered box has no such lag. It is in screen pixels, so dividing by the zoom puts it
      * back into the coordinates `position` is expressed in.
      */
-    const node = getNode(focusRequest);
-    const canvas = surface.current?.getBoundingClientRect();
-    const box = surface.current
-      ?.querySelector<HTMLElement>(`[data-class-node-id="${focusRequest}"]`)
-      ?.getBoundingClientRect();
-    const zoom = getZoom();
-    const width = (box?.width ?? 0) / zoom;
-    const height = (box?.height ?? 0) / zoom;
-    if (!node || !canvas || width <= 0 || height <= 0) return;
+    const focus = () => {
+      const node = getNode(focusRequest);
+      const canvas = surface.current?.getBoundingClientRect();
+      const box = surface.current
+        ?.querySelector<HTMLElement>(`[data-class-node-id="${focusRequest}"]`)
+        ?.getBoundingClientRect();
+      const zoom = getZoom();
+      const width = (box?.width ?? 0) / zoom;
+      const height = (box?.height ?? 0) / zoom;
+      if (!node || !canvas || width <= 0 || height <= 0) return;
 
-    clearFocus();
-    void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
-      zoom: focusZoom({
-        node: { width, height },
-        canvas: { width: canvas.width, height: canvas.height },
-        minZoom: MIN_ZOOM,
-        maxZoom: MAX_ZOOM,
-      }),
-      duration: 400,
-    });
+      clearFocus();
+      void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
+        zoom: focusZoom({
+          node: { width, height },
+          canvas: { width: canvas.width, height: canvas.height },
+          minZoom: MIN_ZOOM,
+          maxZoom: MAX_ZOOM,
+        }),
+        duration: 400,
+      });
+    };
+
+    /*
+     * Not from inside this effect, and not until the pane has stopped changing size.
+     *
+     * Double-clicking a class selects it as well as focusing it, and selecting unfolds the
+     * inspector if it was folded away. The unfold is a state change made from an effect, and
+     * React flushes pending passive effects -- this one -- *before* it renders that update, so
+     * measuring here reads the pane as it was: 340px wider than the one the class ends up in.
+     * Measured, it framed the class at 49% of the canvas instead of the 30-40% it aims for,
+     * which is exactly the miss an earlier auto-folding inspector produced.
+     *
+     * The timeout puts the measurement after React has finished the whole update; the settle
+     * after that covers the pane still being on its way to its new width.
+     */
+    let cancelSettle = () => {};
+    const later = window.setTimeout(() => {
+      cancelSettle = whenWidthSettles(surface.current, focus);
+    }, 0);
+    return () => {
+      window.clearTimeout(later);
+      cancelSettle();
+    };
   }, [focusRequest, clearFocus, getNode, getZoom, nodes, ontology.classes, setCenter]);
 
   /**
@@ -276,6 +330,9 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const frameEverything = useCallback(() => {
     void fitView({ padding: 0.2, maxZoom: 1, duration: 400 });
   }, [fitView]);
+
+  // The toolbar's button is the same action, reached from outside React Flow's provider.
+  useEffect(() => provideFraming(frameEverything), [frameEverything]);
 
   const onSurfaceDoubleClick = useCallback(
     (event: React.MouseEvent) => {

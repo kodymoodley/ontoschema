@@ -42,6 +42,12 @@ one annotation, the SHACL shapes in a file of their own, and a report of what a 
 left behind. The private project format is gone from everyday use, and a workspace backup covers
 the one thing RDF cannot carry. The file menu was tidied into four groups on the way through.
 
+**Both side panels now fold away on a wide screen** (todo 30), with two follow-ups that came
+out of using it. Selecting an entity unfolds the inspector again (todo 33) — the rule from todo
+27, that selecting is what opens it, had to keep holding once there was a folded state for it to
+hold against. And one control folds both panels and frames the whole schema at once (todo 34),
+because the two halves of "show me everything" are worth having on one button.
+
 **The inspector arc is finished too** — todos 23 to 29. The tab strip is gone: export left, then
 the schema's own metadata, then Details and Annotations became one scrolling panel. There is no
 Inspector toggle any more, because selecting something is what opens it, at every width. And a
@@ -66,10 +72,6 @@ list above:
   entity's details and annotations, and nowhere else. Export keeps its jargon, because the RDF is
   what that panel is for. Waits on a proposal rather than a slot — what the forms hold, in what
   order, under what labels — which the owner approves before any of it is built.
-- **Let the side panels slide away on desktop** (todo 30) — ready, and settled: todo 27 is built,
-  so the rule is that selecting something opens the inspector at every width. What is left for
-  this item is the _left_ panel, and a way to put the inspector away on a wide screen without
-  deselecting. It carries a measured warning about how not to do it.
 - **Palette and taxonomy as subtabs** (todo 3) — parked after measuring; the choice of shape is
   the owner's.
 - **Nine, three times over** (todo 9) — parked as a project rather than an item, and decided in
@@ -669,6 +671,6 @@ list as originally written is in the git history; ask and it comes back.
 | 20  | Export and interop | Harden the layout annotation — parked to the back of the queue        | S–M  |
 | 28  | Editing workflow   | Shrink the inspector on a phone — field layout as much as type        | S    |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 33, 34 — kept as numbers so a commit message naming one can still be resolved.
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.

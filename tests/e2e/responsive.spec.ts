@@ -41,7 +41,7 @@ test.describe('wide', () => {
     await expect(entities(page)).toBeVisible();
     await expect(inspector(page)).toBeVisible();
     /*
-     * Exact, because the wide layout has a *fold* button named "Hide entities" and Playwright
+     * Exact, because the wide layout has a *fold* button named "Hide palette" and Playwright
      * matches an accessible name by substring unless told otherwise. Two different controls, and
      * they never appear together -- this one is the narrow layout's drawer toggle.
      */

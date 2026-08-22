@@ -120,3 +120,21 @@ export function EntitiesPanelIcon() {
 export function InspectorPanelIcon() {
   return <PanelGlyph right />;
 }
+
+/**
+ * Four corner brackets: the whole drawing, framed, with nothing either side of it.
+ *
+ * Brackets rather than the four outward arrows that usually mean "maximise", because arrows
+ * say the window is about to grow and here it is the panels that shrink. What this button
+ * promises is a frame around everything, which is what a frame is the picture of.
+ */
+export function FitIcon() {
+  return (
+    <svg {...common}>
+      <path d="M6 2.5H3.7A1.2 1.2 0 0 0 2.5 3.7V6" />
+      <path d="M10 2.5h2.3a1.2 1.2 0 0 1 1.2 1.2V6" />
+      <path d="M6 13.5H3.7a1.2 1.2 0 0 1-1.2-1.2V10" />
+      <path d="M10 13.5h2.3a1.2 1.2 0 0 0 1.2-1.2V10" />
+    </svg>
+  );
+}

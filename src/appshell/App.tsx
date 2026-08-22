@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Palette, SchemaCanvas, TaxonomyCanvas, usePaletteCreate } from '../canvas';
+import { useEffect, useRef, useState } from 'react';
+import { Palette, SchemaCanvas, TaxonomyCanvas, frameAll, usePaletteCreate } from '../canvas';
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
 import { ConnectionPicker, RelationMarkers } from '../relationeditor';
@@ -11,6 +11,7 @@ import {
   useTaxonomyRelations,
 } from '../projectstore';
 import type { CanvasView, TaxonomyRelations } from '../projectstore';
+import type { EntityRef } from '../ontologymodel';
 import { Button, Divider, RelationIcon, Spacer, Switch, Tabs, Toolbar } from '../designsystem';
 import { Inspector } from './Inspector';
 import {
@@ -21,7 +22,8 @@ import {
 } from './graphRenderers';
 import { useThemePreference } from './useThemePreference';
 import { useFullscreen } from './useFullscreen';
-import { usePanelPreference } from './usePanelPreference';
+import { FOLD_DURATION_MS, usePanelPreference } from './usePanelPreference';
+import type { SidePanel } from './usePanelPreference';
 import { useExportAction } from './useExportAction';
 import { useDialogAction } from './useDialogAction';
 import { OntologyMetadataForm } from '../ontologymetadata';
@@ -30,6 +32,7 @@ import { EntitySearch } from '../entitysearch';
 import {
   AppMark,
   EntitiesPanelIcon,
+  FitIcon,
   InspectorPanelIcon,
   MetadataIcon,
   RedoIcon,
@@ -110,15 +113,38 @@ export function App() {
   // Which side panel is showing when the viewport is too narrow for three columns.
   const [drawer, setDrawer] = useState<'none' | 'entities'>('none');
   /*
-   * The inspector has no toggle of its own. It is open exactly when something is selected, on
-   * every width -- selecting a class is already the gesture that means "tell me about this", and
-   * a button whose only job was revealing an empty panel is one control fewer to explain.
+   * Selecting is what opens the inspector, on every width -- clicking a class is already the
+   * gesture that means "tell me about this". On a narrow layout that slides the drawer in; on a
+   * wide one the column is already there, unless it has been folded away, and then the
+   * selection unfolds it. See `useRevealInspector` for why that is keyed on the selection
+   * changing rather than on there being one.
    *
    * The same rule on both layouts is a decision, not an accident: a drawer that appears on a
-   * phone and a column that appears on a desktop are the same idea at two sizes, and giving the
-   * desktop the width back when nothing is selected is most of what the collapsing item wanted.
+   * phone and a column that appears on a desktop are the same idea at two sizes.
    */
-  const inspecting = useSelection() !== null;
+  const selection = useSelection();
+  const inspecting = selection !== null;
+  useRevealInspector(selection, panels.show);
+
+  /*
+   * The whole schema, with the room to see it. Folding is what makes the canvas bigger, and
+   * fitting is what makes the drawing fill it; either on its own leaves half the job undone.
+   *
+   * One-way on purpose. The two fold toggles sit at the ends of this same strip and are how the
+   * panels come back, so a second control that put them back would be a third way to say the
+   * same thing. Pressing this again simply re-frames, which is what it is wanted for after
+   * panning around.
+   */
+  const frameCanvas = () => {
+    panels.hide('entities');
+    panels.hide('inspector');
+    /*
+     * After the columns have finished moving, not before. The canvas is measured by React Flow
+     * at the moment `fitView` is called, and calling it first fits the drawing to a pane that
+     * is still 680px narrower than it is about to be.
+     */
+    window.setTimeout(frameAll, FOLD_DURATION_MS + 20);
+  };
 
   /*
    * Ctrl+K, because that is where people look. The dialog has a button too: a shortcut nobody
@@ -133,7 +159,13 @@ export function App() {
     children: (close: () => void) => <EntitySearch onChoose={close} />,
   });
 
-  useGlobalShortcuts({ undo, redo, deleteSelection, find: () => finding.setOpen(true) });
+  useGlobalShortcuts({
+    undo,
+    redo,
+    deleteSelection,
+    find: () => finding.setOpen(true),
+    frame: frameCanvas,
+  });
 
   const attributeCount = ontology.attributes.length;
   const relationCount = ontology.relations.length;
@@ -283,8 +315,8 @@ export function App() {
               aria-pressed={!panels.isFolded('entities')}
               aria-controls="ontoschema-entities"
               onClick={() => panels.toggle('entities')}
-              aria-label={panels.isFolded('entities') ? 'Show entities' : 'Hide entities'}
-              title={panels.isFolded('entities') ? 'Show entities' : 'Hide entities'}
+              aria-label={panels.isFolded('entities') ? 'Show palette' : 'Hide palette'}
+              title={panels.isFolded('entities') ? 'Show palette' : 'Hide palette'}
               data-testid="fold-entities"
             >
               <EntitiesPanelIcon />
@@ -308,6 +340,17 @@ export function App() {
               </Switch>
             ) : null}
             <Spacer />
+            <Button
+              size="small"
+              variant="subtle"
+              iconOnly
+              onClick={frameCanvas}
+              aria-label="Fit everything on screen"
+              title="Fit everything on screen (Shift+F)"
+              data-testid="frame-canvas"
+            >
+              <FitIcon />
+            </Button>
             {finding.action}
             <Button
               size="small"
@@ -383,6 +426,31 @@ export function App() {
 }
 
 /**
+ * Selecting an entity opens the inspector, at every width, however it was selected.
+ *
+ * On a narrow layout this has always been true: the inspector is a drawer that slides in when
+ * something is selected. On a wide one the column is simply always there — until todo 30 gave
+ * it a folded state, at which point clicking a class put its details in a panel nobody could
+ * see. The owner's rule for that case was that the two layouts should behave the same, so a
+ * fold gives way to a selection.
+ *
+ * Keyed on the selection *changing*, not on there being one. Folding the inspector while a
+ * class happens to be selected has to stick, and an effect that unfolds whenever something is
+ * selected would fight the button that folded it and win.
+ */
+function useRevealInspector(selection: EntityRef | null, show: (panel: SidePanel) => void) {
+  const key = selection ? `${selection.kind}:${selection.id}` : null;
+  // Seeded with the first value, so a schema that opens with something already selected is not
+  // treated as a click that has just happened.
+  const previous = useRef(key);
+
+  useEffect(() => {
+    if (key !== null && key !== previous.current) show('inspector');
+    previous.current = key;
+  }, [key, show]);
+}
+
+/**
  * Undo, redo and delete are global gestures, but must not fire while the user is typing
  * into a field — otherwise Ctrl+Z in a text box would roll back the model instead of the
  * text, and Delete would remove the selected class mid-word.
@@ -412,8 +480,9 @@ function useGlobalShortcuts(actions: {
   redo: () => void;
   deleteSelection: () => void;
   find: () => void;
+  frame: () => void;
 }) {
-  const { undo, redo, deleteSelection, find } = actions;
+  const { undo, redo, deleteSelection, find, frame } = actions;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -444,6 +513,17 @@ function useGlobalShortcuts(actions: {
         redo();
         return;
       }
+      /*
+       * Shift+F for fit. Bare `f` was the obvious choice and was turned down: single letters
+       * are the keys a future shortcut will want, and one that fires on an ordinary letter has
+       * only the typing guard between it and a name field.
+       */
+      if (event.shiftKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'f') {
+        if (typing) return;
+        event.preventDefault();
+        frame();
+        return;
+      }
       if ((event.key === 'Delete' || event.key === 'Backspace') && !typing) {
         event.preventDefault();
         deleteSelection();
@@ -452,5 +532,5 @@ function useGlobalShortcuts(actions: {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteSelection, find]);
+  }, [undo, redo, deleteSelection, find, frame]);
 }
