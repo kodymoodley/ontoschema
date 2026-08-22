@@ -337,17 +337,13 @@ describe('relations in the taxonomy view', () => {
     expect(edges.filter((edge) => edge.type === EDGE_TYPE.subClassOf).length).toBeGreaterThan(0);
   });
 
-  it('draws all of them when asked', () => {
-    const { ontology } = twoModules();
-    expect(relationEdgesOf(taxonomyGraph(ontology, null, 'all').edges)).toHaveLength(1);
-  });
-
   it("draws only the selected class's relations in between", () => {
     const { ontology, car, vehicle } = twoModules();
 
     expect(relationEdgesOf(taxonomyGraph(ontology, car, 'selected').edges)).toHaveLength(1);
     // Vehicle is in the same module as Car and takes part in nothing.
     expect(relationEdgesOf(taxonomyGraph(ontology, vehicle, 'selected').edges)).toHaveLength(0);
+    // Nothing selected, so there is nothing to draw the relations of.
     expect(relationEdgesOf(taxonomyGraph(ontology, null, 'selected').edges)).toHaveLength(0);
   });
 
@@ -357,8 +353,8 @@ describe('relations in the taxonomy view', () => {
   });
 
   it('joins nodes that exist, so React Flow has both ends of every edge', () => {
-    const { ontology } = twoModules();
-    const { nodes, edges } = taxonomyGraph(ontology, null, 'all');
+    const { ontology, dealer } = twoModules();
+    const { nodes, edges } = taxonomyGraph(ontology, dealer, 'selected');
     const ids = new Set(nodes.map((node) => node.id));
 
     for (const edge of relationEdgesOf(edges) as { source: string; target: string }[]) {
@@ -376,7 +372,7 @@ describe('relations in the taxonomy view', () => {
     const { ontology, car, dealer, vehicle } = twoModules();
     // Dealership now hangs under Vehicle as well, so it appears in two modules.
     const shared = addSubClassOf(ontology, dealer, vehicle);
-    const { edges } = taxonomyGraph(shared, null, 'all');
+    const { edges } = taxonomyGraph(shared, car, 'selected');
 
     expect(relationEdgesOf(edges)).toHaveLength(2);
     expect(new Set(relationEdgesOf(edges).map((edge) => (edge as { id: string }).id)).size).toBe(2);

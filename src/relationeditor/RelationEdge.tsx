@@ -23,11 +23,16 @@ export function RelationEdge({
   selected,
   data,
 }: EdgeProps) {
-  const payload = data as { usage?: PropertyUsage; property?: Relation; shared?: boolean };
+  const payload = data as {
+    usage?: PropertyUsage;
+    property?: Relation;
+    shared?: boolean;
+    detour?: { x: number; y: number };
+  };
   const select = useProjectStore((state) => state.select);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
 
-  const [path, labelX, labelY] = getBezierPath({
+  const [bezier, bezierLabelX, bezierLabelY] = getBezierPath({
     sourceX,
     sourceY,
     targetX,
@@ -35,6 +40,21 @@ export function RelationEdge({
     sourcePosition,
     targetPosition,
   });
+
+  /*
+   * A detour is a single point the canvas worked out, put there so the line passes around the
+   * classes it has nothing to do with. Drawn as one quadratic curve through it rather than as a
+   * polyline: the bend stays smooth, and the control point is doubled back from the midpoint so
+   * the curve actually reaches the detour rather than merely leaning towards it.
+   */
+  const detour = payload.detour;
+  const path = detour
+    ? `M ${sourceX},${sourceY} Q ${2 * detour.x - (sourceX + targetX) / 2},${
+        2 * detour.y - (sourceY + targetY) / 2
+      } ${targetX},${targetY}`
+    : bezier;
+  const labelX = detour ? detour.x : bezierLabelX;
+  const labelY = detour ? detour.y : bezierLabelY;
 
   return (
     <>

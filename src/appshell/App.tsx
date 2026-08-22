@@ -38,18 +38,6 @@ const VIEW_TABS = [
   { value: 'taxonomy' as const, label: 'Taxonomy' },
 ];
 
-/*
- * Three settings rather than a switch. The taxonomy view reads cleanly because it draws one
- * kind of edge, so drawing relations always would trade that legibility for completeness. The
- * middle setting is the one that earns its place: it answers "what does this connect to?"
- * without turning the taxonomy into a second schema view.
- */
-const RELATION_TABS = [
-  { value: 'off' as const, label: 'No relations' },
-  { value: 'selected' as const, label: 'Selected' },
-  { value: 'all' as const, label: 'All' },
-];
-
 export function App() {
   const view = useCanvasView();
   const ontology = useOntology();
@@ -250,12 +238,18 @@ export function App() {
               would be present and inert there, which misleads rather than merely fails.
             */}
             {view === 'taxonomy' ? (
-              <Tabs
-                options={RELATION_TABS}
-                value={taxonomyRelations}
-                onChange={setTaxonomyRelations}
-                ariaLabel="Relation edges"
-              />
+              <Button
+                size="small"
+                variant="subtle"
+                aria-pressed={taxonomyRelations === 'selected'}
+                data-testid="toggle-relations"
+                title="Show the selected class's relations"
+                onClick={() =>
+                  setTaxonomyRelations(taxonomyRelations === 'off' ? 'selected' : 'off')
+                }
+              >
+                Relations
+              </Button>
             ) : null}
             <Spacer />
             {finding.action}

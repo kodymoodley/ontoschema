@@ -60,9 +60,15 @@ function TaxonomyCanvasInner({ nodeTypes, edgeTypes }: TaxonomyCanvasProps) {
         nodesDraggable={false}
         nodesConnectable={false}
         onNodeClick={(_event, node) => {
-          if (node.type === NODE_TYPE.taxonomyClass) {
-            select({ kind: 'class', id: classIdFromTaxonomyNode(node.id) });
-          }
+          if (node.type !== NODE_TYPE.taxonomyClass) return;
+          const classId = classIdFromTaxonomyNode(node.id);
+          /*
+           * Clicking the class that is already selected puts it away. With relations shown, the
+           * click that revealed them is the obvious one to hide them with, and hunting for empty
+           * canvas to click instead is the sort of small tax that makes an interface feel
+           * stubborn -- the same reasoning that made touching the canvas dismiss a drawer.
+           */
+          select(selection?.id === classId ? null : { kind: 'class', id: classId });
         }}
         onPaneClick={() => select(null)}
         zoomOnDoubleClick={false}

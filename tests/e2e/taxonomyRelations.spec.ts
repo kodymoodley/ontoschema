@@ -3,11 +3,11 @@ import type { Page } from '@playwright/test';
 import { openApp, openExamples } from './ontoschema';
 
 /**
- * The relation layer in the taxonomy view, driven the way someone uses it.
+ * The relation layer in the taxonomy view.
  *
- * The unit tests cover which edges are built. What only a browser answers is whether the
- * control is there, whether it applies to the view it belongs to, and whether the drawn edges
- * actually reach the screen.
+ * One setting, not three: the view draws the selected class's relations, or none. Drawing every
+ * relation was tried and dropped — it cost the legibility that makes this view worth having and
+ * gave back nothing the schema view does not do better.
  */
 
 // Only the relation edges: React Flow puts a test id on every edge, subclass links included.
@@ -20,53 +20,74 @@ async function taxonomyOf(page: Page, example: string) {
   await page.getByRole('tab', { name: 'Taxonomy' }).click();
 }
 
-test('offers the choice only where it applies', async ({ page }) => {
+test('offers the toggle only where it applies, and starts off', async ({ page }) => {
   await openApp(page);
-  // The schema view always draws relations, so a control there would be inert.
-  await expect(page.getByRole('tab', { name: 'No relations' })).toHaveCount(0);
+  // The schema view always draws relations, so a toggle there would be inert.
+  await expect(page.getByTestId('toggle-relations')).toHaveCount(0);
 
   await page.getByRole('tab', { name: 'Taxonomy' }).click();
-  await expect(page.getByRole('tab', { name: 'No relations' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'No relations' })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  await expect(page.getByTestId('toggle-relations')).toHaveAttribute('aria-pressed', 'false');
 });
 
-test('draws nothing until asked, then everything', async ({ page }) => {
+test("draws the selected class's relations, and nobody else's", async ({ page }) => {
   await taxonomyOf(page, 'Music library');
-  await expect(relationEdges(page)).toHaveCount(0);
+  await page.getByTestId('toggle-relations').click();
 
-  await page.getByRole('tab', { name: 'All' }).click();
-  await expect(relationEdges(page).first()).toBeVisible();
-});
-
-test('shows only what the selected class connects to', async ({ page }) => {
-  await taxonomyOf(page, 'Music library');
-  await page.getByRole('tab', { name: 'All' }).click();
-  /*
-   * Polled rather than counted once. The edges arrive over a frame or two, and reading the
-   * count the instant the tab is clicked is a race that passes alone and fails under load.
-   */
-  await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(1);
-  const all = await relationEdges(page).count();
-
-  await page.getByRole('tab', { name: 'Selected', exact: true }).click();
-  // Nothing is selected yet, so the middle setting draws nothing at all.
+  // On, but nothing selected, so there is nothing whose relations to draw.
   await expect(relationEdges(page)).toHaveCount(0);
 
   await page.locator('[data-taxonomy-class="Track"]').first().click();
   await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(0);
-  expect(await relationEdges(page).count()).toBeLessThan(all);
+  const forTrack = await relationEdges(page).count();
+
+  await page.locator('[data-taxonomy-class="Venue"]').first().click();
+  await expect.poll(() => relationEdges(page).count()).not.toBe(forTrack);
+});
+
+/*
+ * The click that revealed them is the obvious one to put them away with. Hunting for empty
+ * canvas instead is the sort of small tax that makes an interface feel stubborn.
+ */
+test('hides them again when the same class is clicked twice', async ({ page }) => {
+  await taxonomyOf(page, 'Music library');
+  await page.getByTestId('toggle-relations').click();
+
+  const track = page.locator('[data-taxonomy-class="Track"]').first();
+  await track.click();
+  await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(0);
+
+  await track.click();
+  await expect(relationEdges(page)).toHaveCount(0);
 });
 
 test('remembers the setting across a trip to the schema view', async ({ page }) => {
   await taxonomyOf(page, 'Music library');
-  await page.getByRole('tab', { name: 'All' }).click();
+  await page.getByTestId('toggle-relations').click();
 
   await page.getByRole('tab', { name: 'Schema' }).click();
   await page.getByRole('tab', { name: 'Taxonomy' }).click();
 
-  await expect(page.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true');
-  await expect(relationEdges(page).first()).toBeVisible();
+  await expect(page.getByTestId('toggle-relations')).toHaveAttribute('aria-pressed', 'true');
+});
+
+/*
+ * The names have to clear the module boxes the edges cross. They sat under every node, which is
+ * right for a class and wrong for a container: a box that hides the names of the edges crossing
+ * it tells you less than empty canvas would.
+ */
+test('shows the relation names over the module boxes they cross', async ({ page }) => {
+  await taxonomyOf(page, 'Music library');
+  await page.getByTestId('toggle-relations').click();
+  await page.locator('[data-taxonomy-class="Track"]').first().click();
+
+  const label = relationEdges(page).first();
+  await expect(label).toBeVisible();
+
+  const box = await label.boundingBox();
+  const topmost = await page.evaluate(
+    ([x, y]) =>
+      document.elementFromPoint(x as number, y as number)?.closest('[data-relation-name]') !== null,
+    [box!.x + box!.width / 2, box!.y + box!.height / 2],
+  );
+  expect(topmost).toBe(true);
 });

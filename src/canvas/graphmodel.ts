@@ -3,6 +3,8 @@ import { indexOntology, subClassEdges, taxonomyModules } from '../ontologymodel'
 import type { Attribute, Relation, Ontology, OntologyClass, PropertyUsage } from '../ontologymodel';
 import {
   CLASS_NODE_WIDTH,
+  TAXONOMY_NODE_HEIGHT,
+  TAXONOMY_NODE_WIDTH,
   chooseHierarchySides,
   chooseSides,
   estimateClassHeight,
@@ -11,6 +13,8 @@ import {
   targetHandleId,
 } from './layout';
 import type { Box } from './layout';
+import { detourAround } from './routing';
+import type { Rect } from './routing';
 
 /**
  * Derives the React Flow graph from the ontology.
@@ -71,6 +75,11 @@ export interface RelationEdgeData extends Record<string, unknown> {
   property: Relation;
   /** True when the same property is also used elsewhere in the schema. */
   shared: boolean;
+  /**
+   * A point to bend the line through, so it passes around the classes it has nothing to do
+   * with rather than through them. Absent when the straight line was already clear.
+   */
+  detour?: { x: number; y: number };
 }
 
 /* ------------------------------------------------------------ schema view */
@@ -101,6 +110,8 @@ export function schemaNodes(ontology: Ontology): Node[] {
     return {
       id: entity.id,
       type: NODE_TYPE.ontologyClass,
+      // Above the edge labels, so a label crossing a class never covers it. See CLASS_LAYER.
+      zIndex: CLASS_LAYER,
       position: entity.position,
       /*
        * React Flow hides a node until it knows how big it is, and every edit rebuilds this
@@ -265,14 +276,13 @@ const MAX_ROW_WIDTH = 1800;
  * ontologies legible instead of turning into one wide spaghetti graph.
  */
 /**
- * How much of the relation layer the taxonomy view draws.
+ * Whether the taxonomy view draws the selected class's relations.
  *
- * The view reads cleanly because it draws one kind of edge, so drawing them always would trade
- * the legibility for completeness. `selected` is the setting that earns its place: it answers
- * "what does this connect to?" in place, without turning the taxonomy into a second schema
- * view. Off is the default.
+ * Off by default. There was a third setting that drew every relation, and trying it settled the
+ * question: it cost the legibility that makes this view worth having and gave back nothing the
+ * schema view does not do better.
  */
-export type TaxonomyRelations = 'off' | 'selected' | 'all';
+export type TaxonomyRelations = 'off' | 'selected';
 
 export function taxonomyGraph(
   ontology: Ontology,
@@ -318,6 +328,9 @@ export function taxonomyGraph(
       position: { x: cursorX, y: cursorY },
       draggable: false,
       selectable: false,
+      // Beneath the edge labels. A module box is a container, and a container that hides the
+      // names of the edges crossing it is telling you less than the empty canvas would.
+      zIndex: MODULE_LAYER,
       style: { width: boxWidth, height: boxHeight },
       data: {
         label: module.root.localName,
@@ -333,6 +346,7 @@ export function taxonomyGraph(
         // A class reachable from two roots appears in both modules, so ids are scoped.
         id: taxonomyNodeId(module.root.id, entity.id),
         type: NODE_TYPE.taxonomyClass,
+        zIndex: CLASS_LAYER,
         parentId: moduleNodeId,
         extent: 'parent',
         draggable: false,
@@ -363,7 +377,7 @@ export function taxonomyGraph(
   }
 
   if (relations !== 'off') {
-    edges.push(...relationEdges(ontology, index, nodes, selectedId, relations));
+    edges.push(...relationEdges(ontology, index, nodes, selectedId));
   }
 
   return { nodes, edges };
@@ -381,34 +395,52 @@ function relationEdges(
   index: ReturnType<typeof indexOntology>,
   nodes: readonly Node[],
   selectedId: string | null,
-  mode: TaxonomyRelations,
 ): Edge[] {
   /** Every taxonomy node showing a given class, keyed by the class it shows. */
   const appearances = new Map<string, string[]>();
+  /** Where each node sits in canvas coordinates, for steering the edges around them. */
+  const rects = new Map<string, Rect>();
+  const modulePositions = new Map(
+    nodes.filter((node) => node.type === NODE_TYPE.taxonomyModule).map((n) => [n.id, n.position]),
+  );
+
   for (const node of nodes) {
     if (node.type !== NODE_TYPE.taxonomyClass) continue;
     const { classId } = node.data as TaxonomyClassNodeData;
     const existing = appearances.get(classId);
     if (existing) existing.push(node.id);
     else appearances.set(classId, [node.id]);
+
+    // A class node is positioned inside its module, so its own position is relative to it.
+    const origin = node.parentId ? modulePositions.get(node.parentId) : undefined;
+    rects.set(node.id, {
+      x: node.position.x + (origin?.x ?? 0),
+      y: node.position.y + (origin?.y ?? 0),
+      width: TAXONOMY_NODE_WIDTH,
+      height: TAXONOMY_NODE_HEIGHT,
+    });
   }
+
+  const centreOf = (id: string) => {
+    const rect = rects.get(id);
+    return rect ? { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 } : { x: 0, y: 0 };
+  };
 
   const edges: Edge[] = [];
   for (const usage of ontology.usages) {
     const property = index.relationById.get(usage.propertyId);
     if (!property || usage.objectClassId === null) continue;
-    if (
-      mode === 'selected' &&
-      selectedId !== usage.subjectClassId &&
-      selectedId !== usage.objectClassId
-    ) {
-      continue;
-    }
+    if (selectedId !== usage.subjectClassId && selectedId !== usage.objectClassId) continue;
 
     const sources = appearances.get(usage.subjectClassId) ?? [];
     const targets = appearances.get(usage.objectClassId) ?? [];
     for (const source of sources) {
       for (const target of targets) {
+        const obstacles = [...rects.entries()]
+          .filter(([id]) => id !== source && id !== target)
+          .map(([, rect]) => rect);
+        const detour = detourAround(centreOf(source), centreOf(target), obstacles);
+
         edges.push({
           // Scoped by endpoint as well as by usage: one usage can be drawn more than once.
           id: `relation:${usage.id}:${source}:${target}`,
@@ -420,6 +452,7 @@ function relationEdges(
             usage,
             property,
             shared: (index.usagesByProperty.get(usage.propertyId) ?? []).length > 1,
+            ...(detour ? { detour } : {}),
           } satisfies RelationEdgeData,
         });
       }
@@ -427,6 +460,20 @@ function relationEdges(
   }
   return edges;
 }
+
+/*
+ * Three layers, because a label has to clear one kind of node and not the other.
+ *
+ * React Flow paints edges, then edge labels, then nodes, which put every label under every
+ * node. That is right for a class -- a relation between two distant classes would otherwise
+ * park its label on whatever lies between them and swallow clicks aimed at it -- and wrong for
+ * a module box, which is a container the edges cross rather than something they collide with.
+ *
+ * `.react-flow__nodes` sets no z-index of its own, so a node's own `zIndex` competes directly
+ * with the label layer's. Modules below it, classes above it.
+ */
+export const MODULE_LAYER = 0;
+export const CLASS_LAYER = 2;
 
 export function taxonomyNodeId(rootId: string, classId: string): string {
   return `${rootId}__${classId}`;

@@ -85,9 +85,14 @@
  * They must not clear the classes. This carried `z-index: 1100` to lift it over the edges,
  * which also lifted it over every node: a relation between two distant classes parks its label
  * on whatever lies between them, covering the class and swallowing gestures aimed at it.
+ *
+ * `auto` was the answer to that and went one step too far the other way, putting labels under
+ * the taxonomy's module boxes as well, where a box hid the names of the edges crossing it. One
+ * above modules and below classes: see `MODULE_LAYER` and `CLASS_LAYER` in `graphmodel.ts`,
+ * which is where the two node layers are set.
  */
 .canvas :global(.react-flow__edgelabel-renderer) {
-  z-index: auto;
+  z-index: 1;
 }
 
 /* ---------------------------------------------------------------- palette */
