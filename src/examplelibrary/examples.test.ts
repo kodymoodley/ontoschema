@@ -7,11 +7,11 @@ import {
   relationUsages,
   rootClasses,
   usagesOfProperty,
-  validateLocalName,
   validateNamespaceIri,
   validatePrefix,
 } from '../ontologymodel';
 import { serializeTurtle } from '../serialization';
+import { isLegalLocalName } from '../../tests/fixtures/legalLocalName';
 import { EXAMPLES, exampleSize, findExample } from './index';
 
 /**
@@ -49,7 +49,7 @@ describe.each(EXAMPLES.map((example) => [example.title, example] as const))(
         ...ontology.attributes.map((e) => e.localName),
       ];
       for (const name of names) {
-        expect(validateLocalName(name).valid, `"${name}"`).toBe(true);
+        expect(isLegalLocalName(name), `"${name}"`).toBe(true);
       }
       expect(new Set(names).size).toBe(names.length);
     });

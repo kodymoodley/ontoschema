@@ -45,7 +45,6 @@ export {
   toClassLocalName,
   toPropertyLocalName,
   uniqueLocalName,
-  validateLocalName,
   validateNamespaceIri,
   validatePrefix,
 } from './identifier';
