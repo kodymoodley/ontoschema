@@ -15,16 +15,15 @@ async function labelledClass(page: Page) {
   await openApp(page);
   await page.locator('[data-palette-kind="class"]').click();
   await selectClass(page, 'NewClass');
-  // No tab to reach for: the inspector is one panel, and annotations are a section of it.
-  await page.getByLabel('Annotation term to add').selectOption('rdfs:label');
-  await page.getByRole('button', { name: 'Add annotation' }).click();
-  await page.getByLabel('rdfs:label value').fill('Car');
+  // Through the form, which is where a label is written: a box called Label, and a language
+  // beside it. The term list behind "Other properties" holds everything that has no such box.
+  await page.getByLabel('Label', { exact: true }).fill('Car');
 }
 
 test('every language is on offer, not only the one already chosen', async ({ page }) => {
   await labelledClass(page);
 
-  const field = page.getByLabel('rdfs:label language tag');
+  const field = page.getByLabel('Label language');
   await expect(field).toHaveValue('en');
 
   // The whole point: the list is complete regardless of what is currently selected.
@@ -37,7 +36,7 @@ test('every language is on offer, not only the one already chosen', async ({ pag
 
 test('a language is chosen and reaches the exported file', async ({ page }) => {
   await labelledClass(page);
-  await page.getByLabel('rdfs:label language tag').selectOption('ja');
+  await page.getByLabel('Label language').selectOption('ja');
 
   const turtle = await downloadExport(page, 'ttl');
   expect(turtle).toContain('"Car"@ja');
@@ -45,7 +44,7 @@ test('a language is chosen and reaches the exported file', async ({ page }) => {
 
 test('the tag can be taken off, leaving a plain literal', async ({ page }) => {
   await labelledClass(page);
-  await page.getByLabel('rdfs:label language tag').selectOption('');
+  await page.getByLabel('Label language').selectOption('');
 
   const turtle = await downloadExport(page, 'ttl');
   expect(turtle).toContain('"Car"');
@@ -55,6 +54,6 @@ test('the tag can be taken off, leaving a plain literal', async ({ page }) => {
 test('languages are listed by name, not just by code', async ({ page }) => {
   await labelledClass(page);
 
-  const dutch = page.getByLabel('rdfs:label language tag').locator('option[value="nl"]');
+  const dutch = page.getByLabel('Label language').locator('option[value="nl"]');
   await expect(dutch).toHaveText(/Dutch/);
 });

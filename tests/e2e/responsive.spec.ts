@@ -274,3 +274,224 @@ test.describe('narrow', () => {
     await expect(page.getByRole('button', { name: 'Entities', exact: true })).toBeVisible();
   });
 });
+
+/**
+ * The inspector on a phone, measured at the narrowest screen anyone still ships: 320px, where
+ * the panel is a 160px drawer and every row in it has to earn its width.
+ *
+ * The defect these pin was not the type scale, which `tokens.css` already steps down below
+ * 1024px. It was that a row could not shrink: the name in an attribute row is a button, a
+ * button does not shrink below its longest word, and a column flex container is as wide as its
+ * widest child — so `durationSeconds` laid the whole panel out at 207px against a 159px pane
+ * and pushed the remove button of every row out through the edge.
+ */
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  const inspectorSize = (page: Page) =>
+    inspector(page).evaluate((root) => ({
+      scrollWidth: root.scrollWidth,
+      clientWidth: root.clientWidth,
+    }));
+
+  async function musicLibrary(page: Page) {
+    await openApp(page);
+    await chooseProjectAction(page, 'open-examples');
+    await page.getByText('Music library', { exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  }
+
+  /** Selects by name through the search dialog: at this width the canvas is behind the drawer. */
+  async function find(page: Page, name: string) {
+    await page.keyboard.press('Control+k');
+    await page.getByLabel('Search by name or description').fill(name);
+    await page.locator(`[data-result="${name}"]`).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  }
+
+  test('fits a class, a relation and an attribute without scrolling sideways', async ({ page }) => {
+    await musicLibrary(page);
+
+    for (const name of ['Track', 'performedBy', 'trackTitle']) {
+      await find(page, name);
+      await expect.poll(async () => (await inspectorSize(page)).clientWidth).toBeGreaterThan(0);
+      const { scrollWidth, clientWidth } = await inspectorSize(page);
+      expect(
+        scrollWidth,
+        `${name} made the inspector ${scrollWidth}px wide in ${clientWidth}px`,
+      ).toBeLessThanOrEqual(clientWidth);
+    }
+  });
+
+  /*
+   * The name is what the row is for. Fitting name, datatype and remove button on one line is
+   * possible once the name can shrink, and it cut `trackTitle` down to `trac…` to make room for
+   * `xsd:string` in full — so the row wraps instead.
+   */
+  test('shows an attribute row name in full', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+
+    const name = page.getByRole('button', { name: 'durationSeconds', exact: true });
+    const cut = await name.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+    expect(cut, 'the name was truncated').toBe(false);
+  });
+
+  /*
+   * A name longer than the drawer itself. Wrapping the row handles ordinary names, because a
+   * name on a line of its own has 128px to sit in; this is the case that still needs the name
+   * to be able to trail off, and it is not a contrived one -- `registrationAuthorityId` is the
+   * sort of thing this tool is for.
+   */
+  test('survives an attribute whose name is longer than the panel', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+
+    await page.getByLabel('New attribute name').fill('registrationAuthorityIdentifier');
+    await page.getByRole('button', { name: 'Add attribute to this class' }).click();
+    await expect(
+      inspector(page).getByText('registrationAuthority', { exact: false }),
+    ).toBeVisible();
+
+    const { scrollWidth, clientWidth } = await inspectorSize(page);
+    expect(scrollWidth, `the long name made the panel ${scrollWidth}px wide`).toBeLessThanOrEqual(
+      clientWidth,
+    );
+  });
+
+  /*
+   * The drawers open below the canvas toolbar, not below the header. When they opened below the
+   * header they lay over the strip: at this width, with a class selected, Undo, Redo, Find and
+   * the hide-both-panels control were all covered and only the two view tabs answered a tap.
+   * Selecting is how you edit, so undo was unreachable exactly when it was wanted.
+   *
+   * Hit-testing rather than geometry, because that is the actual question -- whether a tap on
+   * the button reaches the button.
+   */
+  test('leaves every control on the canvas toolbar reachable', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+    await expect(inspector(page)).toBeVisible();
+
+    const covered = await page.evaluate(() => {
+      const bar = document.querySelector('[class*="canvasToolbar"]');
+      const blocked: string[] = [];
+      for (const control of Array.from(bar?.querySelectorAll('button, [role="switch"]') ?? [])) {
+        const rect = control.getBoundingClientRect();
+        if (rect.width === 0) continue;
+        const at = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        if (at === control || control.contains(at)) continue;
+        blocked.push(control.getAttribute('aria-label') ?? control.textContent?.trim() ?? '?');
+      }
+      return blocked;
+    });
+
+    expect(covered, `covered by the drawer: ${covered.join(', ')}`).toEqual([]);
+  });
+
+  /*
+   * The same gesture and the same result as on a desktop. It used to change its own label here
+   * and leave the drawer where it was: the inspector is a drawer at this width rather than a
+   * column, and it opened on selection alone with nothing consulting the fold.
+   */
+  test('hides both panels and brings them back, as it does on a desktop', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+    await page.getByRole('button', { name: 'Entities', exact: true }).click();
+    await expect(entities(page)).toBeVisible();
+
+    const both = page.getByTestId('fold-both');
+    await both.click();
+    await expect(inspector(page)).toBeHidden();
+    await expect(entities(page)).toBeHidden();
+    await expect(both).toHaveAttribute('aria-label', 'Show both panels');
+
+    await both.click();
+    await expect(inspector(page)).toBeVisible();
+    await expect(entities(page)).toBeVisible();
+    await expect(both).toHaveAttribute('aria-label', 'Hide both panels');
+    /*
+     * Putting the panels away was not deselecting. Asserted here rather than while they were
+     * away: a panel hidden with `visibility` leaves the accessibility tree, so there is nothing
+     * to read the field from until it comes back.
+     */
+    await expect(page.getByLabel('Class local name')).toHaveValue('Track');
+  });
+
+  /* Selecting opens the inspector at every width, and that has to survive being put away. */
+  test('opens the inspector again on the next selection', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+    await page.getByTestId('fold-both').click();
+    await expect(inspector(page)).toBeHidden();
+
+    await find(page, 'Album');
+    await expect(inspector(page)).toBeVisible();
+  });
+
+  /*
+   * A field you can type into. Nothing overflows when a 120px language select sits beside a
+   * value in a 160px drawer -- the value simply shrinks to 18px, which no test looking for
+   * overflow would ever notice.
+   */
+  test('leaves a documentation field wide enough to type into', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+
+    const label = page.getByLabel('Label', { exact: true });
+    await label.fill('Recorded track');
+    const box = (await label.boundingBox())!;
+
+    expect(box.width, `the Label field was ${Math.round(box.width)}px wide`).toBeGreaterThan(100);
+  });
+
+  /* The panel's title is the thing being edited, and it was showing as `performe…`. */
+  test('shows the name of what is being edited in full', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'performedBy');
+
+    const title = inspector(page).getByText('performedBy', { exact: true }).first();
+    const cut = await title.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+    expect(cut, 'the panel title was truncated').toBe(false);
+  });
+
+  /* Four columns in a 160px drawer left the object select showing no class name at all. */
+  test('leaves the relation pairing readable', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'performedBy');
+
+    const range = page.getByLabel('Range of performedBy on Track');
+    const box = (await range.boundingBox())!;
+    expect(box.width, `the range select was ${Math.round(box.width)}px wide`).toBeGreaterThan(80);
+  });
+});
+
+/* What changes for a phone must not follow the app back onto a desktop. */
+test.describe('rows on a wide screen', () => {
+  test.use({ viewport: WIDE });
+
+  test('keeps an attribute row on one line', async ({ page }) => {
+    await openApp(page);
+    await chooseProjectAction(page, 'open-examples');
+    await page.getByText('Music library', { exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await selectClass(page, 'Track');
+
+    const row = page.locator('li', {
+      has: page.getByRole('button', { name: 'durationSeconds', exact: true }),
+    });
+    /*
+     * Middles, not tops. The name and the datatype are set at different sizes and the row centres
+     * them, so their tops differ by a couple of pixels even when they share a line.
+     */
+    const middles = await row.evaluate((element) => {
+      const name = element.querySelector('button')!.getBoundingClientRect();
+      const meta = element.querySelector('span')!.getBoundingClientRect();
+      return [name.y + name.height / 2, meta.y + meta.height / 2];
+    });
+
+    expect(Math.abs(middles[0]! - middles[1]!), 'the datatype dropped below the name').toBeLessThan(
+      4,
+    );
+  });
+});

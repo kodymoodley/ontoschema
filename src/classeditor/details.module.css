@@ -50,7 +50,23 @@
   color: var(--text-tertiary);
 }
 
+/*
+ * The name in a row, which is also the way to open that attribute or relation.
+ *
+ * Allowed to shrink and to trail off, which is load-bearing rather than tidy. A button does not
+ * shrink below the longest word it holds, and as a flex item that could not shrink it made the
+ * whole panel as wide as its longest name -- a column flex container is as wide as its widest
+ * child, so one long name pushed the remove button of every row out through the right-hand edge.
+ * Measured on a phone, where the panel is a 160px drawer: `durationSeconds` laid it out at 203px.
+ * The rows below wrap at that width, which handles ordinary names on their own; this is what
+ * keeps a name longer than the panel from doing it again.
+ */
 .linkButton {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   padding: 0;
   border: none;
   background: none;
@@ -140,4 +156,50 @@
   font-size: var(--text-xs);
   line-height: 1.5;
   color: var(--text-secondary);
+}
+
+/*
+ * On a phone the panel is a 160px drawer, and this row cannot fit in it: a name field wide
+ * enough to type into, a 116px range select and a button come to 207px however hard the name
+ * is squeezed. That width was not merely clipping the button — a column flex container is as
+ * wide as its widest child, so the whole panel laid itself out at 207px and every attribute row
+ * above overflowed with it, remove buttons and all.
+ *
+ * Stacked, each on its own full-width line. The breakpoint is where the panels become drawers,
+ * because that is where the 160px comes from.
+ */
+@media (max-width: 1024px) {
+  /*
+   * The row wraps rather than squeezing. Everything does fit on one line once the name can
+   * shrink, but the name is what the row is for and it was being cut to `trac…` so that
+   * `xsd:string` could be shown beside it in full.
+   *
+   * A minimum on the name rather than a whole line for it: a row with a datatype has no room
+   * for both and takes two lines, while `Track` with nothing but a remove button stays on one
+   * instead of spending a line to say nothing.
+   */
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .row .linkButton {
+    min-width: 5.5rem;
+  }
+
+  /* Whichever line it lands on, it belongs at the end of it. */
+  .row .removeButton {
+    margin-left: auto;
+  }
+
+  .inlineAdd {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inlineAdd > :nth-child(1),
+  .inlineAdd > :nth-child(2),
+  .inlineAdd > :nth-child(3) {
+    flex: 0 0 auto;
+    width: 100%;
+  }
 }

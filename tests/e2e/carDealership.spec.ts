@@ -59,8 +59,8 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
 
   const carNode = page.locator('[data-class-name="Car"]');
   await expect(carNode.locator('[data-attribute-name]')).toHaveCount(5);
-  await expect(carNode.getByText('xsd:integer')).toBeVisible();
-  await expect(carNode.getByText('xsd:decimal')).toBeVisible();
+  await expect(carNode.getByText('integer', { exact: true })).toBeVisible();
+  await expect(carNode.getByText('decimal', { exact: true })).toBeVisible();
 
   // 5. Connect Car -> Dealership and name the property.
   await relate(page, 'Car', 'Dealership', 'offeredBy');
@@ -229,7 +229,9 @@ test('a attribute must be dropped onto a class, not onto empty canvas', async ({
   // Dropping onto the class attaches it.
   await dragFromPalette(page, 'attribute', { onClass: 'Car' });
   await expect(page.locator('[data-class-name="Car"] [data-attribute-name]')).toHaveCount(1);
-  await expect(page.locator('[data-class-name="Car"]').getByText('xsd:string')).toBeVisible();
+  await expect(
+    page.locator('[data-class-name="Car"]').getByText('string', { exact: true }),
+  ).toBeVisible();
 });
 
 test('a attribute is reused on a second class by dragging it from the list', async ({ page }) => {

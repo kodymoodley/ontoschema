@@ -3,57 +3,79 @@ import {
   ANNOTATION_PREFIX_ORDER,
   ANNOTATION_TERMS,
   ONTOLOGY_ANNOTATION_TERMS,
-  SUGGESTED_LANGUAGE_TAGS,
   findAnnotationTerm,
-  languageNames,
 } from '../annotationvocabulary';
 import type { AnnotationTerm } from '../annotationvocabulary';
-import { findClass, findAttribute, findRelation } from '../ontologymodel';
 import type { Annotation, EntityRef } from '../ontologymodel';
 import { useOntology, useProjectStore } from '../projectstore';
 import { Button, EmptyState, Select, TextArea, TextInput } from '../designsystem';
+import { annotationsOf } from './annotated';
+import { LanguageOptions } from './LanguageOptions';
+import { isNamedTerm, unnamedAnnotations } from './namedfields';
+import type { NamedField } from './namedfields';
 import styles from './annotationpanel.module.css';
 
 /**
- * Annotation editing for any selected entity, or for the ontology header.
+ * Every annotation the form above does not have a box for, and the way to add any term at all.
  *
  * The term list is driven entirely by the vocabulary registry, so adding a term there
  * makes it available here and in every serializer without touching this file. Each term
  * declares how its value behaves, which is what decides whether a language tag applies.
+ *
+ * What it shows is what the named fields leave: every term without a field of its own, and the
+ * second and later values of the terms that have one. Nothing is unreachable — an entity with
+ * three examples shows the first in its Example box and the other two here.
  */
 
-const DEFAULT_TERM = 'rdfs:label';
+interface EditorProps {
+  target: EntityRef;
+  /** The fields drawn above this, whose values it should not show a second time. */
+  fields: readonly NamedField[];
+}
 
-export function AnnotationEditor({ target }: { target: EntityRef }) {
+export function AnnotationEditor({ target, fields }: EditorProps) {
   const ontology = useOntology();
   const annotate = useProjectStore((state) => state.annotate);
   const editAnnotation = useProjectStore((state) => state.editAnnotation);
   const deleteAnnotation = useProjectStore((state) => state.deleteAnnotation);
 
-  const [newTerm, setNewTerm] = useState(DEFAULT_TERM);
+  /*
+   * Held as null until something is chosen, because what this list offers depends on the
+   * target and on what has already been written: the ontology takes a different set of terms,
+   * and a term with a field of its own is dropped from the list until it is already in use.
+   * A constant default meant the select could show one term while Add added another.
+   */
+  const [chosen, setChosen] = useState<string | null>(null);
 
-  const annotations = annotationsOf(target);
+  const all = annotationsOf(ontology, target);
   const available = target.kind === 'ontology' ? ONTOLOGY_ANNOTATION_TERMS : ANNOTATION_TERMS;
 
-  function annotationsOf(ref: EntityRef): Annotation[] | null {
-    switch (ref.kind) {
-      case 'ontology':
-        return ontology.annotations;
-      case 'class':
-        return findClass(ontology, ref.id)?.annotations ?? null;
-      case 'relation':
-        return findRelation(ontology, ref.id)?.annotations ?? null;
-      case 'attribute':
-        return findAttribute(ontology, ref.id)?.annotations ?? null;
-    }
-  }
+  if (all === null) return null;
+  const annotations = unnamedAnnotations(all, fields);
 
-  if (annotations === null) return null;
+  /*
+   * A term with a field of its own is offered here only once it is already in use, because then
+   * adding it means adding *another* one — a second example, a second label — and this is where
+   * those live. Offered while unused, it would create a row that vanished as it appeared: the
+   * field above would claim it, and the Add button would look broken.
+   */
+  const addable = available.filter(
+    (term) =>
+      !isNamedTerm(term.curie, fields) || all.some((existing) => existing.term === term.curie),
+  );
+  // Whatever was chosen, as long as it is still on offer; otherwise whatever the list opens on.
+  const newTerm =
+    (chosen && addable.some((term) => term.curie === chosen) ? chosen : undefined) ??
+    addable[0]?.curie ??
+    '';
 
   return (
     <div className={styles.editor}>
       {annotations.length === 0 ? (
-        <EmptyState>No annotations yet. Add a label, a definition, or provenance below.</EmptyState>
+        <EmptyState>
+          Nothing here. This is where the rest of the vocabulary lives — alternative labels, scope
+          notes, provenance, and anything written more than once.
+        </EmptyState>
       ) : (
         annotations.map((annotation) => (
           <AnnotationRow
@@ -70,9 +92,9 @@ export function AnnotationEditor({ target }: { target: EntityRef }) {
         <Select
           value={newTerm}
           aria-label="Annotation term to add"
-          onChange={(event) => setNewTerm(event.target.value)}
+          onChange={(event) => setChosen(event.target.value)}
         >
-          <TermOptions terms={available} />
+          <TermOptions terms={addable} />
         </Select>
         {/*
           Named for what it adds, not just "Add". The inspector is one panel now, so this button
@@ -195,33 +217,4 @@ function isLongFormTerm(curie: string): boolean {
     'skos:editorialNote',
     'dcterms:rights',
   ].includes(curie);
-}
-
-/**
- * Every language that can be chosen, with the widely spoken ones first.
- *
- * A list rather than a text field because the tag has to be a real language: typing into a
- * field the model validates is unworkable, since half of `zh` is not a language and the
- * character would vanish as it was typed. Choosing removes the problem instead of policing it.
- */
-function LanguageOptions() {
-  const names = languageNames();
-  const common = SUGGESTED_LANGUAGE_TAGS.filter((code) => names.has(code));
-  const rest = [...names.keys()]
-    .filter((code) => !common.includes(code as (typeof SUGGESTED_LANGUAGE_TAGS)[number]))
-    .sort((left, right) => (names.get(left) ?? '').localeCompare(names.get(right) ?? ''));
-
-  const option = (code: string) => (
-    <option key={code} value={code}>
-      {code} — {names.get(code)}
-    </option>
-  );
-
-  return (
-    <>
-      <option value="">no language</option>
-      <optgroup label="Widely spoken">{common.map(option)}</optgroup>
-      <optgroup label="All languages">{rest.map(option)}</optgroup>
-    </>
-  );
 }

@@ -1,4 +1,4 @@
-import { XSD_DATATYPES, xsdDatatypeCurie } from '../annotationvocabulary';
+import { XSD_DATATYPES, xsdDatatypeLabel } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import {
   entityIri,
@@ -36,7 +36,13 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
 
   return (
     <div className={styles.section}>
-      <Field label="Local name">
+      {/*
+        Called "Name" to a reader and "Attribute local name" to a screen reader. The visible word is
+        the plain one; the accessible name keeps "local" because the canvas has a rename field
+        of its own answering to "Attribute name", and two controls with one name is a problem for
+        anyone reaching them by name.
+      */}
+      <Field label="Name">
         <NameInput
           value={entity.localName}
           aria-label="Attribute local name"
@@ -51,7 +57,7 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
         <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
       </Field>
 
-      <Field label="Range" hint="The xsd datatype of the value, wherever this attribute is used.">
+      <Field label="Value type" hint="The datatype of the value, wherever this attribute is used.">
         <Select
           value={entity.range}
           aria-label="Attribute range"
@@ -59,7 +65,7 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
         >
           {XSD_DATATYPES.map((datatype) => (
             <option key={datatype} value={datatype}>
-              {xsdDatatypeCurie(datatype)}
+              {xsdDatatypeLabel(datatype)}
             </option>
           ))}
         </Select>

@@ -87,6 +87,13 @@
   gap: var(--space-1);
 }
 
+/* Anything hung on a label keeps its own case: `dcterms:title` is not DCTERMS:TITLE. */
+.label code {
+  text-transform: none;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
 .label {
   font-size: var(--text-xs);
   font-weight: 600;

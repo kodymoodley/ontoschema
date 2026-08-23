@@ -235,7 +235,9 @@ export async function relate(
 /** Adds an attribute to the selected class through the inspector. */
 export async function addAttribute(page: Page, name: string, range: string) {
   await page.getByLabel('New attribute name').fill(name);
-  await page.getByLabel('New attribute range').selectOption(`xsd:${range}`);
+  // By value, which is the datatype itself. The option now reads `string` rather than
+  // `xsd:string`: the prefix is the only part of a datatype name that is jargon.
+  await page.getByLabel('New attribute range').selectOption(range);
   await page.getByRole('button', { name: 'Add attribute to this class' }).click();
   await expect(page.getByLabel('New attribute name')).toHaveValue('');
 }
@@ -246,9 +248,46 @@ export async function createRelation(page: Page, localName: string) {
   await page.getByLabel('Relation local name').fill(localName);
 }
 
+/**
+ * The terms that have a labelled box of their own, and what that box is called.
+ *
+ * Kept here so tests can go on naming the term they mean while taking the path a person would
+ * take. A term in this map is not offered in the "other properties" list until it is already in
+ * use, because a box above is where its first value goes.
+ */
+const NAMED_FIELD: Record<string, string> = {
+  'rdfs:label': 'Label',
+  'skos:definition': 'Definition',
+  'rdfs:comment': 'Comment',
+  'skos:example': 'Example',
+  'dcterms:title': 'Title',
+  'dcterms:description': 'Description',
+  'dcterms:creator': 'Author',
+  'owl:versionInfo': 'Version',
+};
+
+/** Opens the disclosure holding every term that has no field of its own. Safe to call twice. */
+export async function openOtherProperties(page: Page) {
+  const summary = page.getByText('Other properties', { exact: true }).first();
+  const open = await summary.evaluate((element) => element.closest('details')?.open === true);
+  if (!open) await summary.click();
+  await expect(page.getByLabel('Annotation term to add')).toBeVisible();
+}
+
 /** Adds an annotation to whatever is selected, with an optional language tag. */
 export async function addAnnotation(page: Page, term: string, value: string, language?: string) {
-  // The inspector is one scrolling panel, so annotations are already on screen with the details.
+  const named = NAMED_FIELD[term];
+  if (named) {
+    // The form, which is where this term is written now.
+    await page.getByLabel(named, { exact: true }).fill(value);
+    if (language !== undefined) {
+      await page.getByLabel(`${named} language`, { exact: true }).selectOption(language);
+    }
+    return;
+  }
+
+  // Everything without a box of its own lives behind "Other properties", which starts closed.
+  await openOtherProperties(page);
   await page.getByLabel('Annotation term to add').selectOption(term);
   await page.getByRole('button', { name: 'Add annotation' }).click();
 

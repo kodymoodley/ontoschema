@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { xsdDatatypeCurie } from '../annotationvocabulary';
+import { xsdDatatypeLabel } from '../annotationvocabulary';
 import { toClassLocalName, toPropertyLocalName } from '../ontologymodel';
 import type { Attribute, OntologyClass } from '../ontologymodel';
 import { useDoubleTap } from '../designsystem';
@@ -170,7 +170,7 @@ function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
   const elsewhere = row.usedOnOtherClasses;
   const shared = elsewhere > 0;
   const range = (
-    <span className={styles.attributeRange}>{xsdDatatypeCurie(row.property.range)}</span>
+    <span className={styles.attributeRange}>{xsdDatatypeLabel(row.property.range)}</span>
   );
 
   if (editing) {

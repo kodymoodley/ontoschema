@@ -32,7 +32,7 @@ describe('with something selected', () => {
     render(<Inspector />);
 
     const headings = screen.getAllByRole('heading').map((h) => h.textContent);
-    expect(headings).toEqual(['Details', 'Annotations']);
+    expect(headings).toEqual(['Details', 'Documentation']);
     // Both sections are real, not just headings: a field from each.
     expect(screen.getByLabelText('Class local name')).toBeInTheDocument();
     expect(screen.getByLabelText('Annotation term to add')).toBeInTheDocument();
