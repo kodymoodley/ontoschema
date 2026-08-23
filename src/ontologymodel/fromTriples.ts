@@ -175,6 +175,21 @@ function pairingsFromShapes(
   return found;
 }
 
+/**
+ * A value this function put in the map itself, fetched back.
+ *
+ * Every one of these lookups is keyed by an IRI taken from the same list that filled the map a
+ * few lines above, so the value is always there — and `as string` said so by silencing the
+ * compiler rather than by checking. If the two ever drift apart, a cast hands `undefined` to the
+ * model typed as a string and it travels; a throw stops it where the mistake is, with the key
+ * that was missing. Nothing catches this: it would mean a bug in this file, not a bad document.
+ */
+function known<T>(map: Map<string, T>, key: string, what: string): T {
+  const value = map.get(key);
+  if (value === undefined) throw new Error(`${what} was never recorded for ${key}`);
+  return value;
+}
+
 export function ontologyFromTriples(
   triples: readonly Triple[],
   prefixes: Readonly<Record<string, string>> = {},
@@ -283,7 +298,7 @@ export function ontologyFromTriples(
       .map((triple) => {
         const annotation: Annotation = {
           id: createId('ann'),
-          term: curieByIri.get(triple.predicate) as string,
+          term: known(curieByIri, triple.predicate, 'an annotation term'),
           value: triple.object.value,
         };
         if (triple.object.type === 'literal' && triple.object.language) {
@@ -302,12 +317,12 @@ export function ontologyFromTriples(
   /* ------------------------------------------------------------------- the model */
 
   const classes = classIris.map((iri) => ({
-    id: classId.get(iri) as string,
-    localName: named.get(iri) as string,
+    id: known(classId, iri, 'a class id'),
+    localName: known(named, iri, 'a local name'),
     superClassIds: index
       .objectsOf(iri, RDFS_SUBCLASS_OF)
       .filter((term) => term.type === 'iri' && classId.has(term.value))
-      .map((term) => classId.get(term.value) as string),
+      .map((term) => known(classId, term.value, 'a class id')),
     annotations: annotationsOn(iri),
     position: layout.get(iri) ?? { x: 0, y: 0 },
   }));
@@ -319,12 +334,12 @@ export function ontologyFromTriples(
       .map((term) => term.value);
 
   const attributes = attributeIris.map((iri) => ({
-    id: propertyId.get(iri) as string,
-    localName: named.get(iri) as string,
+    id: known(propertyId, iri, 'a property id'),
+    localName: known(named, iri, 'a local name'),
     range: datatypeOf(index.objectsOf(iri, RDFS_RANGE)[0], report),
     superPropertyIds: parentsOf(iri)
       .filter((parent) => attributeIris.includes(parent))
-      .map((parent) => propertyId.get(parent) as string),
+      .map((parent) => known(propertyId, parent, 'a property id')),
     annotations: annotationsOn(iri),
   }));
 
@@ -384,11 +399,11 @@ export function ontologyFromTriples(
   for (const iri of relationIris) {
     if (!kept.has(iri)) continue;
     relations.push({
-      id: propertyId.get(iri) as string,
-      localName: named.get(iri) as string,
+      id: known(propertyId, iri, 'a property id'),
+      localName: known(named, iri, 'a local name'),
       superPropertyIds: parentsOf(iri)
         .filter((parent) => kept.has(parent))
-        .map((parent) => propertyId.get(parent) as string),
+        .map((parent) => known(propertyId, parent, 'a property id')),
       annotations: annotationsOn(iri),
     });
     if (!placeable.has(iri)) continue;
@@ -406,7 +421,7 @@ export function ontologyFromTriples(
         if (subject && object) {
           usages.push({
             id: createId('use'),
-            propertyId: propertyId.get(iri) as string,
+            propertyId: known(propertyId, iri, 'a property id'),
             subjectClassId: subject,
             objectClassId: object,
           });
@@ -425,9 +440,9 @@ export function ontologyFromTriples(
       for (const range of ranges) {
         usages.push({
           id: createId('use'),
-          propertyId: propertyId.get(iri) as string,
-          subjectClassId: classId.get(domain) as string,
-          objectClassId: classId.get(range) as string,
+          propertyId: known(propertyId, iri, 'a property id'),
+          subjectClassId: known(classId, domain, 'a class id'),
+          objectClassId: known(classId, range, 'a class id'),
         });
       }
     }
@@ -442,7 +457,7 @@ export function ontologyFromTriples(
       if (!subject) continue;
       usages.push({
         id: createId('use'),
-        propertyId: propertyId.get(iri) as string,
+        propertyId: known(propertyId, iri, 'a property id'),
         subjectClassId: subject,
         objectClassId: null,
       });

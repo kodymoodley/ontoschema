@@ -8,9 +8,9 @@ import {
   normalizeNamespaceIri,
   relationUsages,
   rootClasses,
-  validateLocalName,
 } from '../../src/ontologymodel';
 import type { Ontology } from '../../src/ontologymodel';
+import { isLegalLocalName } from '../fixtures/legalLocalName';
 import {
   RDFS_DOMAIN,
   RDFS_RANGE,
@@ -78,7 +78,7 @@ function assertConsistent(model: Ontology, context: string): void {
     ...model.attributes.map((e) => e.localName),
   ];
   for (const name of names) {
-    expect(validateLocalName(name).valid, `${context}: illegal local name "${name}"`).toBe(true);
+    expect(isLegalLocalName(name), `${context}: illegal local name "${name}"`).toBe(true);
   }
   const iris = names.map((name) => entityIri(model.iri, name));
   expect(new Set(iris).size, `${context}: duplicate IRI`).toBe(iris.length);

@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { createPreference } from '../projectstore';
 
 /**
  * Whether the RDF term behind each named field is shown beside its label.
@@ -10,44 +10,20 @@ import { useSyncExternalStore } from 'react';
  *
  * Shared rather than per-panel. The schema's metadata and an entity's details are two surfaces
  * showing the same kind of thing, and a switch that had to be found twice would read as two
- * different settings. Kept beside the theme in local storage, for the same reason: it is about
- * this person, not about any schema.
+ * different settings.
  */
 
-const STORAGE_KEY = 'ontoschema.showTerms';
+const showTerms = createPreference<boolean>(
+  'ontoschema.showTerms',
+  (stored) => (stored === 'true' ? true : stored === 'false' ? false : undefined),
+  (value) => String(value),
+  () => false,
+);
 
-function stored(): boolean {
-  try {
-    return globalThis.localStorage?.getItem(STORAGE_KEY) === 'true';
-  } catch {
-    // Unreadable storage is not a reason to refuse to render a form.
-    return false;
-  }
-}
-
-let showing = stored();
-const listeners = new Set<() => void>();
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+export function useShowTerms(): boolean {
+  return showTerms.use();
 }
 
 export function toggleShowTerms(): void {
-  showing = !showing;
-  try {
-    globalThis.localStorage?.setItem(STORAGE_KEY, String(showing));
-  } catch {
-    // The switch still works for this session.
-  }
-  for (const listener of listeners) listener();
-}
-
-export function useShowTerms(): boolean {
-  // The server snapshot is only reached if this is ever rendered outside a browser.
-  return useSyncExternalStore(
-    subscribe,
-    () => showing,
-    () => false,
-  );
+  showTerms.set(!showTerms.get());
 }

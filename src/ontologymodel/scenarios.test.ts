@@ -25,7 +25,8 @@ import {
   subClassEdges,
   taxonomyModules,
 } from './taxonomy';
-import { entityIri, validateLocalName } from './identifier';
+import { entityIri } from './identifier';
+import { isLegalLocalName } from '../../tests/fixtures/legalLocalName';
 import { ontologyToTriples } from './triples';
 import { RDFS_DOMAIN, RDFS_RANGE } from '../annotationvocabulary';
 import { objectsOf, unionMembers } from '../../tests/fixtures/readTriples';
@@ -45,7 +46,7 @@ describe.each(allScenarios())('$name', ({ ontology }) => {
       ...ontology.attributes.map((e) => e.localName),
     ];
     for (const name of names) {
-      expect(validateLocalName(name).valid, `"${name}" is not a legal local name`).toBe(true);
+      expect(isLegalLocalName(name), `"${name}" is not a legal local name`).toBe(true);
     }
     const iris = names.map((name) => entityIri(ontology.iri, name));
     expect(new Set(iris).size).toBe(iris.length);
