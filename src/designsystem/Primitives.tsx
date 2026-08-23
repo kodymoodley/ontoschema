@@ -56,7 +56,12 @@ export function Button({
 /* ----------------------------------------------------------------- Field */
 
 interface FieldProps {
-  label?: string;
+  /**
+   * Usually a word or two. Takes a node so a caller can hang something on the end of it -- the
+   * RDF term a field writes, for instance, which must keep its own case where the label itself
+   * is uppercased.
+   */
+  label?: ReactNode;
   hint?: string;
   error?: string;
   children: ReactNode;

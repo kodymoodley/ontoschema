@@ -29,7 +29,7 @@ import type { SidePanel } from './usePanelPreference';
 import { useExportAction } from './useExportAction';
 import { useDialogAction } from './useDialogAction';
 import { OntologyMetadataForm } from '../ontologymetadata';
-import { AnnotationEditor } from '../annotationpanel';
+import { AnnotationSection } from '../annotationpanel';
 import { EntitySearch } from '../entitysearch';
 import {
   AppMark,
@@ -118,7 +118,7 @@ export function App() {
     children: (
       <>
         <OntologyMetadataForm />
-        <AnnotationEditor target={{ kind: 'ontology', id: '' }} />
+        <AnnotationSection target={{ kind: 'ontology', id: '' }} />
       </>
     ),
   });

@@ -429,6 +429,22 @@ test.describe('on a phone', () => {
     await expect(inspector(page)).toBeVisible();
   });
 
+  /*
+   * A field you can type into. Nothing overflows when a 120px language select sits beside a
+   * value in a 160px drawer -- the value simply shrinks to 18px, which no test looking for
+   * overflow would ever notice.
+   */
+  test('leaves a documentation field wide enough to type into', async ({ page }) => {
+    await musicLibrary(page);
+    await find(page, 'Track');
+
+    const label = page.getByLabel('Label', { exact: true });
+    await label.fill('Recorded track');
+    const box = (await label.boundingBox())!;
+
+    expect(box.width, `the Label field was ${Math.round(box.width)}px wide`).toBeGreaterThan(100);
+  });
+
   /* The panel's title is the thing being edited, and it was showing as `performe…`. */
   test('shows the name of what is being edited in full', async ({ page }) => {
     await musicLibrary(page);

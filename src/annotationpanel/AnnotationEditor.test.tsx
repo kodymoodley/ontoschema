@@ -5,6 +5,7 @@ import { useProjectStore } from '../projectstore';
 import { findClass } from '../ontologymodel';
 import { SUGGESTED_LANGUAGE_TAGS, languageNames } from '../annotationvocabulary';
 import { AnnotationEditor } from './AnnotationEditor';
+import { ENTITY_FIELDS, SCHEMA_FIELDS } from './namedfields';
 
 const store = () => useProjectStore.getState();
 const ontology = () => {
@@ -18,7 +19,7 @@ function renderForClass() {
   const id = store().createClass({ localName: 'Car' });
   // The editor is self-contained now: the language list is part of the control rather than a
   // datalist mounted separately by the shell.
-  render(<AnnotationEditor target={{ kind: 'class', id }} />);
+  render(<AnnotationEditor target={{ kind: 'class', id }} fields={ENTITY_FIELDS} />);
   return id;
 }
 
@@ -31,7 +32,7 @@ const rowFor = (term: string) =>
 describe('AnnotationEditor', () => {
   it('starts empty with an explanation', () => {
     renderForClass();
-    expect(screen.getByText(/No annotations yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/where the rest of the vocabulary lives/i)).toBeInTheDocument();
   });
 
   it('adds the chosen term', async () => {
@@ -132,9 +133,9 @@ describe('AnnotationEditor', () => {
     const user = userEvent.setup();
     const id = renderForClass();
 
-    await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
+    await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'skos:altLabel');
     await user.click(screen.getByRole('button', { name: 'Add annotation' }));
-    await user.type(screen.getByLabelText('rdfs:label value'), 'Car');
+    await user.type(screen.getByLabelText('skos:altLabel value'), 'Car');
     await user.selectOptions(screen.getByLabelText('Annotation term'), 'skos:prefLabel');
 
     expect(annotationsOf(id)[0]).toMatchObject({ term: 'skos:prefLabel', value: 'Car' });
@@ -144,25 +145,29 @@ describe('AnnotationEditor', () => {
     const user = userEvent.setup();
     const id = renderForClass();
 
-    await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
+    await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'skos:altLabel');
     await user.click(screen.getByRole('button', { name: 'Add annotation' }));
-    await user.click(screen.getByRole('button', { name: 'Remove rdfs:label' }));
+    await user.click(screen.getByRole('button', { name: 'Remove skos:altLabel' }));
 
     expect(annotationsOf(id)).toHaveLength(0);
   });
 
   it('offers only ontology-appropriate terms for the ontology header', () => {
-    render(<AnnotationEditor target={{ kind: 'ontology', id: '' }} />);
+    render(<AnnotationEditor target={{ kind: 'ontology', id: '' }} fields={SCHEMA_FIELDS} />);
     const picker = screen.getByLabelText('Annotation term to add');
-    expect(within(picker).getByRole('option', { name: /dcterms:title/ })).toBeInTheDocument();
+    expect(within(picker).getByRole('option', { name: /dcterms:publisher/ })).toBeInTheDocument();
     // skos:prefLabel describes a concept, not an ontology, so it is not offered here.
     expect(
       within(picker).queryByRole('option', { name: /skos:prefLabel/ }),
     ).not.toBeInTheDocument();
+    // And neither is a term the form above has a box for, until that box is in use.
+    expect(within(picker).queryByRole('option', { name: /dcterms:title/ })).not.toBeInTheDocument();
   });
 
   it('renders nothing when the target no longer exists', () => {
-    const { container } = render(<AnnotationEditor target={{ kind: 'class', id: 'gone' }} />);
+    const { container } = render(
+      <AnnotationEditor target={{ kind: 'class', id: 'gone' }} fields={ENTITY_FIELDS} />,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 });
@@ -172,10 +177,11 @@ describe('AnnotationEditor', () => {
  * a real language, and a list is what makes that true at the point of entry rather than after.
  */
 describe('the language tag control', () => {
-  const languageField = () => screen.getByLabelText('rdfs:label language tag') as HTMLSelectElement;
+  const languageField = () =>
+    screen.getByLabelText('skos:altLabel language tag') as HTMLSelectElement;
 
   async function addLabel(user: ReturnType<typeof userEvent.setup>) {
-    await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'rdfs:label');
+    await user.selectOptions(screen.getByLabelText('Annotation term to add'), 'skos:altLabel');
     await user.click(screen.getByRole('button', { name: 'Add annotation' }));
   }
 

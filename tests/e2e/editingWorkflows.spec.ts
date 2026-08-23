@@ -247,17 +247,28 @@ test('ontology-level metadata is exported on the ontology header', async ({ page
   await page.getByLabel('Base IRI').fill('https://example.org/auto/');
   await page.getByLabel('Prefix').fill('auto');
 
-  await page.getByLabel('Annotation term to add').selectOption('dcterms:title');
-  await page.getByRole('button', { name: 'Add annotation' }).click();
-  await page
-    .locator('[data-annotation-term="dcterms:title"]')
-    .getByLabel('dcterms:title value')
-    .fill('Automotive Schema');
+  // A box called Title, which is what the dialog offers now; `dcterms:title` is what it writes.
+  await page.getByLabel('Title', { exact: true }).fill('Automotive Schema');
   await closeMetadata(page);
 
   const turtle = await downloadExport(page, 'ttl');
   expect(turtle).toContain('<https://example.org/auto> a owl:Ontology');
   expect(turtle).toContain('"Automotive Schema"');
+});
+
+/*
+ * The licence is an IRI whether or not anyone remembers which one, so the form offers the
+ * handful a schema is actually published under. What it writes has to be the IRI itself, since
+ * that is what `dcterms:license` means to everything downstream.
+ */
+test('a licence chosen from the list reaches the exported file as its IRI', async ({ page }) => {
+  await openApp(page);
+  await openMetadata(page);
+  await page.getByLabel('Licence', { exact: true }).selectOption({ label: 'CC BY 4.0' });
+  await closeMetadata(page);
+
+  const turtle = await downloadExport(page, 'ttl');
+  expect(turtle).toContain('https://creativecommons.org/licenses/by/4.0/');
 });
 
 test('undo and redo step through the edit history', async ({ page }) => {

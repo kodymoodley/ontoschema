@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { xsdDatatypeCurie } from '../annotationvocabulary';
+import { xsdDatatypeLabel } from '../annotationvocabulary';
 import {
   canSubclass,
   canSubproperty,
@@ -336,7 +336,7 @@ function AttributePool() {
                 >
                   <span className={styles.poolMarker} aria-hidden="true" />
                   <span className={styles.label}>{property.localName}</span>
-                  <span className={styles.poolRange}>{xsdDatatypeCurie(property.range)}</span>
+                  <span className={styles.poolRange}>{xsdDatatypeLabel(property.range)}</span>
                   <span className={uses === 0 ? styles.unusedCount : styles.count}>
                     {uses === 0 ? 'unused' : `${uses}×`}
                   </span>

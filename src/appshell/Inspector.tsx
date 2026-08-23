@@ -3,7 +3,7 @@ import type { EntityRef } from '../ontologymodel';
 import { useOntology, useSelection } from '../projectstore';
 import { AttributeDetails, ClassDetails } from '../classeditor';
 import { RelationDetails } from '../relationeditor';
-import { AnnotationEditor } from '../annotationpanel';
+import { AnnotationSection } from '../annotationpanel';
 import { Badge, EmptyState } from '../designsystem';
 import styles from './appshell.module.css';
 
@@ -54,9 +54,9 @@ export function Inspector() {
             <div className={styles.sectionBody}>
               <DetailsFor selection={selection} />
             </div>
-            <h3 className={styles.inspectorSection}>Annotations</h3>
+            <h3 className={styles.inspectorSection}>Documentation</h3>
             <div className={styles.sectionBody}>
-              <AnnotationEditor target={selection} />
+              <AnnotationSection target={selection} />
             </div>
           </>
         ) : (

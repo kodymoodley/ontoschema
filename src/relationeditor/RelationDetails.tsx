@@ -48,7 +48,13 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
         </div>
       </Field>
 
-      <Field label="Local name">
+      {/*
+        Called "Name" to a reader and "Relation local name" to a screen reader. The visible word is
+        the plain one; the accessible name keeps "local" because the canvas has a rename field
+        of its own answering to "Relation name", and two controls with one name is a problem for
+        anyone reaching them by name.
+      */}
+      <Field label="Name">
         <NameInput
           value={entity.localName}
           aria-label="Relation local name"

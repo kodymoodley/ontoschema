@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoAxeViolations } from '../../tests/axe';
 import { useProjectStore } from '../projectstore';
-import { AnnotationEditor } from '../annotationpanel';
+import { AnnotationSection } from '../annotationpanel';
 import { ClassDetails, AttributeDetails } from '../classeditor';
 import { ConnectionPicker, RelationDetails } from '../relationeditor';
 import { HierarchyTree } from '../taxonomytree';
@@ -65,7 +65,7 @@ describe('panels have no axe violations', () => {
 
   it('annotation editor', async () => {
     const { car } = seed();
-    const { container } = render(<AnnotationEditor target={{ kind: 'class', id: car }} />);
+    const { container } = render(<AnnotationSection target={{ kind: 'class', id: car }} />);
     await expectNoAxeViolations(container);
   });
 

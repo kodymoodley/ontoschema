@@ -1,1 +1,1 @@
-export { AnnotationEditor } from './AnnotationEditor';
+export { AnnotationSection } from './AnnotationSection';

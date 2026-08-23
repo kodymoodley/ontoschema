@@ -169,7 +169,7 @@ describe('HierarchyTree — attribute pool', () => {
       element.getAttribute('data-datatype-property'),
     );
     expect(names).toEqual(['make', 'year']);
-    expect(poolRow('year')).toHaveTextContent('xsd:integer');
+    expect(poolRow('year')).toHaveTextContent('integer');
     expect(poolRow('make')).toHaveTextContent('1×');
   });
 

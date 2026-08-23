@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { XSD_DATATYPES, xsdDatatypeCurie } from '../annotationvocabulary';
+import { XSD_DATATYPES, xsdDatatypeLabel } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import {
   attributeUsagesOfClass,
@@ -51,7 +51,13 @@ export function ClassDetails({ classId }: { classId: string }) {
 
   return (
     <div className={styles.section}>
-      <Field label="Local name">
+      {/*
+        Called "Name" to a reader and "Class local name" to a screen reader. The visible word is
+        the plain one; the accessible name keeps "local" because the canvas has a rename field
+        of its own answering to "Class name", and two controls with one name is a problem for
+        anyone reaching them by name.
+      */}
+      <Field label="Name">
         <NameInput
           value={entity.localName}
           aria-label="Class local name"
@@ -137,7 +143,7 @@ export function ClassDetails({ classId }: { classId: string }) {
                   >
                     {property.localName}
                   </button>
-                  <span className={styles.rowMeta}>{xsdDatatypeCurie(property.range)}</span>
+                  <span className={styles.rowMeta}>{xsdDatatypeLabel(property.range)}</span>
                   <button
                     type="button"
                     className={styles.removeButton}
@@ -170,7 +176,7 @@ export function ClassDetails({ classId }: { classId: string }) {
           >
             {XSD_DATATYPES.map((datatype) => (
               <option key={datatype} value={datatype}>
-                {xsdDatatypeCurie(datatype)}
+                {xsdDatatypeLabel(datatype)}
               </option>
             ))}
           </Select>

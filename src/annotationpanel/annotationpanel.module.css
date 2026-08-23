@@ -87,3 +87,78 @@
   font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
+
+/* --------------------------------------------- the form, and the vocabulary under it */
+
+.namedFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* A value and, where it is prose, the language it is written in. */
+.namedValue {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* Wide enough for a language name rather than the first three letters of one. */
+.namedValue > select {
+  flex: 0 0 7.5rem;
+}
+
+.namedValue > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/*
+ * The RDF layer, kept together and kept quiet: the switch that names the terms, and the list
+ * holding every term without a field of its own.
+ */
+.vocabulary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.other {
+  border-radius: var(--radius-md);
+}
+
+.otherSummary {
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  list-style-position: inside;
+}
+
+.otherSummary:hover {
+  color: var(--text-primary);
+}
+
+.otherBody {
+  padding-top: var(--space-2);
+}
+
+/*
+ * On a phone the panel is a 160px drawer, and a value with its language beside it leaves the
+ * value 18px wide — a box you cannot type into, and one nothing overflowed to complain about.
+ * The language goes underneath instead, where it has room to say which language it is.
+ */
+@media (max-width: 1024px) {
+  .namedValue {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .namedValue > select {
+    flex: 0 0 auto;
+  }
+}
