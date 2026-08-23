@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isLegalLocalName } from '../../tests/fixtures/legalLocalName';
 import {
   entityIri,
   normalizeNamespaceIri,
@@ -7,17 +8,22 @@ import {
   toClassLocalName,
   toPropertyLocalName,
   uniqueLocalName,
-  validateLocalName,
   validateNamespaceIri,
   validatePrefix,
 } from './identifier';
 
-describe('validateLocalName', () => {
+/*
+ * The oracle the property tests below lean on, checked itself: an oracle nobody verifies makes
+ * every property that uses it vacuous, which is the failure this audit went looking for.
+ *
+ * It is a test helper rather than application code. Nothing in the app refuses a name — it
+ * repairs one, and `sanitizeLocalName` coming back empty is how it detects the unrepairable.
+ */
+describe('isLegalLocalName, the oracle', () => {
   it('accepts ordinary names', () => {
-    expect(validateLocalName('Car').valid).toBe(true);
-    expect(validateLocalName('offeredBy').valid).toBe(true);
-    expect(validateLocalName('_private').valid).toBe(true);
-    expect(validateLocalName('Model3').valid).toBe(true);
+    for (const good of ['Car', 'offeredBy', '_private', 'Model3']) {
+      expect(isLegalLocalName(good), good).toBe(true);
+    }
   });
 
   it('rejects the characters that would break an IRI or Turtle syntax', () => {
@@ -45,23 +51,18 @@ describe('validateLocalName', () => {
       'a(b',
       'a)b',
     ]) {
-      expect(validateLocalName(bad).valid, `expected "${bad}" to be rejected`).toBe(false);
+      expect(isLegalLocalName(bad), `expected "${bad}" to be rejected`).toBe(false);
     }
   });
 
   it('rejects empty and whitespace-only input', () => {
-    expect(validateLocalName('').valid).toBe(false);
-    expect(validateLocalName('   ').valid).toBe(false);
+    expect(isLegalLocalName('')).toBe(false);
+    expect(isLegalLocalName('   ')).toBe(false);
   });
 
-  it('rejects names that do not start with a letter or underscore, for RDF/XML NCName validity', () => {
-    expect(validateLocalName('3Series').valid).toBe(false);
-    expect(validateLocalName('-dash').valid).toBe(false);
-  });
-
-  it('explains why a name was rejected', () => {
-    expect(validateLocalName('Used Car').message).toMatch(/cannot contain/i);
-    expect(validateLocalName('').message).toMatch(/empty/i);
+  it('rejects a name that does not start where an XML name may start', () => {
+    expect(isLegalLocalName('3Series')).toBe(false);
+    expect(isLegalLocalName('-dash')).toBe(false);
   });
 });
 
@@ -83,7 +84,7 @@ describe('sanitizeLocalName', () => {
   it('always produces something that passes validation, or nothing at all', () => {
     for (const raw of ['Used Car', '3 series', 'a/b?c', '<<<>>>', 'Ω omega', '   ']) {
       const cleaned = sanitizeLocalName(raw);
-      if (cleaned) expect(validateLocalName(cleaned).valid, `for input "${raw}"`).toBe(true);
+      if (cleaned) expect(isLegalLocalName(cleaned), `for input "${raw}"`).toBe(true);
     }
   });
 });
@@ -116,7 +117,7 @@ describe('naming conventions', () => {
     const inputs = ['used car', '3 series', '_3Series', 'a/b?c', 'HAS PART', 'x', '  9  '];
     for (const raw of inputs) {
       for (const produced of [toClassLocalName(raw), toPropertyLocalName(raw)]) {
-        if (produced) expect(validateLocalName(produced).valid, `for input "${raw}"`).toBe(true);
+        if (produced) expect(isLegalLocalName(produced), `for input "${raw}"`).toBe(true);
       }
     }
   });

@@ -5,32 +5,15 @@
  * characters that would break the resulting IRI or the Turtle/RDF-XML syntax that carries it.
  */
 
-/** Characters that are never acceptable in a local name. */
-const ILLEGAL_LOCAL_NAME = /[\s<>"{}|\\^`/#?&%[\]:,;()]/;
-
-/** RDF/XML writes properties as XML element names, so a local name must be a valid NCName. */
+/**
+ * Where an XML name may begin, applied to a repaired name so it is usable as an element name as
+ * well as inside an IRI. ASCII-only, which is stricter than XML: see AUDIT.md, finding C4.
+ */
 const NCNAME_START = /^[A-Za-z_]/;
 
 export interface ValidationResult {
   valid: boolean;
   message?: string;
-}
-
-export function validateLocalName(localName: string): ValidationResult {
-  const value = localName.trim();
-  if (value.length === 0) {
-    return { valid: false, message: 'Name cannot be empty.' };
-  }
-  if (ILLEGAL_LOCAL_NAME.test(value)) {
-    return {
-      valid: false,
-      message: 'Name cannot contain spaces or any of < > " { } | \\ ^ ` / # ? & % [ ] : , ; ( )',
-    };
-  }
-  if (!NCNAME_START.test(value)) {
-    return { valid: false, message: 'Name must start with a letter or underscore.' };
-  }
-  return { valid: true };
 }
 
 /**
