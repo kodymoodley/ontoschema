@@ -46,13 +46,17 @@ describe('saving a schema', () => {
    * lets the ontology file be the thing a reasoner reads without being told to ignore half of
    * it — and it is why a reused property has to state its domain as a union.
    */
-  it('writes the axioms and the layout, and no shapes', () => {
+  /*
+   * The shapes are in the saved file, and that is what makes opening it give back the schema
+   * rather than a superset of it: the axioms cannot say which class went with which.
+   */
+  it('writes the axioms, the shapes and the layout', () => {
     carWithAttribute();
     render(<ExportPanel purpose="save" />);
 
     expect(preview()).toContain('auto:Car a owl:Class');
     expect(preview()).toContain('ontoschema:layout');
-    expect(preview()).not.toContain('sh:NodeShape');
+    expect(preview()).toContain('sh:NodeShape');
   });
 
   it('says what saving promises', () => {

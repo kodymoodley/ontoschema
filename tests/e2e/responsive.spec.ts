@@ -475,7 +475,16 @@ test.describe('rows on a wide screen', () => {
     await chooseProjectAction(page, 'open-examples');
     await page.getByText('Music library', { exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await selectClass(page, 'Track');
+    /*
+     * Chosen by name rather than clicked on the canvas. Where a class lands depends on the fit,
+     * and the fit is not identical across browsers: on Firefox `Track` sat at x=1584 in a
+     * 1500px window, so the click could never arrive and the test failed for a reason that had
+     * nothing to do with what it is about.
+     */
+    await page.keyboard.press('Control+k');
+    await page.getByLabel('Search by name or description').fill('Track');
+    await page.locator('[data-result="Track"]').click();
+    await expect(page.getByLabel('Class local name')).toHaveValue('Track');
 
     const row = page.locator('li', {
       has: page.getByRole('button', { name: 'durationSeconds', exact: true }),

@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { Parser } from 'n3';
-import { unionMembers } from '../fixtures/parseRdf';
 import {
   downloadExport,
   downloadShapes,
@@ -77,7 +76,7 @@ test('the music example is immediately editable', async ({ page }) => {
   await expect(page.locator('[data-class-name="Track"] [data-attribute-name]')).toHaveCount(7);
 });
 
-test('a reused property unions its domain and keeps a shape per class', async ({ page }) => {
+test('a reused property is saved with the pairings that RDFS cannot state', async ({ page }) => {
   await openApp(page);
   await openExample(page, 'Vehicle dealership');
 
@@ -88,17 +87,37 @@ test('a reused property unions its domain and keeps a shape per class', async ({
   const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
 
   /*
-   * Three vehicle kinds offer, so the domain is the union of the three. It has to be an
-   * anonymous class: a named one parses back as a class with no union in it at all.
+   * No domain at all, and that is the point. Three vehicle kinds offer, and `rdfs:domain` can
+   * only say "one of these three" -- which licenses pairings nobody drew and takes a blank node
+   * and an `rdf:first` chain to say. The shapes in this same file say exactly what was drawn.
    */
-  const [domain] = quads.filter(
-    (quad) =>
-      quad.subject.value.endsWith('/offeredBy') &&
-      quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#domain',
-  );
-  expect(domain?.object.termType).toBe('BlankNode');
-  expect(unionMembers(quads, domain!.subject.value, domain!.predicate.value)).toHaveLength(3);
+  const endsOf = (predicate: string) =>
+    quads.filter(
+      (quad) =>
+        quad.subject.value.endsWith('/offeredBy') &&
+        quad.predicate.value === `http://www.w3.org/2000/01/rdf-schema#${predicate}`,
+    );
 
+  expect(endsOf('domain')).toHaveLength(0);
+  /*
+   * The range survives, and that is the rule rather than an oversight: each end is judged on
+   * its own, and all three vehicles offer to the one Dealership. An exact end is worth stating;
+   * only the end that would have to be approximated is left to the shapes.
+   */
+  expect(endsOf('range')).toHaveLength(1);
+  expect(endsOf('range')[0]?.object.value).toMatch(/\/Dealership$/);
+
+  expect(quads.some((quad) => quad.predicate.value.endsWith('#unionOf'))).toBe(false);
+  expect(quads.some((quad) => quad.object.termType === 'BlankNode')).toBe(false);
+
+  const shapesInTheSavedFile = quads.filter(
+    (quad) =>
+      quad.predicate.value === 'http://www.w3.org/ns/shacl#path' &&
+      quad.object.value.endsWith('/offeredBy'),
+  );
+  expect(shapesInTheSavedFile).toHaveLength(3);
+
+  // And the shapes-only export is still there, for a validator that wants them alone.
   const shapeQuads = new Parser({ format: 'text/turtle' }).parse(await downloadShapes(page));
   const shapes = shapeQuads.filter(
     (quad) =>

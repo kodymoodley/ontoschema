@@ -11,8 +11,16 @@ import {
   RDFS_SUBCLASS_OF,
   RDFS_SUBPROPERTY_OF,
   RDF_FIRST,
+  RDF_NIL,
   RDF_REST,
   RDF_TYPE,
+  SH_CLASS,
+  SH_DATATYPE,
+  SH_NODE_SHAPE,
+  SH_OR,
+  SH_PATH,
+  SH_PROPERTY,
+  SH_TARGET_CLASS,
   annotationTermIri,
   isXsdDatatype,
 } from '../annotationvocabulary';
@@ -104,6 +112,67 @@ function indexTriples(triples: readonly Triple[]): Index {
     subjectsTyped: (type) => byType.get(type) ?? [],
     triplesOf: (subject) => bySubject.get(subject) ?? [],
   };
+}
+
+/**
+ * The pairings a document's SHACL shapes state, keyed by the property they are about.
+ *
+ * The axioms cannot carry this. `rdfs:domain`/`rdfs:range` name both ends of a relation but not
+ * which end went with which, so a relation drawn between two distinct pairs reads back as all
+ * four — a saved file that came home with relations nobody drew. A shape is per class, so it
+ * says exactly what was drawn: this class, this property, that class.
+ *
+ * Read whenever they are present, from our own saved files and from anyone else's. A document
+ * without shapes falls back to the ends, which is all it has.
+ */
+function pairingsFromShapes(
+  index: Index,
+): Map<string, { subject: string; object: string | null }[]> {
+  const found = new Map<string, { subject: string; object: string | null }[]>();
+
+  const add = (path: string, subject: string, object: string | null) => {
+    const existing = found.get(path);
+    if (existing) existing.push({ subject, object });
+    else found.set(path, [{ subject, object }]);
+  };
+
+  /** The members of an `sh:or`, which is an RDF list of shapes each naming one class. */
+  const alternatives = (head: TripleObject): string[] => {
+    const classes: string[] = [];
+    let cell: TripleObject | undefined = head;
+    const seen = new Set<string>();
+    while (cell && cell.value !== RDF_NIL && !seen.has(cell.value)) {
+      seen.add(cell.value);
+      const member = index.objectsOf(cell.value, RDF_FIRST)[0];
+      if (member) {
+        const target = index.objectsOf(member.value, SH_CLASS)[0];
+        if (target?.type === 'iri') classes.push(target.value);
+      }
+      cell = index.objectsOf(cell.value, RDF_REST)[0];
+    }
+    return classes;
+  };
+
+  for (const nodeShape of index.subjectsTyped(SH_NODE_SHAPE)) {
+    const target = index.objectsOf(nodeShape, SH_TARGET_CLASS)[0];
+    if (target?.type !== 'iri') continue;
+
+    for (const propertyShape of index.objectsOf(nodeShape, SH_PROPERTY)) {
+      const path = index.objectsOf(propertyShape.value, SH_PATH)[0];
+      if (path?.type !== 'iri') continue;
+
+      const single = index.objectsOf(propertyShape.value, SH_CLASS)[0];
+      const list = index.objectsOf(propertyShape.value, SH_OR)[0];
+      const datatype = index.objectsOf(propertyShape.value, SH_DATATYPE)[0];
+
+      if (single?.type === 'iri') add(path.value, target.value, single.value);
+      else if (list) for (const member of alternatives(list)) add(path.value, target.value, member);
+      // A datatype shape is an attribute on this class: one end, and no second one to name.
+      else if (datatype) add(path.value, target.value, null);
+    }
+  }
+
+  return found;
 }
 
 export function ontologyFromTriples(
@@ -260,6 +329,12 @@ export function ontologyFromTriples(
   }));
 
   /*
+   * What the shapes say, which is more than the axioms can. Consulted first for any property
+   * they mention; the ends are the fallback for a document that has none.
+   */
+  const shapePairs = pairingsFromShapes(index);
+
+  /*
    * A property with no domain or range of its own is still usable when an ancestor has both:
    * `hasParent` under `relatedTo` means whatever `relatedTo` means, narrowed. Walking up is
    * what lets a hierarchy survive a document that states the ends once, at the top.
@@ -285,6 +360,7 @@ export function ontologyFromTriples(
    */
   const placeable = new Set(
     relationIris.filter((iri) => {
+      if (shapePairs.has(iri)) return true;
       const { domains, ranges } = inheritedEnds(iri);
       return domains.length > 0 && ranges.length > 0;
     }),
@@ -318,8 +394,31 @@ export function ontologyFromTriples(
     if (!placeable.has(iri)) continue;
 
     /*
-     * Every pairing the union licenses, which is more than was drawn when the property was
-     * used with several distinct pairs — the documented cost of a domain RDFS can state.
+     * Exactly what was drawn, when the shapes are there to say so. This is what a file saved
+     * by this app carries, and it is why saving and opening one gives back the schema rather
+     * than a superset of it.
+     */
+    const drawn = shapePairs.get(iri);
+    if (drawn) {
+      for (const pair of drawn) {
+        const subject = classId.get(pair.subject);
+        const object = pair.object ? classId.get(pair.object) : undefined;
+        if (subject && object) {
+          usages.push({
+            id: createId('use'),
+            propertyId: propertyId.get(iri) as string,
+            subjectClassId: subject,
+            objectClassId: object,
+          });
+        }
+      }
+      continue;
+    }
+
+    /*
+     * Otherwise every pairing the union licenses, which is more than was drawn when the
+     * property was used with several distinct pairs — the cost of a domain RDFS can state,
+     * paid only by documents that arrive without shapes.
      */
     const { domains, ranges } = inheritedEnds(iri);
     for (const domain of domains) {
@@ -335,11 +434,16 @@ export function ontologyFromTriples(
   }
 
   for (const iri of attributeIris) {
-    for (const domain of endsOf(iri).domains) {
+    // An attribute's usage is a class and a property, so the two sources agree -- but the
+    // shapes are read first all the same, so one rule covers both kinds of property.
+    const classes = shapePairs.get(iri)?.map((pair) => pair.subject) ?? endsOf(iri).domains;
+    for (const domain of classes) {
+      const subject = classId.get(domain);
+      if (!subject) continue;
       usages.push({
         id: createId('use'),
         propertyId: propertyId.get(iri) as string,
-        subjectClassId: classId.get(domain) as string,
+        subjectClassId: subject,
         objectClassId: null,
       });
     }

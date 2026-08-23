@@ -245,10 +245,23 @@ export function ontologyToTriples(
         ),
       );
 
-      const domain = classExpression(domains, mintBlank, expressions);
-      const range = classExpression(ranges, mintBlank, expressions);
-      if (domain) triples.push({ subject, predicate: RDFS_DOMAIN, object: domain });
-      if (range) triples.push({ subject, predicate: RDFS_RANGE, object: range });
+      /*
+       * A union states both ends but not which end went with which, so it licenses pairings
+       * nobody drew. It is written only when this document has nothing better: with the shapes
+       * in the same file they say exactly what was drawn, and a union beside them would be a
+       * looser second answer to a question already answered.
+       *
+       * Each end is judged on its own. A relation drawn from one class to three still has an
+       * exact domain, and dropping it because the *other* end is plural would throw away
+       * something true for nothing.
+       */
+      const state = (members: string[], predicate: string) => {
+        if (members.length > 1 && includeShapes) return;
+        const expression = classExpression(members, mintBlank, expressions);
+        if (expression) triples.push({ subject, predicate, object: expression });
+      };
+      state(domains, RDFS_DOMAIN);
+      state(ranges, RDFS_RANGE);
     }
 
     for (const property of ontology.attributes) {
@@ -272,8 +285,11 @@ export function ontologyToTriples(
       });
       const usages = index.usagesByProperty.get(property.id) ?? [];
       const domains = distinctIris(usages.map((usage) => classIri.get(usage.subjectClassId)));
-      const domain = classExpression(domains, mintBlank, expressions);
-      if (domain) triples.push({ subject, predicate: RDFS_DOMAIN, object: domain });
+      // Same rule as a relation's: the union is for documents with no shapes to say it better.
+      if (!(domains.length > 1 && includeShapes)) {
+        const domain = classExpression(domains, mintBlank, expressions);
+        if (domain) triples.push({ subject, predicate: RDFS_DOMAIN, object: domain });
+      }
     }
 
     triples.push(...expressions);

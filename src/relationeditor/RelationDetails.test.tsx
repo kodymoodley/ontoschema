@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useProjectStore } from '../projectstore';
-import { findRelation, usagesOfProperty } from '../ontologymodel';
+import { RDFS_DOMAIN, RDFS_RANGE, SH_NODE_SHAPE } from '../annotationvocabulary';
+import { findRelation, ontologyToTriples, usagesOfProperty } from '../ontologymodel';
+import { DOCUMENT_OPTIONS } from '../serialization';
 import { RelationDetails } from './RelationDetails';
 
 const store = () => useProjectStore.getState();
@@ -46,7 +48,35 @@ describe('RelationDetails', () => {
     render(<RelationDetails propertyId={offeredBy} />);
 
     expect(screen.getByText('Reused (2×)')).toBeInTheDocument();
-    expect(screen.getByText(/a union would lose the pairing/i)).toBeInTheDocument();
+    expect(screen.getByText(/not which goes with which/i)).toBeInTheDocument();
+  });
+
+  /*
+   * The panel makes a claim about the file this app writes, and this is what keeps the claim
+   * true. It was false for a while: the sentence said the axioms were omitted on reuse, which
+   * they had been until a commit changed the exporter to state a union instead. Nothing failed,
+   * because nothing tied the words to the behaviour. This does -- one ontology, read both ways.
+   */
+  it('says the same thing the exporter does', () => {
+    const { offeredBy } = usedOnce();
+    const van = store().createClass({ localName: 'Van' });
+    const garage = store().createClass({ localName: 'Garage' });
+    store().attachPropertyToClass(offeredBy, van, garage);
+    render(<RelationDetails propertyId={offeredBy} />);
+    const claim = screen.getByText(/rdfs:domain and rdfs:range/i).textContent ?? '';
+
+    // The options a saved file is written with, not this test's idea of them.
+    const saved = ontologyToTriples(ontology(), DOCUMENT_OPTIONS);
+    const states = (predicate: string) =>
+      saved.some(
+        (triple) => triple.predicate === predicate && triple.subject.endsWith('offeredBy'),
+      );
+
+    expect(claim).toContain('omitted');
+    expect(states(RDFS_DOMAIN), 'the panel says omitted; the file states a domain').toBe(false);
+    expect(states(RDFS_RANGE), 'the panel says omitted; the file states a range').toBe(false);
+    // And the shapes it points at are in that same file.
+    expect(saved.some((triple) => triple.object.value === SH_NODE_SHAPE)).toBe(true);
   });
 
   it('lists every pair the property is drawn between', () => {

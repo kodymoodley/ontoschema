@@ -12,6 +12,20 @@ import { serializeMermaid } from './mermaid';
  */
 export type SerializationFormat = 'turtle' | 'rdfxml' | 'owl' | 'jsonld' | 'mermaid';
 
+/**
+ * What a document this app saves contains, in one place because two things depend on it: the
+ * file it writes, and the inspector's account of what that file will say.
+ *
+ * The shapes are in it. They are what makes opening a saved file give back the schema rather
+ * than a superset of it — the axioms name both ends of a relation but not which end went with
+ * which, so a relation drawn between two pairs came back as all four. With the shapes present
+ * the exporter also stops writing the union it needed when they were absent.
+ */
+export const DOCUMENT_OPTIONS: SerializationOptions = {
+  includeShapes: true,
+  includeLayout: true,
+};
+
 export interface SerializationDescriptor {
   format: SerializationFormat;
   /**

@@ -1,4 +1,4 @@
-import { SERIALIZATION_FORMATS, describeFormat } from '../serialization';
+import { DOCUMENT_OPTIONS, SERIALIZATION_FORMATS, describeFormat } from '../serialization';
 import type { SerializationFormat, SerializationOptions } from '../serialization';
 
 /**
@@ -8,12 +8,18 @@ import type { SerializationFormat, SerializationOptions } from '../serialization
  * the axioms and the layout. Everything else is one-way, and the split is the whole point of
  * the two panels — "save" promises a round trip, "export" promises a rendering.
  *
- * Shapes are their own file rather than a layer inside the ontology. They were written into
- * the same document, which made the ontology carry constraints that nothing reads back;
- * separated, the ontology file is what a reasoner sees and the shapes file is what a
- * validator sees, and neither has to be told to ignore the other. This is also why a reused
- * property states its domain as a union — without the shapes beside it, the ontology has to
- * carry enough to stand on its own.
+ * **A saved file carries its shapes**, and that is what makes the round trip a round trip. The
+ * axioms alone cannot: `rdfs:domain` and `rdfs:range` name both ends of a relation but not which
+ * end went with which, so a relation drawn between two pairs was saved as a union and opened as
+ * all four — the insurance example came back with `MotorPolicy insures Dwelling`, which nobody
+ * drew. A shape is per class, so it says exactly what was drawn.
+ *
+ * With them in the file the union has nothing left to do, and is not written: no blank nodes, no
+ * `rdf:first` chains, and one statement of each fact rather than a loose one and an exact one.
+ *
+ * The separate shapes export stays, for a validator that wants the constraints on their own.
+ * Nothing has to be told to ignore anything: a reasoner passes over `sh:` triples and a
+ * validator passes over `owl:` ones.
  */
 
 export interface WritableFile {
@@ -28,10 +34,8 @@ export interface WritableFile {
   suffix?: string;
 }
 
-/**
- * What the ontology file holds: the axioms, and where the classes sit. No shapes — see above.
- */
-const ONTOLOGY: SerializationOptions = { includeShapes: false, includeLayout: true };
+/** What a saved file holds: the axioms, the shapes that keep every pairing, and the layout. */
+const ONTOLOGY: SerializationOptions = DOCUMENT_OPTIONS;
 
 /** Saved files: the ones `open` reads back. */
 export const DOCUMENT_FILES: readonly WritableFile[] = SERIALIZATION_FORMATS.filter((descriptor) =>
