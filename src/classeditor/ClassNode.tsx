@@ -113,7 +113,7 @@ export function ClassNode({ data, selected }: NodeProps) {
 
       <div className={styles.attributes}>
         {attributes.length === 0 ? (
-          <p className={styles.emptyAttributes}>Drop a attribute here to add an attribute.</p>
+          <p className={styles.emptyAttributes}>Drop an attribute here.</p>
         ) : (
           attributes.map((row) => (
             <AttributeItem

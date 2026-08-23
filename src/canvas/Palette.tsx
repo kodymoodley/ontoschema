@@ -62,7 +62,7 @@ export function Palette({ onCreate, onCreateRelation, canCreateAttribute }: Pale
             // Click is the keyboard- and test-friendly equivalent of dragging onto the canvas.
             onClick={() => onCreate(entry.kind)}
             disabled={disabled}
-            title={disabled ? 'Select a class first — a attribute must belong to one.' : undefined}
+            title={disabled ? 'Select a class first — an attribute must belong to one.' : undefined}
           >
             <span className={`${styles.swatch} ${entry.swatch}`} aria-hidden="true" />
             <span className={styles.paletteText}>
