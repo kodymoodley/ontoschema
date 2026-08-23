@@ -81,8 +81,9 @@ list above:
 - **A quality and audit pass over the whole app** (todo 37) — **done**, and the report is
   `AUDIT.md` at the root. Sixteen findings, none of them S1: the codebase is disciplined and the
   drift is almost entirely in prose, because everything else is gated by CI and no check asks
-  whether a sentence is still true. Ten were fixed; C2, D1, F1 and G4 are still open there with
-  their reasons. The measurement worth carrying here: widening mutation testing to the model
+  whether a sentence is still true. Every finding is closed except one: **G4**, the 251 mutants
+  that survive in the model, which is a programme of work rather than a batch and is marked as
+  such. Three more findings were turned up by the fixes themselves and closed with them. The measurement worth carrying here: widening mutation testing to the model
   scored it at **77.2%** against a 92% line-coverage threshold, with 95 mutants not covered at
   all — so that threshold is being met by lines that run without anything asserting on them.
 - **Nine, three times over** (todo 9) — parked as a project rather than an item, and decided in
