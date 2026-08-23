@@ -4,6 +4,9 @@ import type { EntityRef, Ontology, Project } from '../ontologymodel';
 
 export { UNTITLED } from './workspace';
 
+export { createPreference } from './preference';
+export type { Preference } from './preference';
+
 export { useProjectStore, activeOntology } from './store';
 export type { ProjectStoreState, CanvasView, PendingConnection } from './store';
 export type { TaxonomyRelations } from './interactionactions';
