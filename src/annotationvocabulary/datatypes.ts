@@ -19,10 +19,6 @@ export function xsdDatatypeIri(datatype: XsdDatatype): string {
   return `${NAMESPACES.xsd}${datatype}`;
 }
 
-export function xsdDatatypeCurie(datatype: XsdDatatype): string {
-  return `xsd:${datatype}`;
-}
-
 /**
  * A datatype as it is shown to a person: `string`, `integer`, `boolean`.
  *

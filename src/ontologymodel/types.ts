@@ -101,12 +101,3 @@ export interface EntityRef {
 }
 
 export type AnnotatableEntity = OntologyClass | Relation | Attribute;
-
-/** A usage resolved against the entities it refers to, for rendering and serialization. */
-export interface ResolvedUsage {
-  usage: PropertyUsage;
-  subjectClass: OntologyClass;
-  objectClass: OntologyClass | null;
-  relation: Relation | null;
-  attribute: Attribute | null;
-}

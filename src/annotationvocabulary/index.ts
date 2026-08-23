@@ -41,7 +41,6 @@ export {
   XSD_DATATYPES,
   DEFAULT_XSD_DATATYPE,
   xsdDatatypeIri,
-  xsdDatatypeCurie,
   xsdDatatypeLabel,
   isXsdDatatype,
 } from './datatypes';

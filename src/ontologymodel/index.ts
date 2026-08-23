@@ -10,7 +10,6 @@ export type {
   Position,
   Project,
   PropertyUsage,
-  ResolvedUsage,
 } from './types';
 
 export {
@@ -25,15 +24,11 @@ export {
   findClass,
   findAttribute,
   findRelation,
-  findUsage,
-  hasUnambiguousDomain,
   indexOntology,
   isOntologyEmpty,
   propertyLocalNames,
   relationUsages,
-  relationUsagesOfClass,
   relationUsagesTouchingClass,
-  resolveUsage,
   usageCount,
   usagesOfProperty,
 } from './ontology';

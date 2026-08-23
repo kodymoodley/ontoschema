@@ -6,7 +6,6 @@ import type {
   OntologyClass,
   Project,
   PropertyUsage,
-  ResolvedUsage,
 } from './types';
 import { normalizeNamespaceIri } from './identifier';
 
@@ -63,10 +62,6 @@ export function findRelation(ontology: Ontology, id: string): Relation | undefin
 
 export function findAttribute(ontology: Ontology, id: string): Attribute | undefined {
   return ontology.attributes.find((entity) => entity.id === id);
-}
-
-export function findUsage(ontology: Ontology, id: string): PropertyUsage | undefined {
-  return ontology.usages.find((usage) => usage.id === id);
 }
 
 /**
@@ -127,14 +122,6 @@ export function attributeUsagesOfClass(ontology: Ontology, classId: string): Pro
   );
 }
 
-/** Relation usages leaving a class, i.e. the edges drawn from it. */
-export function relationUsagesOfClass(ontology: Ontology, classId: string): PropertyUsage[] {
-  const objectIds = new Set(ontology.relations.map((entity) => entity.id));
-  return ontology.usages.filter(
-    (usage) => usage.subjectClassId === classId && objectIds.has(usage.propertyId),
-  );
-}
-
 /** Every relation usage in the ontology whose endpoints both still exist. */
 export function relationUsages(ontology: Ontology): PropertyUsage[] {
   const classIds = new Set(ontology.classes.map((entity) => entity.id));
@@ -157,14 +144,6 @@ export function usageCount(ontology: Ontology, propertyId: string): number {
   return usagesOfProperty(ontology, propertyId).length;
 }
 
-/**
- * A property used exactly once has an unambiguous domain (and range), so RDFS can state it
- * truthfully. Once reused, only the SHACL shapes can express it without lying.
- */
-export function hasUnambiguousDomain(ontology: Ontology, propertyId: string): boolean {
-  return usageCount(ontology, propertyId) === 1;
-}
-
 /** Classes that touch a relation usage in either direction. */
 export function relationUsagesTouchingClass(ontology: Ontology, classId: string): PropertyUsage[] {
   const objectIds = new Set(ontology.relations.map((entity) => entity.id));
@@ -173,18 +152,6 @@ export function relationUsagesTouchingClass(ontology: Ontology, classId: string)
       objectIds.has(usage.propertyId) &&
       (usage.subjectClassId === classId || usage.objectClassId === classId),
   );
-}
-
-export function resolveUsage(ontology: Ontology, usage: PropertyUsage): ResolvedUsage | null {
-  const subjectClass = findClass(ontology, usage.subjectClassId);
-  if (!subjectClass) return null;
-  return {
-    usage,
-    subjectClass,
-    objectClass: usage.objectClassId ? (findClass(ontology, usage.objectClassId) ?? null) : null,
-    relation: findRelation(ontology, usage.propertyId) ?? null,
-    attribute: findAttribute(ontology, usage.propertyId) ?? null,
-  };
 }
 
 /* ------------------------------------------------------------------- names */
