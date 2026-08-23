@@ -12,6 +12,25 @@ const WIDE = { width: 1500, height: 900 };
 const LAPTOP = { width: 1200, height: 800 };
 const NARROW = { width: 820, height: 800 };
 
+/**
+ * The minimap: the frame, and the map drawn inside it.
+ *
+ * Both are measured because sizing one does not size the other. `.react-flow__minimap` is a
+ * `div`; the map is an `svg` inside it that React Flow gives its own 200x150 whatever the
+ * wrapper says. Sizing the wrapper alone shrinks the border and leaves the map spilling out
+ * through it — which is close enough to right in a screenshot to be missed, and was.
+ */
+async function minimap(page: Page) {
+  const frame = (await page.locator('.react-flow__minimap').boundingBox())!;
+  const map = (await page.locator('.react-flow__minimap svg').boundingBox())!;
+  return {
+    width: Math.round(frame.width),
+    height: Math.round(frame.height),
+    drawnWidth: Math.round(map.width),
+    drawnHeight: Math.round(map.height),
+  };
+}
+
 const entities = (page: Page) => page.getByRole('complementary', { name: 'Palette and hierarchy' });
 const inspector = (page: Page) => page.getByRole('complementary', { name: 'Inspector' });
 
@@ -35,6 +54,21 @@ async function openedDrawer(page: Page) {
 
 test.describe('wide', () => {
   test.use({ viewport: WIDE });
+
+  /*
+   * Narrower than it was, and no shorter: the owner's decision is that this trims what the map
+   * takes off the side of the canvas, not how tall it stands.
+   */
+  test('keeps the minimap to a corner rather than a quarter of the canvas', async ({ page }) => {
+    await openApp(page);
+    const map = await minimap(page);
+
+    expect(map.width).toBe(75);
+    expect(map.height).toBe(75);
+    // And the map fills the frame it was given, rather than overflowing it.
+    expect(map.drawnWidth).toBe(map.width);
+    expect(map.drawnHeight).toBe(map.height);
+  });
 
   test('shows all three columns at once, with no drawer toggles', async ({ page }) => {
     await openApp(page);
@@ -443,6 +477,18 @@ test.describe('on a phone', () => {
     const box = (await label.boundingBox())!;
 
     expect(box.width, `the Label field was ${Math.round(box.width)}px wide`).toBeGreaterThan(100);
+  });
+
+  /* Where a corner is most of the screen, the corner has to be narrower still. */
+  test('narrows the minimap again', async ({ page }) => {
+    await openApp(page);
+    const map = await minimap(page);
+    const canvas = (await page.getByTestId('schema-canvas').boundingBox())!;
+
+    expect(map.width).toBe(50);
+    expect(map.height).toBe(75);
+    expect(map.drawnWidth).toBe(map.width);
+    expect(map.width / canvas.width, 'the minimap took a fifth of the canvas').toBeLessThan(0.2);
   });
 
   /* The panel's title is the thing being edited, and it was showing as `performe…`. */
