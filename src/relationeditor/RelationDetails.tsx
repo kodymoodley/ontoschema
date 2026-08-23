@@ -6,7 +6,7 @@ import {
   toPropertyLocalName,
   usagesOfProperty,
 } from '../ontologymodel';
-import { useOntology, useProjectStore } from '../projectstore';
+import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Badge, Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
 import styles from './relationeditor.module.css';
 
@@ -20,6 +20,7 @@ import styles from './relationeditor.module.css';
  */
 export function RelationDetails({ propertyId }: { propertyId: string }) {
   const ontology = useOntology();
+  const showTerms = useShowTerms();
   const entity = findRelation(ontology, propertyId);
 
   const rename = useProjectStore((state) => state.renameRelationById);
@@ -65,9 +66,17 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
         />
       </Field>
 
-      <Field label="IRI">
-        <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
-      </Field>
+      {/*
+        Behind the same switch that names the RDF terms, and for the same reason: an IRI is what
+        this becomes in a file, not something anyone types or edits. It is derived — the base IRI
+        plus the name above it — so it says nothing the two fields around it do not already say,
+        and it took a third of the panel to say it.
+      */}
+      {showTerms ? (
+        <Field label="IRI">
+          <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
+        </Field>
+      ) : null}
 
       <Field
         label={`Used between (${usages.length})`}

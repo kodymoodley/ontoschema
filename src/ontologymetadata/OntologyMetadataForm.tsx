@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ontologyIri, validateNamespaceIri, validatePrefix } from '../ontologymodel';
-import { useOntology, useProjectStore } from '../projectstore';
+import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Field, TextInput } from '../designsystem';
 import styles from './ontologymetadata.module.css';
 
@@ -13,6 +13,7 @@ import styles from './ontologymetadata.module.css';
  */
 export function OntologyMetadataForm() {
   const ontology = useOntology();
+  const showTerms = useShowTerms();
   const setBaseIri = useProjectStore((state) => state.setBaseIri);
   const setPrefix = useProjectStore((state) => state.setPrefix);
 
@@ -59,9 +60,16 @@ export function OntologyMetadataForm() {
         />
       </Field>
 
-      <Field label="Schema IRI">
-        <code className={styles.iri}>{ontologyIri(ontology.iri)}</code>
-      </Field>
+      {/*
+        Behind the same switch as every other IRI. This one is the base IRI with its trailing
+        slash taken off, so the field above already says it — and the switch that reveals it is a
+        few lines below in the same dialog.
+      */}
+      {showTerms ? (
+        <Field label="Schema IRI">
+          <code className={styles.iri}>{ontologyIri(ontology.iri)}</code>
+        </Field>
+      ) : null}
     </div>
   );
 }

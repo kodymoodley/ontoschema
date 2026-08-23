@@ -11,7 +11,7 @@ import {
   relationUsagesTouchingClass,
   toClassLocalName,
 } from '../ontologymodel';
-import { useOntology, useProjectStore } from '../projectstore';
+import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
 import styles from './details.module.css';
 
@@ -21,6 +21,7 @@ import styles from './details.module.css';
  */
 export function ClassDetails({ classId }: { classId: string }) {
   const ontology = useOntology();
+  const showTerms = useShowTerms();
   const entity = findClass(ontology, classId);
 
   const renameClass = useProjectStore((state) => state.renameClassById);
@@ -68,9 +69,17 @@ export function ClassDetails({ classId }: { classId: string }) {
         />
       </Field>
 
-      <Field label="IRI">
-        <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
-      </Field>
+      {/*
+        Behind the same switch that names the RDF terms, and for the same reason: an IRI is what
+        this becomes in a file, not something anyone types or edits. It is derived — the base IRI
+        plus the name above it — so it says nothing the two fields around it do not already say,
+        and it took a third of the panel to say it.
+      */}
+      {showTerms ? (
+        <Field label="IRI">
+          <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
+        </Field>
+      ) : null}
 
       {/*
         Several parents, not one. A class is often two things at once -- a LeaseAgreement is a

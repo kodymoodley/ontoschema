@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { findAnnotationTerm } from '../annotationvocabulary';
 import type { Annotation, EntityRef } from '../ontologymodel';
-import { useOntology, useProjectStore } from '../projectstore';
+import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Field, Select, Switch, TextArea, TextInput } from '../designsystem';
 import { annotationsOf } from './annotated';
 import { LanguageOptions } from './LanguageOptions';
 import { namedValue } from './namedfields';
 import type { NamedField } from './namedfields';
-import { useShowTerms } from './showterms';
+
 import styles from './annotationpanel.module.css';
 
 /**
