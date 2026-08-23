@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import { Parser } from 'n3';
-import { unionMembers } from '../fixtures/parseRdf';
 import {
   addAnnotation,
   addAttribute,
@@ -258,17 +257,24 @@ test('a attribute is reused on a second class by dragging it from the list', asy
   const turtle = await downloadExport(page, 'ttl');
   const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
 
-  // Reused, so the domain is a union: repeating it would mean Car and Product are one thing.
-  const [domain] = quads.filter(
+  /*
+   * Reused, so no `rdfs:domain`. Repeating it would mean Car and Product are one thing, and a
+   * union would mean "one of the two" -- true, but looser than what the shapes in this same
+   * file already say, and it would cost a blank node and a list to say it.
+   */
+  const domains = quads.filter(
     (quad) =>
       quad.subject.value.endsWith('/price') &&
       quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#domain',
   );
-  expect(domain?.object.termType).toBe('BlankNode');
-  expect(unionMembers(quads, domain!.subject.value, domain!.predicate.value).sort()).toEqual([
-    expect.stringContaining('/Car'),
-    expect.stringContaining('/Product'),
-  ]);
+  expect(domains).toHaveLength(0);
+  expect(
+    quads.filter(
+      (quad) =>
+        quad.predicate.value === 'http://www.w3.org/ns/shacl#path' &&
+        quad.object.value.endsWith('/price'),
+    ),
+  ).toHaveLength(2);
 
   // The per-class truth is in the shapes instead, one for each class.
   const shapes = await downloadShapes(page);

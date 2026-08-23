@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { Parser } from 'n3';
-import { unionMembers } from '../fixtures/parseRdf';
 import {
   addAnnotation,
   addAttribute,
@@ -141,9 +140,9 @@ test('points one property at three different classes and exports a disjunction',
   );
 
   /*
-   * One class uses it, so the domain is that class outright. The range is the three targets,
-   * which RDFS can only state as a union -- and the union has to be anonymous to be read as
-   * an expression rather than as a class that happens to be called something.
+   * One class uses it, so the domain is that class outright -- exact, and stated. The range is
+   * three targets, which RDFS could only approximate as a union; the `sh:or` above says which
+   * three, so the loose version is not written and the file has no blank nodes in it.
    */
   const [domain] = quads.filter(
     (quad) =>
@@ -152,13 +151,12 @@ test('points one property at three different classes and exports a disjunction',
   );
   expect(domain?.object.value).toMatch(/\/Car$/);
 
-  const [range] = quads.filter(
+  const ranges = quads.filter(
     (quad) =>
       quad.subject.value.endsWith('/hasPart') &&
       quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#range',
   );
-  expect(range?.object.termType).toBe('BlankNode');
-  expect(unionMembers(quads, range!.subject.value, range!.predicate.value)).toHaveLength(3);
+  expect(ranges).toHaveLength(0);
 });
 
 test('annotates in eight languages and round-trips every one', async ({ page }) => {
@@ -281,13 +279,17 @@ test('reuses one attribute across five classes', async ({ page }) => {
         quad.object.value.endsWith('/price'),
     ),
   ).toHaveLength(5);
-  const [domain] = quads.filter(
+  /*
+   * Five classes carry it, so `rdfs:domain` is left out: the five shapes above say which five,
+   * one constraint each, where a union would have said "one of these" and needed a list to
+   * say it. An attribute loses nothing by this -- a usage is a class and a property.
+   */
+  const domains = quads.filter(
     (quad) =>
       quad.subject.value.endsWith('/price') &&
       quad.predicate.value === 'http://www.w3.org/2000/01/rdf-schema#domain',
   );
-  expect(domain?.object.termType).toBe('BlankNode');
-  expect(unionMembers(quads, domain!.subject.value, domain!.predicate.value)).toHaveLength(5);
+  expect(domains).toHaveLength(0);
   // The xsd range is the same wherever it is used, so that one survives.
   expect(
     quads.some(

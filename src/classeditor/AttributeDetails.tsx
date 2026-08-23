@@ -75,7 +75,7 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
         label={`Used on (${usages.length})`}
         hint={
           usages.length > 1
-            ? 'Reused, so rdfs:domain is omitted — the SHACL shapes carry one constraint per class.'
+            ? 'Reused, so rdfs:domain is omitted — the SHACL shapes saved beside the axioms carry one constraint per class.'
             : 'A single use exports as rdfs:domain as well as a SHACL shape.'
         }
       >

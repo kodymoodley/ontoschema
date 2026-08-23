@@ -73,7 +73,7 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
         label={`Used between (${usages.length})`}
         hint={
           usages.length > 1
-            ? 'Reused, so rdfs:domain and rdfs:range are omitted — a union would lose the pairing. The SHACL shapes keep each pair intact.'
+            ? 'Reused, so rdfs:domain and rdfs:range are omitted — they could only say which classes take part, not which goes with which. The SHACL shapes saved beside the axioms keep every pair.'
             : usages.length === 1
               ? 'A single use exports as rdfs:domain and rdfs:range as well as a SHACL shape.'
               : undefined

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { OWL_UNION_OF, RDFS_DOMAIN } from '../annotationvocabulary';
 import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/autoOntology';
 import { allScenarios } from '../../tests/fixtures/scenarios';
 import { ontologyFromTriples } from './fromTriples';
@@ -74,10 +75,19 @@ function summarise(ontology: Ontology) {
   };
 }
 
+/**
+ * A document with no shapes in it, which is what a foreign ontology looks like and what this
+ * app itself used to save. The axioms are all such a file has, so this is the path where a
+ * union is read for what it can be read for.
+ */
 const roundTrip = (ontology: Ontology) =>
   ontologyFromTriples(ontologyToTriples(ontology, { includeShapes: false }), {
     [ontology.prefix]: ontology.iri,
   });
+
+/** A file this app saves: axioms, shapes and layout together. */
+const saveAndOpen = (ontology: Ontology) =>
+  ontologyFromTriples(ontologyToTriples(ontology), { [ontology.prefix]: ontology.iri });
 
 describe('the round trip', () => {
   it('brings back a schema unchanged, down to the positions and the language tags', () => {
@@ -175,6 +185,49 @@ describe('the round trip', () => {
  * distinct pairs comes back permitting all four. The shapes keep the pairings; a document
  * read without them cannot.
  */
+/**
+ * What the shapes are in the saved file for. The axioms name both ends of a relation but not
+ * which end went with which; the shapes are per class, so they say exactly what was drawn.
+ * Without them, saving the insurance example and opening it returned two relations nobody had
+ * drawn -- `MotorPolicy insures Dwelling` among them.
+ */
+describe('a file this app saved', () => {
+  it('gives back every pairing exactly, and invents none', () => {
+    const { ontology } = buildReusedOntology();
+    const before = summarise(ontology).usages;
+    const after = summarise(saveAndOpen(ontology).ontology).usages;
+
+    expect(after).toEqual(before);
+  });
+
+  /*
+   * And the union is not written at all, because the shapes beside it say it better. That is
+   * what takes the blank nodes and the `rdf:first` chains out of a saved file.
+   */
+  it('states no union, since something in the same file states the pairing', () => {
+    const { ontology } = buildReusedOntology();
+    const saved = ontologyToTriples(ontology);
+    const looseFile = ontologyToTriples(ontology, { includeShapes: false });
+
+    expect(saved.some((triple) => triple.predicate === OWL_UNION_OF)).toBe(false);
+    expect(saved.some((triple) => triple.object.type === 'blank')).toBe(false);
+    // Still stated where nothing else can state it.
+    expect(looseFile.some((triple) => triple.predicate === OWL_UNION_OF)).toBe(true);
+  });
+
+  /* A property used once has exact ends, so they are stated whatever else is in the file. */
+  it('keeps a single use as plain rdfs:domain and rdfs:range', () => {
+    const { ontology, ids } = buildAutoOntology();
+    const saved = ontologyToTriples(ontology);
+    const domain = saved.find(
+      (triple) => triple.predicate === RDFS_DOMAIN && triple.subject.endsWith('offeredBy'),
+    );
+
+    expect(ids).toBeDefined();
+    expect(domain?.object.type).toBe('iri');
+  });
+});
+
 describe('what a union domain cannot restore', () => {
   it('licenses pairings that were never drawn, when a relation was used with two pairs', () => {
     const { ontology } = buildReusedOntology();
