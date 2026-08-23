@@ -153,7 +153,7 @@ describe('ClassNode double-click', () => {
 });
 
 /**
- * Renaming a attribute from inside a class box. The property lives in a shared pool, so
+ * Renaming an attribute from inside a class box. The property lives in a shared pool, so
  * the rename reaches every class holding it — which is the part a user cannot see happening and
  * the reason the field says how far it goes.
  */

@@ -47,7 +47,7 @@ const BUDGETS = {
    * for no reason of its own. Measured: 42.9 after the search, 43.9 after the lane routing and
    * the switch. Still no new dependency.
    */
-  'index.js': 48,
+  'index.js': 52, // 46.8 at the audit; raised with the total, for the same reason
   'react.js': 65,
   'canvas.js': 80, // @xyflow/react and dagre
   'rdf.js': 55, // n3
@@ -59,8 +59,14 @@ const BUDGETS = {
    * 200 was set when lazy chunks stopped being counted, against an eager total of 198.4. Raised
    * to 205 for the entity search: 198.9 before it, 200.2 after, which is BM25 and a dialog and
    * no new dependency.
+   *
+   * Raised to 210 by the audit, at 204.8 — 0.2 kB of headroom, which is a gate that fails the
+   * next contributor for a change of any size and reads as their fault. What took it from 200.2
+   * is the metadata forms, the panel folding and the framing corrections: application code, no
+   * new dependency, each merged deliberately. Raised rather than trimmed because trimming is
+   * optimisation work and wants its own pass, not a line in an audit.
    */
-  total: 205,
+  total: 210,
 };
 
 /**

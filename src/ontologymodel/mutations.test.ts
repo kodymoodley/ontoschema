@@ -339,11 +339,26 @@ describe('annotations', () => {
     }
   });
 
+  /*
+   * Asserted in two steps, and the first is the one that matters. `x[0]?.language` is undefined
+   * when `x[0]` is undefined, so a single `toBeUndefined()` passed whether the tag had been
+   * cleared or the whole annotation deleted -- and, with the id defaulted to '', even when the
+   * fixture carried no annotation for the call to act on.
+   */
   it('clears the language tag when set to empty', () => {
     const { ontology, ids } = buildAutoOntology();
-    const id = findClass(ontology, ids.car)?.annotations[0]?.id ?? '';
-    const cleared = updateAnnotation(ontology, 'class', ids.car, id, { language: '' });
-    expect(findClass(cleared, ids.car)?.annotations[0]?.language).toBeUndefined();
+    const before = findClass(ontology, ids.car)?.annotations ?? [];
+    const tagged = before.find((annotation) => annotation.language !== undefined);
+    expect(tagged, 'the fixture has no tagged annotation to clear').toBeDefined();
+
+    const cleared = updateAnnotation(ontology, 'class', ids.car, tagged!.id, { language: '' });
+    const after = findClass(cleared, ids.car)?.annotations ?? [];
+    const same = after.find((annotation) => annotation.id === tagged!.id);
+
+    // Still there, still saying the same thing, and only the tag gone.
+    expect(after).toHaveLength(before.length);
+    expect(same?.value).toBe(tagged!.value);
+    expect(same?.language).toBeUndefined();
   });
 
   it('keeps several annotations that use the same term', () => {

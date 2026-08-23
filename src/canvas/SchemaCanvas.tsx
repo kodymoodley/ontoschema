@@ -167,11 +167,11 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
         return;
       }
 
-      // Both attribute drops require a class to land on: a attribute cannot exist
+      // Both attribute drops require a class to land on: an attribute cannot exist
       // on its own, so there is nothing sensible to create on empty canvas.
       const classId = classAt(event.clientX, event.clientY);
       if (!classId) {
-        setRejectedDrop('Drop a attribute onto a class — it has to belong to one.');
+        setRejectedDrop('Drop an attribute onto a class — it has to belong to one.');
         window.setTimeout(() => setRejectedDrop(null), 2600);
         return;
       }

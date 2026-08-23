@@ -309,8 +309,8 @@ export function setUsageEndpoints(
 }
 
 /**
- * Creates a attribute and attaches it to a class in one step — the common path,
- * since a attribute can never exist unattached in the editor.
+ * Creates an attribute and attaches it to a class in one step — the common path,
+ * since an attribute can never exist unattached in the editor.
  */
 export function addAttributeToClass(
   ontology: Ontology,

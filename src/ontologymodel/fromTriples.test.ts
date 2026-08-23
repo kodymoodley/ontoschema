@@ -217,13 +217,12 @@ describe('a file this app saved', () => {
 
   /* A property used once has exact ends, so they are stated whatever else is in the file. */
   it('keeps a single use as plain rdfs:domain and rdfs:range', () => {
-    const { ontology, ids } = buildAutoOntology();
+    const { ontology } = buildAutoOntology();
     const saved = ontologyToTriples(ontology);
     const domain = saved.find(
       (triple) => triple.predicate === RDFS_DOMAIN && triple.subject.endsWith('offeredBy'),
     );
 
-    expect(ids).toBeDefined();
     expect(domain?.object.type).toBe('iri');
   });
 });

@@ -40,30 +40,35 @@ Everything else falls out of that one concept:
 
 Two different promises, so two different menu items.
 
-**File › Save a schema** writes a document this app can open again: `.ttl`, `.rdf` or `.owl`,
-carrying the OWL/RDFS axioms and where the classes sit on the canvas. There is no private project
-format any more — a schema leaves here in a form every other RDF tool understands.
+**File › Save as…** writes a document this app can open again: `.ttl`, `.rdf` or `.owl`, carrying
+the OWL/RDFS axioms, the SHACL shapes and where the classes sit on the canvas. There is no private
+project format any more — a schema leaves here in a form every other RDF tool understands.
 
-**File › Export** writes what cannot be read back: the SHACL shapes as a file of their own,
-JSON-LD, and a Mermaid class diagram.
+**File › Export…** writes a rendering this app will not read back: the SHACL shapes on their own
+for a validator, JSON-LD, and a Mermaid class diagram.
 
-### What the ontology file says
+### What a saved file says
 
 Class and property declarations, subclass and subproperty hierarchies, and `rdfs:domain`/`rdfs:range`
-on every property. A property used on one class states that class directly; one used on several
-states an **anonymous `owl:unionOf`** over all of them. Repeating the domain would mean intersection
-— that a thing with a `price` is a Car _and_ a Product — which is false, and stating nothing would
-leave the file unable to be read back. The union has to be anonymous: a _named_ class carrying
-`owl:unionOf` is discarded by real OWL parsers, which was measured rather than assumed.
+wherever RDFS can state them **exactly** — a property used on one class states that class directly.
 
-The union is weaker than what it came from. It names both ends of a relation but not which end went
-with which, so a relation drawn `Car → Dealership` and `Wheel → Garage` reopens permitting
-`Car → Garage`. The shapes keep the pairings.
+A property used on several is where RDFS runs out. Repeating the domain would mean intersection —
+that a thing with a `price` is a Car _and_ a Product — which is false. A union domain is true but
+loses the pairing: it names both ends of a relation and not which end went with which, so a relation
+drawn `Car → Dealership` and `Wheel → Garage` would reopen permitting `Car → Garage`. So a saved
+file states **neither**, and lets the shapes beside it say what was actually drawn. That is why the
+shapes are in the file rather than only in the export: without them, saving and opening a schema
+gave back a superset of it.
+
+A document written **without** shapes — the shapes-only export's counterpart, or a foreign ontology
+— still gets the union, because then it is the best that file can do. The union has to be anonymous
+in that case: a _named_ class carrying `owl:unionOf` is discarded by real OWL parsers, which was
+measured rather than assumed.
 
 Where the classes sit rides along as a single annotation on the ontology, keyed by IRI. One line a
 triple-level diff can ignore by predicate, and nothing at all in a document never opened here.
 
-### What the shapes file says
+### What the shapes say
 
 One `sh:NodeShape` per class with usages, and one named `sh:PropertyShape` per (class, property).
 Several target classes on one path become a single `sh:or` rather than several shapes, because two
@@ -71,8 +76,9 @@ property shapes on the same path are _conjunctive_ — `Car hasPart Wheel` plus 
 separate shapes would demand every part be both at once.
 
 Shapes are **named, not blank**, which makes every one addressable for annotation and for future
-`sh:minCount`/`sh:maxCount`. They are a separate file so that the ontology is what a reasoner reads
-and the shapes are what a validator reads, with neither needing to be told to ignore the other.
+`sh:minCount`/`sh:maxCount`. They sit beside the axioms in a saved file and can also be exported
+alone: a reasoner passes over `sh:` triples and a validator passes over `owl:` ones, so neither has
+to be told to ignore the other.
 
 ## Opening a file
 
@@ -111,19 +117,25 @@ you are already working on is left alone.
 
 1. Drag **Class** from the palette onto the canvas twice; double-click each header to name them
    `Car` and `Dealership`.
-2. Select `Car`, and in the inspector's **Details** tab add attributes: `make` (string), `model`
-   (string), `year` (integer), `engine` (string), `price` (decimal). They appear as typed rows inside
-   the class box. (Dragging **Attribute** from the palette onto a class does the same; onto
-   empty canvas it is refused, because an attribute has to belong to a class.)
+2. Select `Car`. The inspector opens on the right; under **Details** add attributes: `make`
+   (string), `model` (string), `year` (integer), `engine` (string), `price` (decimal). They appear as
+   typed rows inside the class box. (Dragging **Attribute** from the palette onto a class does the
+   same; onto empty canvas it is refused, because an attribute has to belong to a class.)
 3. Drag from the dot on `Car`'s right edge to the dot on `Dealership`'s left edge, then pick which
    relation this is — an existing one, or a new one called `offeredBy`.
-4. Open the **Annotations** tab and add `skos:prefLabel` twice, with language tags `en` and `nl`.
-5. In the **Ontology** tab, set the base IRI and prefix, and add `dcterms:title`.
-6. In the **Export** tab, choose whether to include axioms and/or SHACL shapes, then download `.ttl`,
-   `.rdf`, `.owl` or `.jsonld`.
+4. Under **Documentation**, fill in **Label** twice, with language `en` and `nl`. Every other term
+   in the vocabulary is under **Other properties**, and **Show RDF terms** names the term each box
+   writes.
+5. Click the pencil beside the project name in the header to open **Schema metadata**, and set the
+   base IRI, the prefix and the title.
+6. **File › Save as…** downloads `.ttl`, `.rdf` or `.owl` — a document this app can open again.
+   **File › Export…** downloads the SHACL shapes alone, JSON-LD or a Mermaid diagram.
 
-To see reuse: open the **Data props** tab in the left panel and drag `price` onto another class. The
-list shows it used `2×`, and the export drops its `rdfs:domain` while gaining a second SHACL shape.
+To see reuse: open the **Attribute** tab in the left panel and drag `price` onto another class. The
+list shows it used `2×`, and the saved file drops its `rdfs:domain` while gaining a second SHACL
+shape.
+
+Past about thirty classes, `Ctrl`+`K` finds anything by name or description.
 
 ### Gestures on the canvas
 
@@ -133,30 +145,38 @@ list shows it used `2×`, and the export drops its `rdfs:domain` while gaining a
 | **Double-click (or double-tap) a class**       | Brings it into focus: centred, filling about a third of the canvas |
 | **Double-click (or double-tap) empty canvas**  | Frames the whole schema again — the way back out of a focus        |
 | Double-click a class **header**                | Renames it in place                                                |
-| Drag a attribute from the pool onto a class    | Reuses that property there                                         |
+| Drag an attribute from the pool onto a class   | Reuses that property there                                         |
 | Delete / Backspace                             | Removes the selection, unless a dialog is open or you are typing   |
 
 Relations attach to whichever pair of sides the two classes actually face, so moving a class
-re-routes its edges rather than leaving them looping back on themselves. Subclass links stay
-vertical whichever way round the two sit, since the hierarchy has to stay readable.
+re-routes its edges rather than leaving them looping back on themselves, and they are drawn with
+rigid right angles rather than curves. The schema view draws relations only: a class names its
+superclasses in its own box, and the hierarchy itself belongs to the taxonomy view, which lays it
+out rather than drawing it over wherever the classes were dragged.
 
 ### Scripts
 
-| Command                             | What it does                                                            |
-| ----------------------------------- | ----------------------------------------------------------------------- |
-| `npm run dev`                       | Vite dev server with hot reload                                         |
-| `npm run build`                     | Typecheck, then production build to `dist/`                             |
-| `npm run preview`                   | Serve the production build                                              |
-| `npm run typecheck`                 | `tsc --noEmit`                                                          |
-| `npm run lint`                      | ESLint, **including the architectural boundary rules**                  |
-| `npm run format` / `format:check`   | Prettier write / check                                                  |
-| `npm test`                          | Unit tests (domain model + serializers)                                 |
-| `npm run test:integration`          | Integration tests (store → model → all four serializations)             |
-| `npm run test:unit-and-integration` | Both vitest projects                                                    |
-| `npm run test:e2e`                  | Playwright end-to-end tests (starts its own dev server)                 |
-| `npm run verify`                    | Everything CI runs: typecheck, lint, format check, all three test tiers |
+| Command                    | What it does                                                             |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `npm run dev`              | Vite dev server with hot reload                                          |
+| `npm run build`            | Typecheck, then production build to `dist/`                              |
+| `npm run preview`          | Serve the production build                                               |
+| `npm run typecheck`        | `tsc --noEmit`                                                           |
+| `npm run lint`             | ESLint, **including the architectural boundary rules**                   |
+| `npm run format`           | Prettier write (`format:check` to check only)                            |
+| `npm test`                 | The unit tier: pure logic, in node                                       |
+| `npm run test:component`   | The component tier: React panels in jsdom                                |
+| `npm run test:integration` | The integration tier: store → model → all four serializations            |
+| `npm run test:node`        | All three of the above — what CI runs, with coverage thresholds          |
+| `npm run test:e2e`         | Playwright, on three engines, **against the production build**           |
+| `npm run test:e2e:fast`    | The same suite on chromium only — the pre-push gate                      |
+| `npm run size`             | Builds, then checks the per-chunk and total bundle budgets               |
+| `npm run test:perf`        | Frame and timing budgets. Local only: a shared CI runner breaches them   |
+| `npm run mutation`         | Stryker, scoped to `src/serialization/`                                  |
+| `npm run verify`           | Everything above except `mutation`, including `test:perf` which CI skips |
 
-First-time Playwright setup: `npm run test:e2e:install`.
+First-time Playwright setup: `npm run test:e2e:install`. `lint:fix`, `test:watch`,
+`languages:refresh` and `icons:refresh` exist too; see `package.json`.
 
 ---
 
