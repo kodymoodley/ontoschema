@@ -25,4 +25,6 @@ export { DeleteIcon, RelationIcon } from './icons';
 
 export { Switch } from './Switch';
 
+export { downloadFile } from './download';
+
 export { DOUBLE_TAP_MS, TAP_SLOP_PX, useDoubleTap } from './doubletap';

@@ -6,6 +6,7 @@ import {
   Button,
   Field,
   HamburgerIcon,
+  downloadFile,
   Menu,
   MenuGroup,
   MenuSeparator,
@@ -65,25 +66,13 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
     setCreating(false);
   };
 
-  const download = (filename: string, content: string) => {
-    const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-  };
-
   /*
    * Named for the day rather than for a project, because a backup is a snapshot of this
    * browser and belongs to no one project. The date is what tells two of them apart.
    */
   const backUp = () => {
     const today = new Date().toISOString().slice(0, 10);
-    download(`ontoschema-backup-${today}.json`, exportWorkspaceFile());
+    downloadFile(`ontoschema-backup-${today}.json`, 'application/json', exportWorkspaceFile());
   };
 
   /**
