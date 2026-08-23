@@ -12,6 +12,17 @@ const WIDE = { width: 1500, height: 900 };
 const LAPTOP = { width: 1200, height: 800 };
 const NARROW = { width: 820, height: 800 };
 
+/**
+ * The minimap, which is an orientation aid rather than a second canvas. Its height is derived
+ * from its width in CSS, so the shape is checked as well as the size: `aspect-ratio` cannot be
+ * used on it — it is an `svg` with an intrinsic 200x150, so `height: auto` resolves to 150 and
+ * the ratio is never consulted — and a width changed without its height would squash the map.
+ */
+async function minimap(page: Page) {
+  const box = (await page.locator('.react-flow__minimap').boundingBox())!;
+  return { width: Math.round(box.width), ratio: box.width / box.height };
+}
+
 const entities = (page: Page) => page.getByRole('complementary', { name: 'Palette and hierarchy' });
 const inspector = (page: Page) => page.getByRole('complementary', { name: 'Inspector' });
 
@@ -35,6 +46,14 @@ async function openedDrawer(page: Page) {
 
 test.describe('wide', () => {
   test.use({ viewport: WIDE });
+
+  test('keeps the minimap to a corner rather than a quarter of the canvas', async ({ page }) => {
+    await openApp(page);
+    const map = await minimap(page);
+
+    expect(map.width).toBe(75);
+    expect(map.ratio).toBeCloseTo(4 / 3, 1);
+  });
 
   test('shows all three columns at once, with no drawer toggles', async ({ page }) => {
     await openApp(page);
@@ -443,6 +462,17 @@ test.describe('on a phone', () => {
     const box = (await label.boundingBox())!;
 
     expect(box.width, `the Label field was ${Math.round(box.width)}px wide`).toBeGreaterThan(100);
+  });
+
+  /* Where a corner is most of the screen, the corner has to be smaller. */
+  test('shrinks the minimap again', async ({ page }) => {
+    await openApp(page);
+    const map = await minimap(page);
+    const canvas = (await page.getByTestId('schema-canvas').boundingBox())!;
+
+    expect(map.width).toBe(50);
+    expect(map.ratio).toBeCloseTo(4 / 3, 1);
+    expect(map.width / canvas.width, 'the minimap took a fifth of the canvas').toBeLessThan(0.2);
   });
 
   /* The panel's title is the thing being edited, and it was showing as `performe…`. */

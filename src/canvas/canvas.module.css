@@ -44,14 +44,29 @@
 }
 
 .canvas :global(.react-flow__minimap) {
-  /* Half React Flow's default 200x150. It is an orientation aid, not a second canvas, and at
-     the default size it took a corner of the workspace worth more than the overview. */
-  width: 100px;
-  height: 75px;
+  /*
+   * A third of React Flow's default 200x150, and shrinking again below the breakpoint. It is an
+   * orientation aid, not a second canvas: at the default size it took a corner of the workspace
+   * worth more than the overview, and on a phone a corner is most of what there is.
+   *
+   * One number per size, with the height derived from it, so the map keeps its shape and the two
+   * cannot drift apart. `aspect-ratio` would have been the tidier way and does nothing here: the
+   * minimap is an `svg` with an intrinsic 200x150, so `height: auto` resolves to 150 and the
+   * ratio is never consulted.
+   */
+  --minimap-width: 75px;
+  width: var(--minimap-width);
+  height: calc(var(--minimap-width) * 3 / 4);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-base);
   box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 1024px) {
+  .canvas :global(.react-flow__minimap) {
+    --minimap-width: 50px;
+  }
 }
 
 .canvas :global(.react-flow__handle) {
