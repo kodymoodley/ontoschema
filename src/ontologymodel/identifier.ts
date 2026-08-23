@@ -6,10 +6,18 @@
  */
 
 /**
- * Where an XML name may begin, applied to a repaired name so it is usable as an element name as
- * well as inside an IRI. ASCII-only, which is stricter than XML: see AUDIT.md, finding C4.
+ * Where an XML name may begin: the `NameStartChar` production from XML 1.0, minus the colon
+ * that a QName uses as its separator.
+ *
+ * Written out in full rather than as `[A-Za-z_]`, which is what it used to be. That was not a
+ * simplification of this rule but a different and much narrower one, and it charged every name
+ * not starting with an ASCII letter a leading underscore it did not need: `Ærøskøbing`,
+ * `Ökonomie`, `Фамилия` and `日本語クラス` all came back with one. The two gaps in the Latin-1
+ * ranges are deliberate — they hold the multiplication and division signs, which are symbols
+ * rather than letters, and XML excludes them for that reason.
  */
-const NCNAME_START = /^[A-Za-z_]/;
+const NCNAME_START =
+  /^[A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u{10000}-\u{EFFFF}]/u;
 
 export interface ValidationResult {
   valid: boolean;
