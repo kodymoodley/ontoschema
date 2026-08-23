@@ -231,6 +231,11 @@ describe('the language tag control', () => {
 
     await user.selectOptions(languageField(), 'ja');
     await user.selectOptions(languageField(), '');
-    expect(annotationsOf(id)[0]?.language).toBeUndefined();
+
+    // The annotation has to still be there: `x[0]?.language` is undefined either way, so
+    // without this the test passed just as happily if the row had been removed entirely.
+    const annotations = annotationsOf(id);
+    expect(annotations).toHaveLength(1);
+    expect(annotations[0]!.language).toBeUndefined();
   });
 });
