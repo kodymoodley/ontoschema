@@ -38,9 +38,10 @@ editor for building RDF/OWL vocabularies that a semantic data engineering workfl
 
 **Hardening is done**, and so is everything that was sequenced after it. The headline is that a
 schema now **saves and opens as ordinary RDF**: Turtle or RDF/XML, with the layout riding along in
-one annotation, the SHACL shapes in a file of their own, and a report of what a foreign document
-left behind. The private project format is gone from everyday use, and a workspace backup covers
-the one thing RDF cannot carry. The file menu was tidied into four groups on the way through.
+one annotation, the SHACL shapes saved beside the axioms so that opening a file gives back the
+schema rather than a superset of it, and a report of what a foreign document left behind. The
+private project format is gone from everyday use, and a workspace backup covers the one thing RDF
+cannot carry. The file menu was tidied into four groups on the way through.
 
 **Both side panels now fold away on a wide screen** (todo 30), with two follow-ups that came
 out of using it. Selecting an entity unfolds the inspector again (todo 33) — the rule from todo
@@ -54,8 +55,14 @@ the schema's own metadata, then Details and Annotations became one scrolling pan
 Inspector toggle any more, because selecting something is what opens it, at every width. And a
 schema too big to scan can be searched by name or description from `Ctrl`+`K`.
 
-What that leaves is short. Neither of the two sequenced items is ready to start, and saying so is
-the point of listing them: both want a design note before any code.
+**And the phone, and the forms.** The inspector was measured at 320px and made usable there
+(todo 28); the drawers stopped covering the canvas toolbar, which had been hiding undo from
+anyone with something selected (todo 35); metadata editing became an ordinary form with the
+vocabulary a switch away (todo 18); and a saved file now carries its shapes, which is what makes
+opening one give back the schema rather than a superset of it (todo 36).
+
+What that leaves is short. The one sequenced item is not ready to start, and saying so is the
+point of listing it: it wants a design note before any code.
 
 1. **`owl:imports`, term reuse and read-only imported terms** — last by decision rather than by
    size. It is the largest new dependency surface on the list, and the only item that makes this
@@ -69,12 +76,12 @@ list above:
   Still owed work rather than wanted work: the positions shipped with the happy path tested and
   little else. Nothing depends on it, which is why it can wait — it does not stop being owed by
   waiting, and the entry lists exactly what is untested so the debt stays legible.
-- **Metadata editing as an ordinary form** (todo 18) — scoped now: the ontology's metadata and an
-  entity's details and annotations, and nowhere else. Export keeps its jargon, because the RDF is
-  what that panel is for. Waits on a proposal rather than a slot — what the forms hold, in what
-  order, under what labels — which the owner approves before any of it is built.
 - **Palette and taxonomy as subtabs** (todo 3) — parked after measuring; the choice of shape is
   the owner's.
+- **A quality and audit pass over the whole app** (todo 37) — filed at the owner's request after
+  a stale sentence in two inspector panels turned out to have been contradicting the exporter for
+  weeks. A read with fresh eyes, producing a list with a severity on each item rather than a pile
+  of commits; what to fix is a separate decision.
 - **Nine, three times over** (todo 9) — parked as a project rather than an item, and decided in
   principle: nine classes to a module, nine modules to a group, nine groups to a file, so 729
   classes and the app refuses more. Modules are boxes you need not see inside, as C4 does it.
@@ -236,6 +243,12 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > **Shapes leave the ontology file, and a reused property states its domain as a union.** Three
 > parts, and they only make sense together.
 >
+> **Half of this was overturned by todo 36** — the half about where the shapes live. A saved file
+> carries them now, import reads them, and with them present the union is not written at all. The
+> rest of the note stands, and is why: it is the measurement that says what the union costs, and
+> the union is still what a document written without shapes gets. Kept rather than rewritten,
+> because the reasoning is what made the later decision obvious.
+>
 > The shapes are exported to a file of their own rather than mixed into the ontology, and import
 > never reads them — not from a shapes file, not from an ontology that happens to contain some.
 >
@@ -261,8 +274,10 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > relation usage is a subject, a property and an object; a union gives back both sets but not
 > which subject went with which object, so a relation drawn `Car → Dealership` and
 > `Wheel → Garage` reopens permitting `Car → Garage` as well. The loss is confined to relations
-> used with more than one distinct pairing. Reading the shapes file on import would close it, and
-> can be added later without changing anything decided here.
+> used with more than one distinct pairing. Reading the shapes on import would close it, and can
+> be added later without changing anything decided here. **It was** — todo 36, once the loss was
+> measured rather than reasoned about: saving the insurance example and opening it returned two
+> relations nobody had drawn.
 >
 > **One project per file, and the answer to it: a workspace backup.** A workspace holds several
 > projects; a Turtle document is one ontology, so saving as RDF is per project by construction.
@@ -778,10 +793,8 @@ list as originally written is in the git history; ask and it comes back.
 | 3   | Editing workflow   | Palette and taxonomy tree as subtabs — parked, needs a design choice       | M    |
 | 9   | Modelling power    | Nine, three times over — 729 classes, enforced; parked as a project        | L    |
 | 10  | Export and interop | Folded into the `owl:imports` item; its ranking comes from 29              | L    |
-| 18  | Editing workflow   | Metadata editing as an ordinary form, with the vocabulary as plumbing      | M    |
 | 20  | Export and interop | Harden the layout annotation — parked to the back of the queue             | S–M  |
 | 37  | Export and interop | A quality and audit pass over the whole app — produces a list, not commits | M    |
-| 28  | Editing workflow   | Shrink the inspector on a phone — field layout as much as type             | S    |
 
 **Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36 — kept as numbers so a commit message naming one can still be resolved.
 
