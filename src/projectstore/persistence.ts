@@ -7,8 +7,13 @@ import { UNTITLED, emptyWorkspace } from './workspace';
 import type { Workspace } from './workspace';
 
 /**
- * Browser-local persistence. Deliberately the only place that knows about localStorage, so
- * swapping in a real backend later means replacing this file and nothing else.
+ * Browser-local persistence for the **workspace** — the projects and which one is open.
+ *
+ * Deliberately the only place that knows where a schema is stored, so swapping in a real backend
+ * later means replacing this file and nothing else. That claim is about schema data and no more:
+ * three small preferences that belong to this browser rather than to any schema — the theme, the
+ * folded panels, whether RDF terms are shown — keep their own keys in `localStorage`, and a
+ * backend would leave them exactly where they are.
  */
 
 /**
