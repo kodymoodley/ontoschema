@@ -194,14 +194,14 @@ describe('AttributeDetails', () => {
     expect(screen.getByText(/single use exports as rdfs:domain/i)).toBeInTheDocument();
   });
 
-  it('warns that a reused property drops its rdfs:domain', () => {
+  it('says what a reused property does to its rdfs:domain', () => {
     const car = store().createClass({ localName: 'Car' });
     const product = store().createClass({ localName: 'Product' });
     const price = store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
     store().attachPropertyToClass(price, product);
     render(<AttributeDetails propertyId={price} />);
 
-    expect(screen.getByText(/rdfs:domain is omitted/i)).toBeInTheDocument();
+    expect(screen.getByText(/rdfs:domain becomes a union/i)).toBeInTheDocument();
   });
 
   it('attaches the property to another class from the picker', async () => {

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useProjectStore } from '../projectstore';
-import { findRelation, usagesOfProperty } from '../ontologymodel';
+import { OWL_UNION_OF, RDFS_DOMAIN } from '../annotationvocabulary';
+import { findRelation, ontologyToTriples, usagesOfProperty } from '../ontologymodel';
 import { RelationDetails } from './RelationDetails';
 
 const store = () => useProjectStore.getState();
@@ -12,6 +13,13 @@ const ontology = () => {
   if (!project) throw new Error('no active project');
   return project.ontology;
 };
+
+/** Draws the same relation between a second pair, which is what "reused" means. */
+function reuse(relationId: string) {
+  const van = store().createClass({ localName: 'Van' });
+  const garage = store().createClass({ localName: 'Garage' });
+  store().attachPropertyToClass(relationId, van, garage);
+}
 
 function usedOnce() {
   const car = store().createClass({ localName: 'Car' });
@@ -38,15 +46,38 @@ describe('RelationDetails', () => {
     expect(screen.getByText(/exports as rdfs:domain and rdfs:range/i)).toBeInTheDocument();
   });
 
-  it('reports reuse, and explains why the axioms are dropped', () => {
+  it('reports reuse, and says what becomes of the axioms', () => {
     const { offeredBy } = usedOnce();
-    const van = store().createClass({ localName: 'Van' });
-    const garage = store().createClass({ localName: 'Garage' });
-    store().attachPropertyToClass(offeredBy, van, garage);
+    reuse(offeredBy);
     render(<RelationDetails propertyId={offeredBy} />);
 
     expect(screen.getByText('Reused (2×)')).toBeInTheDocument();
-    expect(screen.getByText(/a union would lose the pairing/i)).toBeInTheDocument();
+    expect(screen.getByText(/become a union of every class involved/i)).toBeInTheDocument();
+  });
+
+  /*
+   * The panel makes a claim about the exported file, and this is what keeps the claim true.
+   * It was not true for a while: the sentence said the axioms were *omitted* on reuse, which
+   * they had been until the exporter changed to state a union instead. Nothing failed, because
+   * nothing tied the words to the behaviour. This does -- one ontology, read both ways.
+   */
+  it('says the same thing the exporter does', () => {
+    const { offeredBy } = usedOnce();
+    reuse(offeredBy);
+    render(<RelationDetails propertyId={offeredBy} />);
+    const claim = screen.getByText(/rdfs:domain and rdfs:range/i).textContent ?? '';
+
+    const triples = ontologyToTriples(ontology());
+    const iri = triples.find(
+      (triple) => triple.predicate === RDFS_DOMAIN && triple.subject.endsWith('offeredBy'),
+    );
+    const union = triples.some(
+      (triple) => triple.predicate === OWL_UNION_OF && triple.subject === iri?.object.value,
+    );
+
+    expect(claim).toContain('union');
+    expect(claim).not.toContain('omitted');
+    expect(union, 'the panel promises a union; the export does not contain one').toBe(true);
   });
 
   it('lists every pair the property is drawn between', () => {
