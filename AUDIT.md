@@ -42,6 +42,7 @@ No S1 findings.
 | G1  | S2  | High   | Tests       | `src/annotationpanel/AnnotationEditor.test.tsx:234`, `src/ontologymodel/mutations.test.ts:344-346`  | Two assertions pass when the subject has vanished: `expect(x[0]?.language).toBeUndefined()` succeeds if `x[0]` is `undefined`. The second also defaults the id with `?? ''`, so a missing fixture would make the whole test vacuous — and it turned out to be asserting on an arbitrary first-of-four annotations. | Assert the annotation still exists, then that its language is gone | 2 files      | FIXED  |
 | G2  | S4  | High   | Tests       | `src/ontologymodel/fromTriples.test.ts:226`                                                         | `expect(ids).toBeDefined()` — a tautology added to consume an unused variable. Cannot fail.                                                                                                                                                                                                                        | Delete the line and the unused destructure                         | 1 file       | FIXED  |
 | G3  | S3  | High   | Tests       | `stryker.config.json:9`                                                                             | Mutation testing is scoped to `src/serialization/*.ts` — one module of seventeen. Coverage percentages elsewhere are unvalidated by mutation.                                                                                                                                                                      | Widen the scope module by module                                   | 1 file       | FIXED  |
+| G4  | S3  | High   | Tests       | `src/ontologymodel/ontology.ts`, `fromTriples.ts`                                                   | **Found by fixing G3.** The model scores **77.2%** on mutation testing against a 92% line-coverage threshold, with **95 mutants not covered at all**. `ontology.ts` is 63.2%, `fromTriples.ts` 68.9%.                                                                                                              | Kill the survivors file by file, worst first                       | many         | OPEN   |
 | F1  | S4  | Medium | Interface   | `src/ontologymodel/fromTriples.ts` (16 sites)                                                       | 16 `x.get(k) as string` casts. Each is safe today because the key came from the list that filled the map, but the cast silences the compiler if that ever stops being true.                                                                                                                                        | Non-null via a lookup helper that throws                           | 1 file       | OPEN   |
 | H1  | S3  | High   | Config      | `scripts/checkBundleSize.mjs`                                                                       | The total budget is 205 kB and the bundle is **204.8 kB**. The next change of any size fails the gate.                                                                                                                                                                                                             | Raise deliberately with a recorded reason, or trim                 | 1 file       | FIXED  |
 | E6  | S3  | High   | Docs        | `README.md:150-152`                                                                                 | **Found while fixing E2.** "Subclass links stay vertical whichever way round the two sit" — the schema canvas has drawn no subclass links since `814e26a`.                                                                                                                                                         | Rewrite the sentence                                               | 1 file       | FIXED  |
@@ -250,6 +251,18 @@ implies.
 
 **Fix:** widen the scope one module at a time, starting with `src/ontologymodel/`, and record the
 score. **Risk:** none to the app; costs CI minutes if it is ever added there.
+
+**Done, and the score is worth having.** A 6m20s run over both pure layers, 1,947 mutants:
+
+| Layer           | Score     | Killed | Survived | Not covered |
+| --------------- | --------- | ------ | -------- | ----------- |
+| `ontologymodel` | **77.2%** | 1,128  | 239      | 95          |
+| `serialization` | **70.1%** | 340    | 124      | 21          |
+
+Which answers the question the finding asked. `ontologymodel` carries a 92% line-coverage
+threshold and kills 77.2% of mutants, and 95 of them are not covered at all — so the threshold is
+being met by lines that run without anything asserting on what they did. Worst files:
+`ontology.ts` 63.2%, `fromTriples.ts` 68.9%, `mutations.ts` 76.2%. Logged as G4.
 
 ### F1 — sixteen casts standing in for a lookup
 

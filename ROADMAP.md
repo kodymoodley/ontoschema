@@ -78,10 +78,13 @@ list above:
   waiting, and the entry lists exactly what is untested so the debt stays legible.
 - **Palette and taxonomy as subtabs** (todo 3) — parked after measuring; the choice of shape is
   the owner's.
-- **A quality and audit pass over the whole app** (todo 37) — filed at the owner's request after
-  a stale sentence in two inspector panels turned out to have been contradicting the exporter for
-  weeks. A read with fresh eyes, producing a list with a severity on each item rather than a pile
-  of commits; what to fix is a separate decision.
+- **A quality and audit pass over the whole app** (todo 37) — **done**, and the report is
+  `AUDIT.md` at the root. Sixteen findings, none of them S1: the codebase is disciplined and the
+  drift is almost entirely in prose, because everything else is gated by CI and no check asks
+  whether a sentence is still true. Ten were fixed; C2, D1, F1 and G4 are still open there with
+  their reasons. The measurement worth carrying here: widening mutation testing to the model
+  scored it at **77.2%** against a 92% line-coverage threshold, with 95 mutants not covered at
+  all — so that threshold is being met by lines that run without anything asserting on them.
 - **Nine, three times over** (todo 9) — parked as a project rather than an item, and decided in
   principle: nine classes to a module, nine modules to a group, nine groups to a file, so 729
   classes and the app refuses more. Modules are boxes you need not see inside, as C4 does it.
