@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { createPreference } from '../projectstore';
 
 /**
  * Which side panels are folded away on a wide screen.
  *
  * Stored beside the theme rather than in the workspace, and for the same reason: it is about
  * this browser and this person, not about any schema. Opening someone else's file should not
- * rearrange your window.
+ * rearrange your window. The storing itself is `projectstore/preference`, shared with the theme
+ * and the show-terms switch.
  *
  * Only wide layouts have anything to fold. Below the three-column breakpoint both panels are
  * already overlay drawers that come and go, so this preference is simply not consulted there.
@@ -29,29 +31,28 @@ import { useCallback, useEffect, useState } from 'react';
 
 export type SidePanel = 'entities' | 'inspector';
 
-const STORAGE_KEY = 'ontoschema.panels';
-
 /**
  * How long the columns take to open or close. Mirrors the `grid-template-columns` transition in
  * `appshell.module.css`; anything measuring the canvas has to wait this out first.
  */
 export const FOLD_DURATION_MS = 160;
 
-/** Which panels are folded. Absent from the set means showing, so the default is both open. */
-function initialFolded(): Set<SidePanel> {
-  try {
-    const stored = globalThis.localStorage?.getItem(STORAGE_KEY);
-    if (!stored) return new Set();
+/**
+ * Which panels its owner folded. An array on the way to storage and a `Set` in use; absent means
+ * showing, so the default is both open.
+ */
+const foldedPanels = createPreference<Set<SidePanel>>(
+  'ontoschema.panels',
+  (stored) => {
     const parsed: unknown = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return new Set();
+    if (!Array.isArray(parsed)) return undefined;
     return new Set(
       parsed.filter((name): name is SidePanel => name === 'entities' || name === 'inspector'),
     );
-  } catch {
-    // Unreadable or hand-edited: start with both panels showing rather than refusing to load.
-    return new Set();
-  }
-}
+  },
+  (value) => JSON.stringify([...value]),
+  () => new Set<SidePanel>(),
+);
 
 /** Adds or removes one member, returning the same set when that would change nothing. */
 function withMember(current: Set<SidePanel>, panel: SidePanel, present: boolean): Set<SidePanel> {
@@ -64,29 +65,21 @@ function withMember(current: Set<SidePanel>, panel: SidePanel, present: boolean)
 
 export function usePanelPreference() {
   /** What its owner asked for. This is what persists. */
-  const [folded, setFolded] = useState<Set<SidePanel>>(initialFolded);
+  const folded = foldedPanels.use();
   /** What is being lent to something on screen. Never stored: it belongs to a selection. */
   const [revealed, setRevealed] = useState<Set<SidePanel>>(() => new Set());
-
-  useEffect(() => {
-    try {
-      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify([...folded]));
-    } catch {
-      // Nothing to do: the panels still fold for this session.
-    }
-  }, [folded]);
 
   /*
    * The four deliberate moves. Each one settles the question outright, so a panel put away by
    * hand cannot be holding a loan from a selection made before it.
    */
   const hide = useCallback((panel: SidePanel) => {
-    setFolded((current) => withMember(current, panel, true));
+    foldedPanels.set(withMember(foldedPanels.get(), panel, true));
     setRevealed((current) => withMember(current, panel, false));
   }, []);
 
   const show = useCallback((panel: SidePanel) => {
-    setFolded((current) => withMember(current, panel, false));
+    foldedPanels.set(withMember(foldedPanels.get(), panel, false));
     setRevealed((current) => withMember(current, panel, false));
   }, []);
 
