@@ -158,6 +158,37 @@ describe('namespace handling', () => {
     expect(validateNamespaceIri('').valid).toBe(false);
   });
 
+  /*
+   * Both messages are what the metadata dialog shows, so they are worth pinning: a mutant that
+   * swapped one for the other, or for nothing, passed every assertion here.
+   */
+  it('says which way the base IRI is wrong', () => {
+    expect(validateNamespaceIri('').message).toMatch(/empty/i);
+    expect(validateNamespaceIri('   ').message).toMatch(/empty/i);
+    expect(validateNamespaceIri('example.org/auto').message).toMatch(/absolute/i);
+    expect(validateNamespaceIri('https://example.org/auto/').message).toBeUndefined();
+  });
+
+  it('needs an authority, not merely a scheme', () => {
+    expect(validateNamespaceIri('mailto:someone@example.org').valid).toBe(false);
+    expect(validateNamespaceIri('urn:isbn:0451450523').valid).toBe(false);
+  });
+
+  it('judges a base IRI by its trimmed value', () => {
+    expect(validateNamespaceIri('  https://example.org/auto/  ').valid).toBe(true);
+  });
+
+  it('accepts a prefix that is a letter and word characters, and says why not', () => {
+    expect(validatePrefix('auto').valid).toBe(true);
+    expect(validatePrefix('a-1_b').valid).toBe(true);
+    expect(validatePrefix('  auto  ').valid).toBe(true);
+
+    expect(validatePrefix('').message).toMatch(/empty/i);
+    expect(validatePrefix('   ').message).toMatch(/empty/i);
+    expect(validatePrefix('1auto').message).toMatch(/letter/i);
+    expect(validatePrefix('au:to').valid).toBe(false);
+  });
+
   it('appends a hash when the namespace has no terminator', () => {
     expect(normalizeNamespaceIri('https://example.org/auto')).toBe('https://example.org/auto#');
     expect(normalizeNamespaceIri('https://example.org/auto/')).toBe('https://example.org/auto/');
