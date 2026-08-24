@@ -10,6 +10,7 @@ import {
   RDFS_DOMAIN,
   RDFS_RANGE,
   RDFS_SUBCLASS_OF,
+  RDFS_SUBPROPERTY_OF,
   RDF_TYPE,
   SH_CLASS,
   SH_DATATYPE,
@@ -19,8 +20,15 @@ import {
   SH_PROPERTY,
   SH_TARGET_CLASS,
 } from '../annotationvocabulary';
-import { addAnnotation, addClass, attachProperty, updateAnnotation } from './mutations';
+import {
+  addAnnotation,
+  addClass,
+  addRelation,
+  attachProperty,
+  updateAnnotation,
+} from './mutations';
 import { createEmptyOntology } from './ontology';
+import type { Ontology } from './types';
 import { ontologyToTriples } from './triples';
 
 const AUTO = 'https://example.org/auto/';
@@ -324,6 +332,60 @@ describe('edge cases', () => {
     const withProperty = addClass(withClass.ontology, { localName: 'Other' });
     const triples = ontologyToTriples(withProperty.ontology);
     expect(triples.some((t) => t.predicate === RDFS_RANGE)).toBe(false);
+  });
+
+  /*
+   * Two labels that read the same and are written in different languages are two facts, and the
+   * key that keeps duplicate triples out has to say so. Mutation testing found this: drop the
+   * language from that key and both tests above still passed, because no case had ever put the
+   * same text under two tags.
+   */
+  it('keeps two labels that differ only by their language tag', () => {
+    const { ontology, id } = addClass(createEmptyOntology('https://example.org/x/', 'x'), {
+      localName: 'Car',
+    });
+    const english = addAnnotation(ontology, 'class', id, 'rdfs:label', 'Auto', 'en');
+    const dutch = addAnnotation(english, 'class', id, 'rdfs:label', 'Auto', 'nl');
+
+    const labels = ontologyToTriples(dutch).filter(
+      (triple) => triple.predicate === 'http://www.w3.org/2000/01/rdf-schema#label',
+    );
+    expect(labels).toHaveLength(2);
+    expect(
+      labels
+        .map((triple) => (triple.object.type === 'literal' ? triple.object.language : ''))
+        .sort(),
+    ).toEqual(['en', 'nl']);
+  });
+
+  /*
+   * A document written elsewhere can say a class is its own superclass. The editor cannot
+   * produce that — `canSubclass` refuses a cycle — but the writer is what a foreign model
+   * reaches, and an axiom pointing at itself is worse than none.
+   */
+  it('writes no self-referencing subclass or subproperty axiom', () => {
+    const { ontology, id } = addClass(createEmptyOntology('https://example.org/x/', 'x'), {
+      localName: 'Car',
+    });
+    const withRelation = addRelation(ontology, { localName: 'partOf' });
+    const looped: Ontology = {
+      ...withRelation.ontology,
+      classes: withRelation.ontology.classes.map((entity) =>
+        entity.id === id ? { ...entity, superClassIds: [id] } : entity,
+      ),
+      relations: withRelation.ontology.relations.map((entity) => ({
+        ...entity,
+        superPropertyIds: [entity.id],
+      })),
+    };
+
+    const triples = ontologyToTriples(looped);
+    const selfReferencing = triples.filter(
+      (triple) =>
+        (triple.predicate === RDFS_SUBCLASS_OF || triple.predicate === RDFS_SUBPROPERTY_OF) &&
+        triple.object.value === triple.subject,
+    );
+    expect(selfReferencing).toEqual([]);
   });
 
   it('normalises a base IRI that lacks a terminator', () => {

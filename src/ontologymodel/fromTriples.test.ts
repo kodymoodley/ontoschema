@@ -4,6 +4,7 @@ import {
   OWL_OBJECT_PROPERTY,
   OWL_UNION_OF,
   RDFS_DOMAIN,
+  RDFS_RANGE,
   RDF_FIRST,
   RDF_NIL,
   RDF_REST,
@@ -371,6 +372,74 @@ describe('reading shapes that are malformed', () => {
   });
 });
 
+/**
+ * Reading a document written by somebody else, where the parts need not line up.
+ *
+ * Each of these was asked for by a surviving mutant: the code handles the case and nothing
+ * proved it did.
+ */
+describe('a foreign document', () => {
+  const A = 'https://example.org/a/';
+  const B = 'https://other.example/b/';
+
+  it('takes its namespace from wherever most of the terms live', () => {
+    const { ontology } = ontologyFromTriples([
+      { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}Van`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}Bus`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${B}Stray`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+    ]);
+
+    expect(ontology.iri).toBe(A);
+    // The stray is still imported; it is the namespace that follows the majority.
+    expect(ontology.classes.map((entity) => entity.localName).sort()).toEqual([
+      'Bus',
+      'Car',
+      'Stray',
+      'Van',
+    ]);
+  });
+
+  /*
+   * A union naming a class the document never declares — an import that was not followed, most
+   * often. The named ones are kept and the unknown one is passed over, rather than the whole
+   * union being discarded or a class being invented for it.
+   */
+  it('keeps the members of a union it knows and skips the ones it does not', () => {
+    const { ontology } = ontologyFromTriples([
+      { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}Van`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}Yard`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}keptAt`, predicate: RDF_TYPE, object: iri(OWL_OBJECT_PROPERTY) },
+      { subject: `${A}keptAt`, predicate: RDFS_DOMAIN, object: { type: 'blank', value: '_:u' } },
+      { subject: `${A}keptAt`, predicate: RDFS_RANGE, object: iri(`${A}Yard`) },
+      { subject: '_:u', predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: '_:u', predicate: OWL_UNION_OF, object: { type: 'blank', value: '_:c1' } },
+      { subject: '_:c1', predicate: RDF_FIRST, object: iri(`${A}Car`) },
+      { subject: '_:c1', predicate: RDF_REST, object: { type: 'blank', value: '_:c2' } },
+      { subject: '_:c2', predicate: RDF_FIRST, object: iri(`${B}NeverDeclared`) },
+      { subject: '_:c2', predicate: RDF_REST, object: { type: 'blank', value: '_:c3' } },
+      { subject: '_:c3', predicate: RDF_FIRST, object: iri(`${A}Van`) },
+      { subject: '_:c3', predicate: RDF_REST, object: iri(RDF_NIL) },
+    ]);
+
+    expect(summarise(ontology).usages.sort()).toEqual(['Car -keptAt-> Yard', 'Van -keptAt-> Yard']);
+  });
+
+  /* Half a relation cannot be drawn, so it stays in the pool and the report says so. */
+  it('does not place a relation that states a domain and no range', () => {
+    const { ontology, report } = ontologyFromTriples([
+      { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}keptAt`, predicate: RDF_TYPE, object: iri(OWL_OBJECT_PROPERTY) },
+      { subject: `${A}keptAt`, predicate: RDFS_DOMAIN, object: iri(`${A}Car`) },
+    ]);
+
+    expect(ontology.relations.map((entity) => entity.localName)).toEqual([]);
+    expect(report.relationsWithoutBothEnds).toBe(1);
+    expect(ontology.usages).toEqual([]);
+  });
+});
+
 describe('what a union domain cannot restore', () => {
   it('licenses pairings that were never drawn, when a relation was used with two pairs', () => {
     const { ontology } = buildReusedOntology();
@@ -495,6 +564,87 @@ describe('property hierarchies', () => {
     const worksFor = ontology.relations.find((entity) => entity.localName === 'worksFor');
     expect(worksFor?.superPropertyIds).toHaveLength(1);
     expect(ontology.usages.filter((usage) => usage.propertyId === worksFor?.id)).toHaveLength(1);
+  });
+
+  /*
+   * Two levels up, which is the ordinary shape of a real vocabulary: the ends are stated once at
+   * the top of the hierarchy and every descendant inherits them. The walk has to keep climbing,
+   * not check one parent and give up.
+   */
+  it('inherits ends from a grandparent, not only from a parent', () => {
+    const { ontology } = ontologyFromTriples([
+      ...base,
+      typed(`${AUTO}employedBy`, `${OWL}ObjectProperty`),
+      {
+        subject: `${AUTO}employedBy`,
+        predicate: `${RDFS}subPropertyOf`,
+        object: iri(`${AUTO}worksFor`),
+      },
+    ]);
+
+    expect(ontology.relations.map((entity) => entity.localName).sort()).toEqual([
+      'employedBy',
+      'relatedTo',
+      'worksFor',
+    ]);
+    const employedBy = ontology.relations.find((entity) => entity.localName === 'employedBy');
+    expect(ontology.usages.filter((usage) => usage.propertyId === employedBy?.id)).toHaveLength(1);
+  });
+
+  /*
+   * A subproperty with ends of its own does not go looking for its parent's. `relatedTo` points
+   * at Organisation; `worksFor` here says Person, and that is what it must keep.
+   */
+  it('prefers a property own ends to the ones it could inherit', () => {
+    const { ontology } = ontologyFromTriples([
+      ...base,
+      { subject: `${AUTO}worksFor`, predicate: `${RDFS}domain`, object: iri(`${AUTO}Person`) },
+      { subject: `${AUTO}worksFor`, predicate: `${RDFS}range`, object: iri(`${AUTO}Person`) },
+    ]);
+
+    const worksFor = ontology.relations.find((entity) => entity.localName === 'worksFor');
+    const person = ontology.classes.find((entity) => entity.localName === 'Person');
+    const usage = ontology.usages.find((u) => u.propertyId === worksFor?.id);
+
+    expect(usage?.objectClassId).toBe(person?.id);
+  });
+
+  /*
+   * A document can say two properties are each other's parent. The climb has to stop rather
+   * than walk the ring for ever, and neither property has ends, so neither is placed.
+   */
+  it('terminates on a subproperty ring instead of climbing for ever', () => {
+    const { ontology, report } = ontologyFromTriples([
+      aClass('Person'),
+      typed(`${AUTO}a`, `${OWL}ObjectProperty`),
+      typed(`${AUTO}b`, `${OWL}ObjectProperty`),
+      { subject: `${AUTO}a`, predicate: `${RDFS}subPropertyOf`, object: iri(`${AUTO}b`) },
+      { subject: `${AUTO}b`, predicate: `${RDFS}subPropertyOf`, object: iri(`${AUTO}a`) },
+    ]);
+
+    expect(ontology.relations).toHaveLength(0);
+    expect(report.relationsWithoutBothEnds).toBe(2);
+  });
+
+  /*
+   * The parent is kept because the child was, even though the parent states nothing that would
+   * place it on its own. Dropping it would import a hierarchy flatter than the document states.
+   */
+  it('keeps a parent that only a kept child gives a reason to import', () => {
+    const { ontology } = ontologyFromTriples([
+      ...base,
+      typed(`${AUTO}vague`, `${OWL}ObjectProperty`),
+      {
+        subject: `${AUTO}relatedTo`,
+        predicate: `${RDFS}subPropertyOf`,
+        object: iri(`${AUTO}vague`),
+      },
+    ]);
+
+    const vague = ontology.relations.find((entity) => entity.localName === 'vague');
+    expect(vague).toBeDefined();
+    // In the pool, drawn nowhere, exactly as an unused relation is in the editor.
+    expect(ontology.usages.filter((usage) => usage.propertyId === vague?.id)).toHaveLength(0);
   });
 
   it('leaves out a subproperty whose ancestors have no ends either', () => {

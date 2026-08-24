@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildAutoOntology } from '../../tests/fixtures/autoOntology';
 import {
   addAnnotation,
+  addAttribute,
   addAttributeToClass,
   addClass,
   addRelation,
@@ -14,10 +15,13 @@ import {
   deleteRelation,
   detachUsage,
   removeAnnotation,
+  renameAttribute,
   renameClass,
   renameRelation,
+  setSuperRelation,
   setAttributeRange,
   setOntologyIri,
+  setOntologyPrefix,
   setSuperClass,
   setUsageEndpoints,
   updateAnnotation,
@@ -25,11 +29,13 @@ import {
 import {
   attributeUsagesOfClass,
   createEmptyOntology,
+  findAttribute,
   findClass,
   findRelation,
   relationUsagesTouchingClass,
   usagesOfProperty,
 } from './ontology';
+import type { Ontology } from './types';
 
 describe('class mutations', () => {
   it('normalises the name of a newly dropped class', () => {
@@ -55,6 +61,27 @@ describe('class mutations', () => {
     expect(findClass(renamed, ids.car)?.localName).toBe('Automobile');
     expect(attributeUsagesOfClass(renamed, ids.car)).toHaveLength(5);
     expect(relationUsagesTouchingClass(renamed, ids.car)).toHaveLength(1);
+  });
+
+  /*
+   * The name being replaced does not count as taken. Without that, renaming `Car` to `Car` — or
+   * correcting `Car` to `Cars` and back — would find its own name in the list and hand back
+   * `Car2`. Mutation testing asked for this: the filter that excludes it survived every mutant.
+   */
+  it('does not treat a name as taken by the very thing being renamed', () => {
+    const { ontology, id } = addClass(createEmptyOntology(), { localName: 'Car' });
+
+    expect(findClass(renameClass(ontology, id, 'Car'), id)?.localName).toBe('Car');
+    // And through the sanitiser, which is how it arrives from a name field.
+    expect(findClass(renameClass(ontology, id, 'car'), id)?.localName).toBe('Car');
+  });
+
+  it('still suffixes a name another class already holds', () => {
+    const first = addClass(createEmptyOntology(), { localName: 'Car' });
+    const second = addClass(first.ontology, { localName: 'Truck' });
+    const renamed = renameClass(second.ontology, second.id, 'Car');
+
+    expect(findClass(renamed, second.id)?.localName).toBe('Car2');
   });
 
   it('is immutable — the input ontology is never modified', () => {
@@ -212,6 +239,69 @@ describe('relations', () => {
     const after = renameRelation(ontology, ids.offeredBy, 'sold by');
     expect(findRelation(after, ids.offeredBy)?.localName).toBe('soldBy');
     expect(usagesOfProperty(after, ids.offeredBy)).toHaveLength(1);
+  });
+
+  /*
+   * The attribute half of everything the class and relation halves already assert. They are
+   * three near-identical functions, which is exactly the shape where one of them quietly stops
+   * matching the other two.
+   */
+  it('renames an attribute without colliding with itself, and refuses an unusable name', () => {
+    const { ontology, id } = addAttribute(createEmptyOntology(), { localName: 'price' });
+
+    expect(findAttribute(renameAttribute(ontology, id, 'price'), id)?.localName).toBe('price');
+    expect(renameAttribute(ontology, id, '   ')).toBe(ontology);
+    expect(renameAttribute(ontology, id, '///')).toBe(ontology);
+  });
+
+  /* Attributes and relations share one namespace, so a name taken by either is taken. */
+  it('will not rename an attribute onto a name a relation holds', () => {
+    const withRelation = addRelation(createEmptyOntology(), { localName: 'offeredBy' });
+    const withAttribute = addAttribute(withRelation.ontology, { localName: 'price' });
+    const renamed = renameAttribute(withAttribute.ontology, withAttribute.id, 'offeredBy');
+
+    expect(findAttribute(renamed, withAttribute.id)?.localName).toBe('offeredBy2');
+  });
+
+  it('takes a deleted attribute out of its children as well as out of the list', () => {
+    const parent = addAttribute(createEmptyOntology(), { localName: 'identifier' });
+    const child = addAttribute(parent.ontology, { localName: 'isbn' });
+    const linked: Ontology = {
+      ...child.ontology,
+      attributes: child.ontology.attributes.map((entity) =>
+        entity.id === child.id ? { ...entity, superPropertyIds: [parent.id] } : entity,
+      ),
+    };
+
+    const after = deleteAttribute(linked, parent.id);
+    expect(findAttribute(after, child.id)?.superPropertyIds).toEqual([]);
+  });
+
+  it('trims a prefix and normalises a base IRI as they are set', () => {
+    const base = createEmptyOntology();
+    expect(setOntologyPrefix(base, '  auto  ').prefix).toBe('auto');
+    expect(setOntologyIri(base, 'https://example.org/auto').iri).toBe('https://example.org/auto#');
+  });
+
+  it('does not treat a relation name as taken by the relation being renamed', () => {
+    const { ontology, id } = addRelation(createEmptyOntology(), { localName: 'offeredBy' });
+    expect(findRelation(renameRelation(ontology, id, 'offeredBy'), id)?.localName).toBe(
+      'offeredBy',
+    );
+  });
+
+  /*
+   * A relation is a subproperty of another, and the parent is deleted. The child must lose the
+   * parent it no longer has, or it exports `rdfs:subPropertyOf` pointing at nothing.
+   */
+  it('takes a deleted relation out of its children, not only out of the list', () => {
+    const parent = addRelation(createEmptyOntology(), { localName: 'relatedTo' });
+    const child = addRelation(parent.ontology, { localName: 'worksFor' });
+    const linked = setSuperRelation(child.ontology, child.id, parent.id);
+    expect(findRelation(linked, child.id)?.superPropertyIds).toEqual([parent.id]);
+
+    const after = deleteRelation(linked, parent.id);
+    expect(findRelation(after, child.id)?.superPropertyIds).toEqual([]);
   });
 
   it('deleting a property removes its relations but leaves both classes standing', () => {

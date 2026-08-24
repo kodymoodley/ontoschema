@@ -48,6 +48,32 @@ describe('classForest', () => {
     expect(rootClasses(orphaned).map((c) => c.localName)).toContain('Car');
   });
 
+  /*
+   * A class naming itself as its parent is a root, not a child of itself. A document written
+   * elsewhere can say so, and without the `id !== entity.id` half of the filter the class
+   * vanishes from the taxonomy entirely — it is nobody's child and not a root either.
+   */
+  it('treats a class that is its own parent as a root', () => {
+    const { ontology } = buildAutoOntology();
+    const looped = {
+      ...ontology,
+      classes: ontology.classes.map((entity) =>
+        entity.localName === 'Car' ? { ...entity, superClassIds: [entity.id] } : entity,
+      ),
+    };
+
+    expect(rootClasses(looped).map((c) => c.localName)).toContain('Car');
+  });
+
+  /* A parent two steps up still counts: the walk has to follow the chain, not just one link. */
+  it('refuses a grandparent as a child of its own grandchild', () => {
+    const { ontology, ids } = buildAutoOntology();
+    const coupe = addClass(ontology, { localName: 'Coupe', superClassIds: [ids.car] });
+
+    expect(canSubclass(coupe.ontology, ids.vehicle, coupe.id)).toBe(false);
+    expect(canSubclass(coupe.ontology, coupe.id, ids.vehicle)).toBe(true);
+  });
+
   it('terminates on a corrupt cyclic document instead of recursing forever', () => {
     const { ontology, ids } = buildAutoOntology();
     // Bypasses the mutation guard the way a hand-edited project file would.

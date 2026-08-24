@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
-  "_comment": "Mutation testing, run by hand rather than in CI. Coverage says which lines ran; this says whether anything would notice if they were wrong. Scoped to the two pure layers that everything else is built on: the serializers, hand-written and tested mostly by example, and the model, where a surviving mutant means a rule nothing checks. Run with `npm run mutation`.",
+  "_comment": "Mutation testing, run by hand rather than in CI. Coverage says which lines ran; this says whether anything would notice if they were wrong. Scoped to the two pure layers everything else is built on. Run with `npm run mutation`. NOTE: NoCoverage here means no *unit* test -- the integration tier needs jsdom and cannot join this run; see vitest.mutation.config.ts.",
   "packageManager": "npm",
   "testRunner": "vitest",
   "vitest": {
@@ -21,5 +21,11 @@
   "concurrency": 4,
   "jsonReporter": {
     "fileName": "mutation/report.json"
+  },
+  "_thresholdsComment": "The floor is what the audit left the score at, less a point of slack: 80.5% combined when it was set, so `break` at 79. It is a ratchet against regression, not a target to climb. The mutants still alive are mostly unkillable -- the text inside an error message, the `?? []` behind a lookup that cannot miss -- and killing those would mean asserting on strings nobody reads. Raise the floor when real work raises the score; never lower it to make a run pass.",
+  "thresholds": {
+    "high": 85,
+    "low": 80,
+    "break": 79
   }
 }
