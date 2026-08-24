@@ -566,6 +566,87 @@ describe('property hierarchies', () => {
     expect(ontology.usages.filter((usage) => usage.propertyId === worksFor?.id)).toHaveLength(1);
   });
 
+  /*
+   * Two levels up, which is the ordinary shape of a real vocabulary: the ends are stated once at
+   * the top of the hierarchy and every descendant inherits them. The walk has to keep climbing,
+   * not check one parent and give up.
+   */
+  it('inherits ends from a grandparent, not only from a parent', () => {
+    const { ontology } = ontologyFromTriples([
+      ...base,
+      typed(`${AUTO}employedBy`, `${OWL}ObjectProperty`),
+      {
+        subject: `${AUTO}employedBy`,
+        predicate: `${RDFS}subPropertyOf`,
+        object: iri(`${AUTO}worksFor`),
+      },
+    ]);
+
+    expect(ontology.relations.map((entity) => entity.localName).sort()).toEqual([
+      'employedBy',
+      'relatedTo',
+      'worksFor',
+    ]);
+    const employedBy = ontology.relations.find((entity) => entity.localName === 'employedBy');
+    expect(ontology.usages.filter((usage) => usage.propertyId === employedBy?.id)).toHaveLength(1);
+  });
+
+  /*
+   * A subproperty with ends of its own does not go looking for its parent's. `relatedTo` points
+   * at Organisation; `worksFor` here says Person, and that is what it must keep.
+   */
+  it('prefers a property own ends to the ones it could inherit', () => {
+    const { ontology } = ontologyFromTriples([
+      ...base,
+      { subject: `${AUTO}worksFor`, predicate: `${RDFS}domain`, object: iri(`${AUTO}Person`) },
+      { subject: `${AUTO}worksFor`, predicate: `${RDFS}range`, object: iri(`${AUTO}Person`) },
+    ]);
+
+    const worksFor = ontology.relations.find((entity) => entity.localName === 'worksFor');
+    const person = ontology.classes.find((entity) => entity.localName === 'Person');
+    const usage = ontology.usages.find((u) => u.propertyId === worksFor?.id);
+
+    expect(usage?.objectClassId).toBe(person?.id);
+  });
+
+  /*
+   * A document can say two properties are each other's parent. The climb has to stop rather
+   * than walk the ring for ever, and neither property has ends, so neither is placed.
+   */
+  it('terminates on a subproperty ring instead of climbing for ever', () => {
+    const { ontology, report } = ontologyFromTriples([
+      aClass('Person'),
+      typed(`${AUTO}a`, `${OWL}ObjectProperty`),
+      typed(`${AUTO}b`, `${OWL}ObjectProperty`),
+      { subject: `${AUTO}a`, predicate: `${RDFS}subPropertyOf`, object: iri(`${AUTO}b`) },
+      { subject: `${AUTO}b`, predicate: `${RDFS}subPropertyOf`, object: iri(`${AUTO}a`) },
+    ]);
+
+    expect(ontology.relations).toHaveLength(0);
+    expect(report.relationsWithoutBothEnds).toBe(2);
+  });
+
+  /*
+   * The parent is kept because the child was, even though the parent states nothing that would
+   * place it on its own. Dropping it would import a hierarchy flatter than the document states.
+   */
+  it('keeps a parent that only a kept child gives a reason to import', () => {
+    const { ontology } = ontologyFromTriples([
+      ...base,
+      typed(`${AUTO}vague`, `${OWL}ObjectProperty`),
+      {
+        subject: `${AUTO}relatedTo`,
+        predicate: `${RDFS}subPropertyOf`,
+        object: iri(`${AUTO}vague`),
+      },
+    ]);
+
+    const vague = ontology.relations.find((entity) => entity.localName === 'vague');
+    expect(vague).toBeDefined();
+    // In the pool, drawn nowhere, exactly as an unused relation is in the editor.
+    expect(ontology.usages.filter((usage) => usage.propertyId === vague?.id)).toHaveLength(0);
+  });
+
   it('leaves out a subproperty whose ancestors have no ends either', () => {
     const orphaned = base.filter((triple) => triple.predicate !== `${RDFS}range`);
     const { ontology, report } = ontologyFromTriples(orphaned);

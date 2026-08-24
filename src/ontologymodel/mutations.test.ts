@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildAutoOntology } from '../../tests/fixtures/autoOntology';
 import {
   addAnnotation,
+  addAttribute,
   addAttributeToClass,
   addClass,
   addRelation,
@@ -14,11 +15,13 @@ import {
   deleteRelation,
   detachUsage,
   removeAnnotation,
+  renameAttribute,
   renameClass,
   renameRelation,
   setSuperRelation,
   setAttributeRange,
   setOntologyIri,
+  setOntologyPrefix,
   setSuperClass,
   setUsageEndpoints,
   updateAnnotation,
@@ -26,11 +29,13 @@ import {
 import {
   attributeUsagesOfClass,
   createEmptyOntology,
+  findAttribute,
   findClass,
   findRelation,
   relationUsagesTouchingClass,
   usagesOfProperty,
 } from './ontology';
+import type { Ontology } from './types';
 
 describe('class mutations', () => {
   it('normalises the name of a newly dropped class', () => {
@@ -234,6 +239,48 @@ describe('relations', () => {
     const after = renameRelation(ontology, ids.offeredBy, 'sold by');
     expect(findRelation(after, ids.offeredBy)?.localName).toBe('soldBy');
     expect(usagesOfProperty(after, ids.offeredBy)).toHaveLength(1);
+  });
+
+  /*
+   * The attribute half of everything the class and relation halves already assert. They are
+   * three near-identical functions, which is exactly the shape where one of them quietly stops
+   * matching the other two.
+   */
+  it('renames an attribute without colliding with itself, and refuses an unusable name', () => {
+    const { ontology, id } = addAttribute(createEmptyOntology(), { localName: 'price' });
+
+    expect(findAttribute(renameAttribute(ontology, id, 'price'), id)?.localName).toBe('price');
+    expect(renameAttribute(ontology, id, '   ')).toBe(ontology);
+    expect(renameAttribute(ontology, id, '///')).toBe(ontology);
+  });
+
+  /* Attributes and relations share one namespace, so a name taken by either is taken. */
+  it('will not rename an attribute onto a name a relation holds', () => {
+    const withRelation = addRelation(createEmptyOntology(), { localName: 'offeredBy' });
+    const withAttribute = addAttribute(withRelation.ontology, { localName: 'price' });
+    const renamed = renameAttribute(withAttribute.ontology, withAttribute.id, 'offeredBy');
+
+    expect(findAttribute(renamed, withAttribute.id)?.localName).toBe('offeredBy2');
+  });
+
+  it('takes a deleted attribute out of its children as well as out of the list', () => {
+    const parent = addAttribute(createEmptyOntology(), { localName: 'identifier' });
+    const child = addAttribute(parent.ontology, { localName: 'isbn' });
+    const linked: Ontology = {
+      ...child.ontology,
+      attributes: child.ontology.attributes.map((entity) =>
+        entity.id === child.id ? { ...entity, superPropertyIds: [parent.id] } : entity,
+      ),
+    };
+
+    const after = deleteAttribute(linked, parent.id);
+    expect(findAttribute(after, child.id)?.superPropertyIds).toEqual([]);
+  });
+
+  it('trims a prefix and normalises a base IRI as they are set', () => {
+    const base = createEmptyOntology();
+    expect(setOntologyPrefix(base, '  auto  ').prefix).toBe('auto');
+    expect(setOntologyIri(base, 'https://example.org/auto').iri).toBe('https://example.org/auto#');
   });
 
   it('does not treat a relation name as taken by the relation being renamed', () => {
