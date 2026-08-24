@@ -4,6 +4,7 @@ import {
   OWL_OBJECT_PROPERTY,
   OWL_UNION_OF,
   RDFS_DOMAIN,
+  RDFS_RANGE,
   RDF_FIRST,
   RDF_NIL,
   RDF_REST,
@@ -368,6 +369,74 @@ describe('reading shapes that are malformed', () => {
         { subject: `${EX}altYard`, predicate: `${SH}class`, object: iri(`${EX}Yard`) },
       ]),
     ).toEqual(['Car -keptAt-> Yard']);
+  });
+});
+
+/**
+ * Reading a document written by somebody else, where the parts need not line up.
+ *
+ * Each of these was asked for by a surviving mutant: the code handles the case and nothing
+ * proved it did.
+ */
+describe('a foreign document', () => {
+  const A = 'https://example.org/a/';
+  const B = 'https://other.example/b/';
+
+  it('takes its namespace from wherever most of the terms live', () => {
+    const { ontology } = ontologyFromTriples([
+      { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}Van`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}Bus`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${B}Stray`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+    ]);
+
+    expect(ontology.iri).toBe(A);
+    // The stray is still imported; it is the namespace that follows the majority.
+    expect(ontology.classes.map((entity) => entity.localName).sort()).toEqual([
+      'Bus',
+      'Car',
+      'Stray',
+      'Van',
+    ]);
+  });
+
+  /*
+   * A union naming a class the document never declares — an import that was not followed, most
+   * often. The named ones are kept and the unknown one is passed over, rather than the whole
+   * union being discarded or a class being invented for it.
+   */
+  it('keeps the members of a union it knows and skips the ones it does not', () => {
+    const { ontology } = ontologyFromTriples([
+      { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}Van`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}Yard`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}keptAt`, predicate: RDF_TYPE, object: iri(OWL_OBJECT_PROPERTY) },
+      { subject: `${A}keptAt`, predicate: RDFS_DOMAIN, object: { type: 'blank', value: '_:u' } },
+      { subject: `${A}keptAt`, predicate: RDFS_RANGE, object: iri(`${A}Yard`) },
+      { subject: '_:u', predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: '_:u', predicate: OWL_UNION_OF, object: { type: 'blank', value: '_:c1' } },
+      { subject: '_:c1', predicate: RDF_FIRST, object: iri(`${A}Car`) },
+      { subject: '_:c1', predicate: RDF_REST, object: { type: 'blank', value: '_:c2' } },
+      { subject: '_:c2', predicate: RDF_FIRST, object: iri(`${B}NeverDeclared`) },
+      { subject: '_:c2', predicate: RDF_REST, object: { type: 'blank', value: '_:c3' } },
+      { subject: '_:c3', predicate: RDF_FIRST, object: iri(`${A}Van`) },
+      { subject: '_:c3', predicate: RDF_REST, object: iri(RDF_NIL) },
+    ]);
+
+    expect(summarise(ontology).usages.sort()).toEqual(['Car -keptAt-> Yard', 'Van -keptAt-> Yard']);
+  });
+
+  /* Half a relation cannot be drawn, so it stays in the pool and the report says so. */
+  it('does not place a relation that states a domain and no range', () => {
+    const { ontology, report } = ontologyFromTriples([
+      { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${A}keptAt`, predicate: RDF_TYPE, object: iri(OWL_OBJECT_PROPERTY) },
+      { subject: `${A}keptAt`, predicate: RDFS_DOMAIN, object: iri(`${A}Car`) },
+    ]);
+
+    expect(ontology.relations.map((entity) => entity.localName)).toEqual([]);
+    expect(report.relationsWithoutBothEnds).toBe(1);
+    expect(ontology.usages).toEqual([]);
   });
 });
 
