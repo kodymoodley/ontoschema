@@ -76,8 +76,6 @@ list above:
   Still owed work rather than wanted work: the positions shipped with the happy path tested and
   little else. Nothing depends on it, which is why it can wait — it does not stop being owed by
   waiting, and the entry lists exactly what is untested so the debt stays legible.
-- **Palette and taxonomy as subtabs** (todo 3) — parked after measuring; the choice of shape is
-  the owner's.
 - **A quality and audit pass over the whole app** (todo 37) — **done**, and the report is
   `AUDIT.md` at the root. Sixteen findings, none of them S1: the codebase is disciplined and the
   drift is almost entirely in prose, because everything else is gated by CI and no check asks
@@ -489,12 +487,11 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 > Not touched, deliberately: saving and exporting keep their format names and their preview, and
 > the namespace and prefix fields keep theirs. Jargon stays where it is the subject.
 
-| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Size |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Multi-select** — box-select several classes, then move or delete them together.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | M    |
-| **Duplicate a class** — with its attributes, as a starting point for a sibling.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | S    |
-| **Schema diffing (given two loaded schemas) to compute and generate changelog entries using the Keep a Changelog standard** — governance for a vocabulary that other teams depend on. Sized up from S: it needs two ontologies loaded at once, a structural diff that survives renames, and a mapping from diff to changelog categories.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | L    |
-| **Make the palette and the taxonomy tree subtabs of the left panel** — they are stacked today, so both are cramped and neither is whole. **Parked on 20 August 2026**, with two things measured that the entry did not know. The palette costs **304px of an 852px panel** at 1440×900 — 36% — to hold three buttons, and the size is the hint sentence under each one, not the buttons. And the tree already has a tab strip of its own (Class, Relation, Attribute), so _subtabs_ means a second strip above it: 60px of tabs in a panel whose complaint is wasted height. Three ways out were drawn up — shrink the palette to one row and add no tabs at all, fold it in as a fourth tab beside the three entity tabs, or nest the strips as filed — and choosing between them is the owner's call, not a detail of the build. _(todo 3)_ | M    |
+| Item                                                                                                                                                                                                                                                                                                                                     | Size |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Multi-select** — box-select several classes, then move or delete them together.                                                                                                                                                                                                                                                        | M    |
+| **Duplicate a class** — with its attributes, as a starting point for a sibling.                                                                                                                                                                                                                                                          | S    |
+| **Schema diffing (given two loaded schemas) to compute and generate changelog entries using the Keep a Changelog standard** — governance for a vocabulary that other teams depend on. Sized up from S: it needs two ontologies loaded at once, a structural diff that survives renames, and a mapping from diff to changelog categories. | L    |
 
 <!-- prettier-ignore -->
 > **Todos 25, 26 and 27 are one arc, in that order.** Each is shippable on its own, but together
@@ -742,6 +739,12 @@ thousand attempts. **Nobody found a cause**, so this is not a fix. See
 [What was known about the WebKit flake](#what-was-known-about-the-webkit-flake), which stays as
 written in case it returns.
 
+**Palette and taxonomy as subtabs** — _dropped by the owner, not parked._ It had been filed since
+the beginning and measured twice: the palette takes 36% of an 852px panel to hold three buttons,
+and the tree already has a tab strip of its own, so subtabs meant a second strip above it. Three
+shapes were drawn up and none was chosen. Removed from the list entirely rather than left to be
+re-read every time someone asks what is next.
+
 **Subclass links on the schema canvas** — _removed, by the owner._ They were drawn there as well
 as in the taxonomy view so the two views could not disagree about what the model holds. In
 practice they were a second set of lines through the same crowded middle, saying what each class
@@ -774,9 +777,9 @@ Three rules fall out of that, and they are what produced the order in [Next up](
 
 1. **Measure before ranking.** Twice now this changed the answer rather than confirming it. The
    canvas performance worry was retired outright by measuring it, and the index rebuild after it
-   — 0.077ms of a 40ms problem — which sent the effort to what was actually costing. Most
-   recently, the palette was measured at 36% of a panel it holds three buttons in, which is why
-   the subtabs item is parked rather than built.
+   — 0.077ms of a 40ms problem — which sent the effort to what was actually costing. The audit
+   went the same way: it opened by calling the type scale the reason the inspector was unusable
+   on a phone, and measuring found a row that could not shrink.
 2. **An item that needs a decision is not ready**, however small it is. It waits in the filed list
    until the decision is made, and the decision gets written down here when it is.
 3. **The largest new dependency surface goes last.** `owl:imports` is the only item that makes
@@ -794,7 +797,6 @@ list as originally written is in the git history; ask and it comes back.
 
 | #   | Now lives in       | As                                                                         | Size |
 | --- | ------------------ | -------------------------------------------------------------------------- | ---- |
-| 3   | Editing workflow   | Palette and taxonomy tree as subtabs — parked, needs a design choice       | M    |
 | 9   | Modelling power    | Nine, three times over — 729 classes, enforced; parked as a project        | L    |
 | 10  | Export and interop | Folded into the `owl:imports` item; its ranking comes from 29              | L    |
 | 20  | Export and interop | Harden the layout annotation — parked to the back of the queue             | S–M  |
