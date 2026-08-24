@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { OWL_UNION_OF, RDFS_DOMAIN } from '../annotationvocabulary';
+import {
+  OWL_CLASS,
+  OWL_OBJECT_PROPERTY,
+  OWL_UNION_OF,
+  RDFS_DOMAIN,
+  RDF_FIRST,
+  RDF_NIL,
+  RDF_REST,
+} from '../annotationvocabulary';
 import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/autoOntology';
 import { allScenarios } from '../../tests/fixtures/scenarios';
 import { ontologyFromTriples } from './fromTriples';
@@ -224,6 +232,142 @@ describe('a file this app saved', () => {
     );
 
     expect(domain?.object.type).toBe('iri');
+  });
+});
+
+/**
+ * Shapes that are not shaped as this app writes them.
+ *
+ * Every saved file now carries shapes and the reader prefers them, so a hand-edited file or one
+ * from another tool is an ordinary input rather than an exotic one. Mutation testing found this
+ * gap by inverting each guard below without a single test noticing.
+ */
+describe('reading shapes that are malformed', () => {
+  const SH = 'http://www.w3.org/ns/shacl#';
+  const EX = 'https://example.org/mal/';
+
+  /** A document with two classes, one relation, and whatever shape triples are handed in. */
+  const documentWith = (shape: readonly Triple[]): Triple[] => [
+    { subject: `${EX}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+    { subject: `${EX}Yard`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+    { subject: `${EX}keptAt`, predicate: RDF_TYPE, object: iri(OWL_OBJECT_PROPERTY) },
+    ...shape,
+  ];
+
+  const pairsFor = (shape: readonly Triple[]) =>
+    summarise(ontologyFromTriples(documentWith(shape)).ontology).usages;
+
+  /* The shape this app writes, as the control: without it the rest proves nothing. */
+  it('reads a well-formed shape', () => {
+    expect(
+      pairsFor([
+        { subject: `${EX}CarShape`, predicate: RDF_TYPE, object: iri(`${SH}NodeShape`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}targetClass`, object: iri(`${EX}Car`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}property`, object: iri(`${EX}Car_keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}path`, object: iri(`${EX}keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}class`, object: iri(`${EX}Yard`) },
+      ]),
+    ).toEqual(['Car -keptAt-> Yard']);
+  });
+
+  it('ignores a node shape whose target is a literal rather than a class', () => {
+    expect(
+      pairsFor([
+        { subject: `${EX}CarShape`, predicate: RDF_TYPE, object: iri(`${SH}NodeShape`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}targetClass`, object: literal('Car') },
+        { subject: `${EX}CarShape`, predicate: `${SH}property`, object: iri(`${EX}Car_keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}path`, object: iri(`${EX}keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}class`, object: iri(`${EX}Yard`) },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('ignores a property shape whose path is a literal rather than a property', () => {
+    expect(
+      pairsFor([
+        { subject: `${EX}CarShape`, predicate: RDF_TYPE, object: iri(`${SH}NodeShape`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}targetClass`, object: iri(`${EX}Car`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}property`, object: iri(`${EX}Car_keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}path`, object: literal('keptAt') },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}class`, object: iri(`${EX}Yard`) },
+      ]),
+    ).toEqual([]);
+  });
+
+  /* A shape naming a path and nothing else says which property, but not what it points at. */
+  it('ignores a property shape with neither a class, a datatype nor an sh:or', () => {
+    expect(
+      pairsFor([
+        { subject: `${EX}CarShape`, predicate: RDF_TYPE, object: iri(`${SH}NodeShape`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}targetClass`, object: iri(`${EX}Car`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}property`, object: iri(`${EX}Car_keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}path`, object: iri(`${EX}keptAt`) },
+      ]),
+    ).toEqual([]);
+  });
+
+  /*
+   * A shape with no path at all, which is the case the `?.` in these guards is for. Mutation
+   * testing is what asked for this one: with the optional chaining removed the reader throws
+   * here, and every test above still passed, because all of them handed it a path of some kind.
+   */
+  it('survives a property shape with no path at all', () => {
+    expect(() =>
+      pairsFor([
+        { subject: `${EX}CarShape`, predicate: RDF_TYPE, object: iri(`${SH}NodeShape`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}targetClass`, object: iri(`${EX}Car`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}property`, object: iri(`${EX}Car_keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}class`, object: iri(`${EX}Yard`) },
+      ]),
+    ).not.toThrow();
+  });
+
+  /* And a node shape with no target, for the same reason. */
+  it('survives a node shape with no target class', () => {
+    expect(() =>
+      pairsFor([
+        { subject: `${EX}CarShape`, predicate: RDF_TYPE, object: iri(`${SH}NodeShape`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}property`, object: iri(`${EX}Car_keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}path`, object: iri(`${EX}keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}class`, object: iri(`${EX}Yard`) },
+      ]),
+    ).not.toThrow();
+  });
+
+  /* Two targets on one path, which is how this app writes a class used with several. */
+  it('reads every alternative out of an sh:or list', () => {
+    expect(
+      pairsFor([
+        { subject: `${EX}Shed`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+        { subject: `${EX}CarShape`, predicate: RDF_TYPE, object: iri(`${SH}NodeShape`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}targetClass`, object: iri(`${EX}Car`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}property`, object: iri(`${EX}Car_keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}path`, object: iri(`${EX}keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}or`, object: iri(`${EX}alt1`) },
+        { subject: `${EX}alt1`, predicate: RDF_FIRST, object: iri(`${EX}altYard`) },
+        { subject: `${EX}alt1`, predicate: RDF_REST, object: iri(`${EX}alt2`) },
+        { subject: `${EX}altYard`, predicate: `${SH}class`, object: iri(`${EX}Yard`) },
+        { subject: `${EX}alt2`, predicate: RDF_FIRST, object: iri(`${EX}altShed`) },
+        { subject: `${EX}alt2`, predicate: RDF_REST, object: iri(RDF_NIL) },
+        { subject: `${EX}altShed`, predicate: `${SH}class`, object: iri(`${EX}Shed`) },
+      ]).sort(),
+    ).toEqual(['Car -keptAt-> Shed', 'Car -keptAt-> Yard']);
+  });
+
+  /* A list that points at itself must not spin the reader for ever. */
+  it('survives an sh:or list that loops back on itself', () => {
+    expect(
+      pairsFor([
+        { subject: `${EX}CarShape`, predicate: RDF_TYPE, object: iri(`${SH}NodeShape`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}targetClass`, object: iri(`${EX}Car`) },
+        { subject: `${EX}CarShape`, predicate: `${SH}property`, object: iri(`${EX}Car_keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}path`, object: iri(`${EX}keptAt`) },
+        { subject: `${EX}Car_keptAt`, predicate: `${SH}or`, object: iri(`${EX}loop`) },
+        { subject: `${EX}loop`, predicate: RDF_FIRST, object: iri(`${EX}altYard`) },
+        { subject: `${EX}loop`, predicate: RDF_REST, object: iri(`${EX}loop`) },
+        { subject: `${EX}altYard`, predicate: `${SH}class`, object: iri(`${EX}Yard`) },
+      ]),
+    ).toEqual(['Car -keptAt-> Yard']);
   });
 });
 

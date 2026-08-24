@@ -1,9 +1,10 @@
 import { Switch } from '../designsystem';
+import { toggleShowTerms, useShowTerms } from '../projectstore';
 import type { EntityRef } from '../ontologymodel';
 import { AnnotationEditor } from './AnnotationEditor';
 import { NamedAnnotationFields } from './NamedAnnotationFields';
 import { ENTITY_FIELDS, SCHEMA_FIELDS } from './namedfields';
-import { toggleShowTerms, useShowTerms } from './showterms';
+
 import styles from './annotationpanel.module.css';
 
 /**

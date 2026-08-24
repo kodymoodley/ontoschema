@@ -5,6 +5,7 @@ import type { EntityRef, Ontology, Project } from '../ontologymodel';
 export { UNTITLED } from './workspace';
 
 export { createPreference } from './preference';
+export { toggleShowTerms, useShowTerms } from './showterms';
 export type { Preference } from './preference';
 
 export { useProjectStore, activeOntology } from './store';

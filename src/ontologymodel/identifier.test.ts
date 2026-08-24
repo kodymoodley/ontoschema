@@ -76,6 +76,23 @@ describe('sanitizeLocalName', () => {
     expect(sanitizeLocalName('3Series')).toBe('_3Series');
   });
 
+  /*
+   * A letter is a letter in every script XML recognises, and the guard used to accept only the
+   * twenty-six English ones. Everything below was returned with a leading underscore it did not
+   * need — including two names in the Latin alphabet, which is what made the bug easy to miss.
+   */
+  it('leaves a name starting with any letter alone, whatever the script', () => {
+    for (const name of ['日本語クラス', 'Ωμέγα', 'Фамилия', 'مركبة', 'Ærøskøbing', 'Ökonomie']) {
+      expect(sanitizeLocalName(name), name).toBe(name);
+    }
+  });
+
+  it('still prefixes what genuinely cannot start an XML name', () => {
+    expect(sanitizeLocalName('3Series')).toBe('_3Series');
+    // The multiplication sign is a symbol rather than a letter, and XML says so.
+    expect(sanitizeLocalName('×times')).toBe('_×times');
+  });
+
   it('returns empty when nothing usable survives', () => {
     expect(sanitizeLocalName('///')).toBe('');
     expect(sanitizeLocalName('   ')).toBe('');

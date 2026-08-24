@@ -87,7 +87,23 @@ const uiSiblingBoundaries = UI_MODULES.map((self) => ({
 }));
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'node_modules'] },
+  /*
+   * Build output and tool scratch space. `.stryker-tmp` is a copy of the whole repository that
+   * mutation testing works in, and it is left behind when a run crashes -- linting it fails on a
+   * duplicated tsconfig root, so `npm run lint` was red for whoever last ran `npm run mutation`
+   * and green for everyone else.
+   */
+  {
+    ignores: [
+      'dist',
+      'coverage',
+      'playwright-report',
+      'test-results',
+      'node_modules',
+      '.stryker-tmp',
+      'mutation',
+    ],
+  },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,

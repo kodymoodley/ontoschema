@@ -7,7 +7,7 @@ import {
   toPropertyLocalName,
   usagesOfProperty,
 } from '../ontologymodel';
-import { useOntology, useProjectStore } from '../projectstore';
+import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
 import styles from './details.module.css';
 
@@ -19,6 +19,7 @@ import styles from './details.module.css';
  */
 export function AttributeDetails({ propertyId }: { propertyId: string }) {
   const ontology = useOntology();
+  const showTerms = useShowTerms();
   const entity = findAttribute(ontology, propertyId);
 
   const rename = useProjectStore((state) => state.renameAttributeById);
@@ -53,9 +54,17 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
         />
       </Field>
 
-      <Field label="IRI">
-        <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
-      </Field>
+      {/*
+        Behind the same switch that names the RDF terms, and for the same reason: an IRI is what
+        this becomes in a file, not something anyone types or edits. It is derived — the base IRI
+        plus the name above it — so it says nothing the two fields around it do not already say,
+        and it took a third of the panel to say it.
+      */}
+      {showTerms ? (
+        <Field label="IRI">
+          <code className={styles.iri}>{entityIri(ontology.iri, entity.localName)}</code>
+        </Field>
+      ) : null}
 
       <Field label="Value type" hint="The datatype of the value, wherever this attribute is used.">
         <Select

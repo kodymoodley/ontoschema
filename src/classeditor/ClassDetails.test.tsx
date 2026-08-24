@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useProjectStore } from '../projectstore';
 import { attributeUsagesOfClass, findClass, usagesOfProperty } from '../ontologymodel';
 import { ClassDetails } from './ClassDetails';
+import { AnnotationSection } from '../annotationpanel';
 import { AttributeDetails } from './AttributeDetails';
 
 const store = () => useProjectStore.getState();
@@ -15,10 +16,25 @@ const ontology = () => {
 };
 
 describe('ClassDetails', () => {
-  it('shows the IRI built from the ontology namespace', () => {
+  /*
+   * The IRI is behind the switch that reveals the RDF underneath, with the terms. It is derived
+   * from the namespace and the name, so on screen by default it was a third of the panel spent
+   * repeating the two fields above it.
+   */
+  it('keeps the IRI out of the way until the RDF is asked for', async () => {
+    const user = userEvent.setup();
     store().setBaseIri('https://example.org/auto/');
     const car = store().createClass({ localName: 'Car' });
-    render(<ClassDetails classId={car} />);
+    render(
+      <>
+        <ClassDetails classId={car} />
+        <AnnotationSection target={{ kind: 'class', id: car }} />
+      </>,
+    );
+
+    expect(screen.queryByText('https://example.org/auto/Car')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('switch', { name: 'Show RDF terms' }));
     expect(screen.getByText('https://example.org/auto/Car')).toBeInTheDocument();
   });
 
