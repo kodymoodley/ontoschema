@@ -22,7 +22,7 @@
   "jsonReporter": {
     "fileName": "mutation/report.json"
   },
-  "_thresholdsComment": "The floor is what the audit left the score at, less a point of slack: 80.5% combined when it was set, so `break` at 79. It is a ratchet against regression, not a target to climb. The mutants still alive are mostly unkillable -- the text inside an error message, the `?? []` behind a lookup that cannot miss -- and killing those would mean asserting on strings nobody reads. Raise the floor when real work raises the score; never lower it to make a run pass.",
+  "thresholds_comment": "The floor is what the audit left the score at, less a point of slack: 80.5% combined when it was set, so `break` at 79. It is a ratchet against regression, not a target to climb. The mutants still alive are mostly unkillable -- the text inside an error message, the `?? []` behind a lookup that cannot miss -- and killing those would mean asserting on strings nobody reads. Raise the floor when real work raises the score; never lower it to make a run pass.",
   "thresholds": {
     "high": 85,
     "low": 80,
