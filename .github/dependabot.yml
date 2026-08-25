@@ -20,8 +20,12 @@ updates:
       tooling:
         patterns:
           ['eslint*', '@eslint/*', 'typescript-eslint', 'prettier', 'vite', 'vitest', '@vitest/*']
+      # `@stryker-mutator/*` is here as one pattern rather than left ungrouped, because its
+      # packages peer-depend on each other at an exact version. Bumping the core alone is not a
+      # partial upgrade, it is an unresolvable tree: `npm ci` fails outright. They move together
+      # or not at all.
       testing:
-        patterns: ['@playwright/*', '@testing-library/*']
+        patterns: ['@playwright/*', '@testing-library/*', '@stryker-mutator/*']
 
   - package-ecosystem: github-actions
     directory: /
