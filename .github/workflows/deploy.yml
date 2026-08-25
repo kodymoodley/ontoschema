@@ -3,13 +3,22 @@ name: Deploy
 # Builds the app and pushes the result into the public `ontoschema-site` repository, which is
 # what GitHub Pages serves. The source stays private; only the compiled output is published.
 #
-# There is no path filter here, unlike CI. A filter would have to exclude Markdown while making
-# an exception for `deploy/site-README.md`, which is published and therefore does need to trigger
-# a deploy, and `paths-ignore` cannot express that. A wasted two-minute run on a documentation
-# change is cheaper than the deploy that silently does not happen.
+# The path filter is a `paths` list rather than the `paths-ignore` CI uses, because the rule here
+# has an exception: Markdown does not change what is published, except for `deploy/site-README.md`,
+# which is copied into the output and therefore does need to trigger a deploy. `paths-ignore` cannot
+# say that. `paths` can, because a later pattern overrides an earlier one -- take everything, drop
+# Markdown, put the one published Markdown file back.
+#
+# Documentation-only commits on `main` are common here (the roadmap alone accounts for many), and
+# each one was spending a few of the 2,000 Actions minutes the Free plan includes on a build that
+# published a byte-identical site.
 on:
   push:
     branches: [main]
+    paths:
+      - '**'
+      - '!**/*.md'
+      - 'deploy/site-README.md'
   workflow_dispatch:
 
 # One deploy at a time. Two runs racing would both force-push, and the winner would be whichever
@@ -22,6 +31,9 @@ jobs:
   deploy:
     name: Build and publish to the site repo
     runs-on: ubuntu-latest
+
+    # A deploy is under three minutes. The default cap is six hours.
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v7

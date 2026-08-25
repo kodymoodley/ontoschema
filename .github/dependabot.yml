@@ -2,11 +2,18 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    # Monthly, not weekly. Every pull request Dependabot opens runs the full gate, and every push
+    # it makes to rebase one runs it again, so the schedule is a direct line in the Actions bill --
+    # weekly grouped bumps were costing more minutes per month than the merges of actual work.
+    # Nothing here is security-critical enough to need the four-times-a-month cadence, and
+    # Dependabot still opens a pull request for a security advisory immediately regardless of this
+    # schedule.
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    # Three, matching the three groups below, so a month's bumps arrive as three runs at most.
+    open-pull-requests-limit: 3
     groups:
-      # One PR per ecosystem rather than a dozen: CI runs the full gate on each, so a
+      # One pull request per ecosystem rather than a dozen: CI runs the full gate on each, so a
       # grouped bump is still verified end to end.
       react:
         patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
@@ -20,3 +27,4 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 1

@@ -1,15 +1,21 @@
 name: CI
 
-# One engine on a pull request, all three everywhere else.
+# One engine by default, all three on request.
 #
-# The end-to-end tier is the only expensive part, and it is expensive because it is paid three
-# times over. Nothing about a typical change is engine-specific, so a pull request runs chromium
-# and comes back in a few minutes -- fast enough that the result arrives while the change is still
-# in mind, which is the only speed that matters for a gate. Pushes to main, the nightly run and a
-# manual dispatch run all three, so a divergence between engines is caught within minutes of a
-# merge rather than at the next release.
+# The end-to-end tier is the only expensive part, and it is expensive because it can be paid three
+# times over. Nothing about a typical change is engine-specific, so every automatic run uses
+# chromium alone and comes back in a few minutes -- fast enough that the result arrives while the
+# change is still in mind, which is the only speed that matters for a gate. A manual dispatch runs
+# all three, which is how a cross-engine divergence gets caught: deliberately, before a release or
+# after touching anything layout- or event-related, rather than by paying for it on every push.
 #
 # The engines are named once, below, and everything else follows from that.
+#
+# There is no nightly schedule. It ran the three-engine suite every night against a commit nobody
+# had touched, which on a private repository is roughly 450 of the 2,000 monthly Actions minutes
+# the Free plan includes -- the largest single line in the bill and the one with the least to show
+# for it. If the account ever moves to a plan with minutes to spare, a nightly run is worth having
+# back; until then a dispatch before a release covers the same ground on demand.
 #
 # A change to Markdown alone does not need a build or three browsers. Prettier still checks
 # Markdown, but the pre-commit hook formats it before a commit exists, so CI is only a backstop
@@ -26,9 +32,6 @@ on:
   push:
     branches: [main]
     paths-ignore: ['**/*.md']
-  schedule:
-    # 03:00 UTC daily, so a break that only shows on one engine surfaces overnight.
-    - cron: '0 3 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -40,8 +43,12 @@ jobs:
     name: Typecheck, lint, and all test tiers
     runs-on: ubuntu-latest
 
+    # A full run is about ten minutes. The default cap is six hours, so a single job wedged on a
+    # hung browser would spend a fifth of the monthly allowance before anyone noticed.
+    timeout-minutes: 25
+
     env:
-      ENGINES: ${{ github.event_name == 'pull_request' && 'chromium' || 'chromium firefox webkit' }}
+      ENGINES: ${{ github.event_name == 'workflow_dispatch' && 'chromium firefox webkit' || 'chromium' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -76,7 +83,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ github.event_name == 'pull_request' && 'chromium' || 'all' }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ github.event_name == 'workflow_dispatch' && 'all' || 'chromium' }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps $ENGINES
@@ -100,4 +107,6 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report/
-          retention-days: 7
+          # One day. The report is read within minutes of the run that produced it or not at
+          # all, and artifact storage is the other metered resource on the Free plan.
+          retention-days: 1
