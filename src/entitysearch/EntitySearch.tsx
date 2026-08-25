@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usagesOfProperty } from '../ontologymodel';
+import type { EntityRef } from '../ontologymodel';
 import { searchEntities } from '../search';
 import { useOntology, useProjectStore } from '../projectstore';
 import { Badge, EmptyState, TextInput } from '../designsystem';
@@ -28,7 +30,27 @@ interface EntitySearchProps {
 export function EntitySearch({ onChoose }: EntitySearchProps) {
   const ontology = useOntology();
   const select = useProjectStore((state) => state.select);
+  const focusClass = useProjectStore((state) => state.focusClass);
   const [query, setQuery] = useState('');
+
+  /*
+   * Choosing a result takes you to the thing, rather than only telling you about it. `focusClass`
+   * selects as well as moving the viewport, so a class needs nothing else.
+   *
+   * A relation or an attribute has no box of its own on the canvas — it is an edge, or a row
+   * inside a class — so the nearest thing to zoom to is a class that carries it. The first is
+   * used, which for a property used once is the only one. The property itself stays selected, so
+   * the inspector shows what was searched for rather than the class it was found through.
+   */
+  const reveal = (ref: EntityRef) => {
+    if (ref.kind === 'class') {
+      focusClass(ref.id);
+      return;
+    }
+    const [usage] = usagesOfProperty(ontology, ref.id);
+    if (usage) focusClass(usage.subjectClassId);
+    select(ref);
+  };
 
   const results = query.trim() ? searchEntities(ontology, query) : [];
 
@@ -59,7 +81,7 @@ export function EntitySearch({ onChoose }: EntitySearchProps) {
                 className={styles.result}
                 data-result={result.localName}
                 onClick={() => {
-                  select(result.ref);
+                  reveal(result.ref);
                   onChoose();
                 }}
               >

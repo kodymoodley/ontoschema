@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useProjectStore } from '../projectstore';
 import { Inspector } from './Inspector';
 
@@ -27,15 +28,70 @@ describe('with something selected', () => {
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
 
-  it('shows the details and the annotations together, in that order', () => {
+  /*
+   * Documentation first: what a thing means is what someone opens the panel to read, and its
+   * wiring is what the canvas is already showing.
+   */
+  it('shows the documentation and the details together, in that order', () => {
     selectClass();
     render(<Inspector />);
 
-    const headings = screen.getAllByRole('heading').map((h) => h.textContent);
-    expect(headings).toEqual(['Details', 'Documentation']);
+    const headings = screen.getAllByRole('heading').map((h) => h.textContent?.replace('−', ''));
+    expect(headings).toEqual(['Documentation', 'Details']);
     // Both sections are real, not just headings: a field from each.
     expect(screen.getByLabelText('Class local name')).toBeInTheDocument();
     expect(screen.getByLabelText('Annotation term to add')).toBeInTheDocument();
+  });
+
+  describe('folding a section away', () => {
+    it('starts open, and says so on the control', () => {
+      selectClass();
+      render(<Inspector />);
+
+      for (const name of ['Documentation', 'Details']) {
+        expect(screen.getByRole('button', { name: new RegExp(name) })).toHaveAttribute(
+          'aria-expanded',
+          'true',
+        );
+      }
+    });
+
+    it('folds one section without touching the other', async () => {
+      const user = userEvent.setup();
+      selectClass();
+      render(<Inspector />);
+
+      await user.click(screen.getByRole('button', { name: /Details/ }));
+
+      /*
+       * Out of sight, still mounted. That is the point of `hidden` over unmounting: what was
+       * typed into a folded section is still there when it comes back, which the next test
+       * checks. Visibility is the claim, not presence.
+       */
+      expect(screen.getByLabelText('Class local name')).not.toBeVisible();
+      // A field of the documentation section proper -- the term list below it lives inside the
+      // closed "Other properties" disclosure and is never visible from here.
+      expect(screen.getByLabelText('Label')).toBeVisible();
+      expect(screen.getByRole('button', { name: /Details/ })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+    });
+
+    it('brings it back, with what was typed into it still there', async () => {
+      const user = userEvent.setup();
+      selectClass();
+      render(<Inspector />);
+
+      const name = screen.getByLabelText('Class local name');
+      await user.clear(name);
+      await user.type(name, 'Coupe');
+
+      await user.click(screen.getByRole('button', { name: /Details/ }));
+      await user.click(screen.getByRole('button', { name: /Details/ }));
+
+      expect(screen.getByLabelText('Class local name')).toHaveValue('Coupe');
+    });
   });
 
   it('names the entity once, above both sections', () => {
