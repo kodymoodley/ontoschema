@@ -48,7 +48,12 @@ file under `src/serialization/` and run `npm run lint`.
 | e2e (`tests/e2e`, Playwright)            | `npm run test:e2e`         | the canvas, drag and drop, real file downloads                         |
 
 `npm run test:e2e` runs all three engines; `npm run test:e2e:fast` runs chromium alone, which is
-what the pre-push hook and a pull request use.
+what the pre-push hook and every automatic CI run use. **All three engines in CI is now a manual
+step**: run the CI workflow from the Actions tab (`workflow_dispatch`) before a release, or after
+a change to layout, focus or event handling, which is where the engines have actually differed.
+The nightly three-engine run was deleted because it was the single largest consumer of the 2,000
+Actions minutes a month the Free plan allows on a private repository — see
+[.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 Component tests exist because neither a pure unit test nor an end-to-end test catches focus
 and re-render defects economically. If you touch a panel, add one there.
@@ -119,10 +124,14 @@ So:
 - **A flaky check is a red check** until you have found out why. Playwright reports flakes
   separately; do not skim past them.
 
-Two things make this affordable rather than aspirational. A pull request runs one engine, so the
-answer arrives in a few minutes. And `.husky/pre-push` runs that same gate before a branch ever
-leaves your machine, so a red pull request is rare enough that stopping for one is not a habit
-you have to build.
+Two things make this affordable rather than aspirational. CI runs one engine, so the answer
+arrives in a few minutes. And `.husky/pre-push` runs that same gate before a branch ever leaves
+your machine, so a red pull request is rare enough that stopping for one is not a habit you have
+to build.
+
+That local hook matters more than it looks. Actions minutes are metered on this repository, so
+CI is deliberately thin: one engine, no nightly run, and nothing at all on a Markdown-only
+change. The gate that catches most things is the one on your machine, and it is free.
 
 If this repository ever moves to a paid plan, make CI a required check and delete this section.
 An enforced rule beats a remembered one.
