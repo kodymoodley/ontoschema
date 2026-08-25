@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { openApp, openExamples } from './ontoschema';
+import { openApp, openExamples, settledViewport } from './ontoschema';
 
 /**
  * Finding something in a schema too big to scan.
@@ -32,6 +32,49 @@ test('opens on Ctrl+K, finds a class, and lands on it with its details showing',
   // Choosing closes the dialog and selects the entity, and selecting is what opens the inspector.
   await expect(dialog(page)).toBeHidden();
   await expect(page.getByLabel('Class local name')).toHaveValue('Venue');
+});
+
+/*
+ * Finding a thing takes you to it. Selecting alone leaves the canvas wherever it was, which on a
+ * schema big enough to need searching means the thing you just found is off screen.
+ */
+test('brings the class it found into focus on the canvas', async ({ page }) => {
+  await musicLibrary(page);
+  await page.locator('.react-flow__controls-fitview').click();
+  const before = await settledViewport(page);
+
+  await page.keyboard.press('Control+k');
+  await page.getByLabel('Search by name or description').fill('Venue');
+  await page.locator('[data-result="Venue"]').click();
+
+  await expect(dialog(page)).toBeHidden();
+  const after = await settledViewport(page);
+  expect(after, 'the viewport never moved').not.toBe(before);
+
+  // The same framing a double-click gives: the class centred and filling a third of the canvas.
+  const canvas = (await page.getByTestId('schema-canvas').boundingBox())!;
+  const node = (await page.locator('[data-class-name="Venue"]').boundingBox())!;
+  const share = (node.width * node.height) / (canvas.width * canvas.height);
+  expect(share, `Venue filled ${(share * 100).toFixed(0)}% of the canvas`).toBeGreaterThan(0.25);
+});
+
+/*
+ * A relation has no box of its own -- it is an edge -- so the canvas goes to a class that
+ * carries it, while the relation itself stays selected and in the inspector.
+ */
+test('goes to a class that carries the relation it found', async ({ page }) => {
+  await musicLibrary(page);
+  await page.locator('.react-flow__controls-fitview').click();
+  const before = await settledViewport(page);
+
+  await page.keyboard.press('Control+k');
+  await page.getByLabel('Search by name or description').fill('performedBy');
+  await page.locator('[data-result="performedBy"]').click();
+
+  const after = await settledViewport(page);
+  expect(after, 'the viewport never moved').not.toBe(before);
+  // Still the relation being inspected, not the class it was reached through.
+  await expect(page.getByLabel('Relation local name')).toHaveValue('performedBy');
 });
 
 test('is reachable without knowing the shortcut', async ({ page }) => {
