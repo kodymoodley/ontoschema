@@ -452,10 +452,30 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 > to stop being the odd one out. What lanes would still buy is a line that avoids the classes in
 > between, which is what **edge label collision avoidance** below is really about.
 
+> **Shipped: tidy-up / auto-layout for the schema view.** It turned out to be a bug before it was
+> a feature. Positions ride in a saved file as this app's own layout annotation, and a `.ttl`
+> written anywhere else has none — so `ontologyFromTriples` fell back to `{ x: 0, y: 0 }` for
+> every class and an imported schema opened as one illegible pile. `arrangeSchema` ranks the
+> classes with dagre and the app runs it when a document arrives unplaced, which is a state no
+> amount of dragging can produce: two classes on the exact same coordinate.
+>
+> Ranked by the **relations**, left to right, not by the hierarchy. Subclass links are
+> deliberately not drawn on this canvas, so ranking by them would have produced rows with no
+> visible reason for them; they go in as lower-weight edges instead, which keeps a child near its
+> parent without letting the hierarchy overrule the drawn edges. Disconnected groups are laid out
+> separately and packed with wrapping, the way the taxonomy view packs its modules — handing
+> dagre a disconnected graph gets one enormously wide row.
+>
+> The same function is on a button (Shift+A), deliberately **deterministic** rather than the
+> randomised re-roll that was asked about. There is no reason to expect a second roll to beat the
+> first, and a schema layout is something you invest in by dragging — a button that discards that
+> for a random alternative is one people learn not to touch. Pressing it twice lands in the same
+> place, and it is one undo away. The arrangement an import arrives with is **not** in the undo
+> stack: an undo that puts every class back in a pile is not a state anyone asked to return to.
+
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Size |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | **Edge label collision avoidance** — a relation's label can park on top of an unrelated class. Straight edges between aligned classes pass over whatever is between them; the label makes it obvious.                                                                                                                                                                                                                                                                                                                                                                             | M    |
-| **Tidy-up / auto-layout for the schema view** — the taxonomy view lays itself out with dagre; the schema view never does. A button, not automatic.                                                                                                                                                                                                                                                                                                                                                                                                                                | M    |
 | **Subschema filter** — the first thing that bites past about thirty classes, and cheaper than any amount of auto-layout, because hiding is the only thing that scales. Do it before the layout and grouping items below; it may make them unnecessary. Narrow the canvas to a chosen set of classes and relations, or to one class and what it touches, and hide the rest. The answer to a spaghetti diagram that no amount of layout fixes, and the only thing that actually scales. _Was listed twice: also appeared under Editing workflow as "filter schema for subschemas"._ | M    |
 | **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | M    |
 
@@ -758,8 +778,7 @@ draws relations only. Nothing changed in the model or in any export.
 **The taxonomy view's caption** — _done by deletion._ "Laid out automatically — one module per
 root class, superclasses above" described a picture that explains itself, in a toolbar where
 every other character is a control. Its removal also settled a smaller complaint: prose that comes
-and goes was moving the relation switch beside it, so the switch now sits ahead of the hint and
-nothing the hint does can shift it.
+and goes was moving the relation switch beside it, so the switch now sits ahead of the hint.
 
 **A tooltip for the drag-a-relation hint** — _done by deletion._ Put behind a question mark first,
 then removed outright: the palette entries already say what each thing is.

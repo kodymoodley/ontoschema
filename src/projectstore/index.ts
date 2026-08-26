@@ -38,6 +38,11 @@ export function useActiveProject(): Project | undefined {
   return useProjectStore((state) => state.projects.find((p) => p.id === state.activeProjectId));
 }
 
+/** Which project is open, for anything that must react to a different one being opened. */
+export function useActiveProjectId(): string | null {
+  return useProjectStore((state) => state.activeProjectId);
+}
+
 export function useProjects(): Project[] {
   return useProjectStore((state) => state.projects);
 }

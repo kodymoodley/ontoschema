@@ -78,6 +78,7 @@ export {
   deleteRelation,
   detachUsage,
   moveClass,
+  placeClasses,
   removeAnnotation,
   renameClass,
   renameAttribute,

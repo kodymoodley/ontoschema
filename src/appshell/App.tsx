@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Palette, SchemaCanvas, TaxonomyCanvas, frameAll, usePaletteCreate } from '../canvas';
+import {
+  Palette,
+  SchemaCanvas,
+  TaxonomyCanvas,
+  arrangeSchema,
+  frameAll,
+  unplaced,
+  usePaletteCreate,
+} from '../canvas';
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
 import { ConnectionPicker, RelationMarkers } from '../relationeditor';
 import {
+  useActiveProjectId,
   useCanvasView,
   useOntology,
   useProjectStore,
@@ -33,6 +42,7 @@ import { AnnotationSection } from '../annotationpanel';
 import { EntitySearch } from '../entitysearch';
 import {
   AppMark,
+  ArrangeIcon,
   EntitiesPanelIcon,
   InspectorPanelIcon,
   MetadataIcon,
@@ -139,6 +149,42 @@ export function App() {
   useRevealInspector(selection, panels.reveal, panels.conceal);
 
   /*
+   * Tidying the schema, by hand and on arrival.
+   *
+   * Both go through the same function, which is the point: the button is not a special mode,
+   * it is the thing that runs when a file has no layout, available whenever you want it again.
+   */
+  const placeClassesById = useProjectStore((state) => state.placeClassesById);
+  const arrange = () => {
+    placeClassesById(arrangeSchema(ontology));
+    // The arrangement is usually a different size and shape from what was there before, so the
+    // camera has to follow it. After the state has been committed, not with it.
+    window.setTimeout(frameAll, 0);
+  };
+
+  /*
+   * A file written anywhere but here has no `ontoschema:layout` annotation, so every class
+   * arrives at the same coordinate and the canvas opens as a single illegible pile. Laying it
+   * out is part of opening it.
+   *
+   * Keyed on the project rather than on the ontology: this must run once when a file is opened
+   * and never again, or an arrangement someone then dragged apart would be a candidate to be
+   * put back. `unplaced` is false the moment it has run, and the project id changes only when a
+   * different project is opened -- so opening the same file twice arranges it both times, and
+   * nothing arranges twice.
+   */
+  const activeProjectId = useActiveProjectId();
+  const arrangedProject = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeProjectId === null || arrangedProject.current === activeProjectId) return;
+    arrangedProject.current = activeProjectId;
+    if (!unplaced(ontology)) return;
+    // Not remembered: an undo that puts every class back in one pile is not a state anyone
+    // asked to return to, and it would sit between the file opening and the first real edit.
+    placeClassesById(arrangeSchema(ontology), { remember: false });
+  }, [activeProjectId, ontology, placeClassesById]);
+
+  /*
    * The whole window for the canvas, and the way back. Folding is what makes the canvas bigger
    * and fitting is what makes the drawing fill it; either on its own leaves half the job undone,
    * which is why they are one gesture rather than two controls.
@@ -187,6 +233,7 @@ export function App() {
     deleteSelection,
     find: () => finding.setOpen(true),
     frame: toggleBothPanels,
+    arrange: view === 'schema' ? arrange : null,
   });
 
   const attributeCount = ontology.attributes.length;
@@ -368,6 +415,24 @@ export function App() {
               {canvasHint({ view, relations: taxonomyRelations, hasSelection: inspecting })}
             </span>
             <Spacer />
+            {/*
+              Schema only. The taxonomy view lays itself out and has no positions to tidy, so
+              the button would be present and inert there -- which misleads rather than fails,
+              the same reason the relations switch is not shown on the schema view.
+            */}
+            {view === 'schema' ? (
+              <Button
+                size="small"
+                variant="subtle"
+                iconOnly
+                onClick={arrange}
+                aria-label="Arrange the classes"
+                title="Arrange the classes (Shift+A)"
+                data-testid="arrange"
+              >
+                <ArrangeIcon />
+              </Button>
+            ) : null}
             <Button
               size="small"
               variant="subtle"
@@ -524,8 +589,9 @@ function useGlobalShortcuts(actions: {
   deleteSelection: () => void;
   find: () => void;
   frame: () => void;
+  arrange: (() => void) | null;
 }) {
-  const { undo, redo, deleteSelection, find, frame } = actions;
+  const { undo, redo, deleteSelection, find, frame, arrange } = actions;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -567,6 +633,23 @@ function useGlobalShortcuts(actions: {
         frame();
         return;
       }
+      /*
+       * Shift+A, next to Shift+F because they are the same kind of thing: make the drawing
+       * legible without touching what it says. Null on the taxonomy view, which arranges
+       * itself -- a shortcut that silently does nothing is worse than one that is absent.
+       */
+      if (
+        arrange !== null &&
+        event.shiftKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        event.key.toLowerCase() === 'a'
+      ) {
+        if (typing) return;
+        event.preventDefault();
+        arrange();
+        return;
+      }
       if ((event.key === 'Delete' || event.key === 'Backspace') && !typing) {
         event.preventDefault();
         deleteSelection();
@@ -575,5 +658,5 @@ function useGlobalShortcuts(actions: {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteSelection, find, frame]);
+  }, [undo, redo, deleteSelection, find, frame, arrange]);
 }

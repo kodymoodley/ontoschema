@@ -9,6 +9,7 @@ import {
   deleteRelation,
   detachUsage,
   moveClass,
+  placeClasses,
   removeAnnotation,
   renameClass,
   renameAttribute,
@@ -38,6 +39,18 @@ export interface OntologyActions {
   createClass(options?: { localName?: string; position?: Position }): string;
   renameClassById(id: string, localName: string): void;
   moveClassById(id: string, position: Position): void;
+  /**
+   * Puts many classes where a computed layout says they belong.
+   *
+   * `remember` is what separates the two callers. Arranging by hand is an edit like any other
+   * and belongs in the undo stack; arranging an import that arrived with no layout at all is
+   * part of opening the file, and an undo that puts every class back in a single pile is not
+   * a state anyone asked to return to.
+   */
+  placeClassesById(
+    positions: ReadonlyMap<string, Position>,
+    options?: { remember?: boolean },
+  ): void;
   deleteClassById(id: string): void;
   reparentClass(childId: string, parentId: string | null): void;
   /**
@@ -100,6 +113,12 @@ export function createOntologyActions(
     },
     moveClassById(id, position) {
       editor.edit((ontology) => moveClass(ontology, id, position), { history: 'none' });
+    },
+    placeClassesById(positions, options) {
+      if (positions.size === 0) return;
+      editor.edit((ontology) => placeClasses(ontology, positions), {
+        history: options?.remember === false ? 'none' : 'step',
+      });
     },
     deleteClassById(id) {
       editor.edit((ontology) => deleteClass(ontology, id));

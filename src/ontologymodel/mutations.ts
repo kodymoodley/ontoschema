@@ -63,6 +63,27 @@ export function moveClass(ontology: Ontology, id: string, position: Position): O
 }
 
 /**
+ * Moves many classes at once, for a layout that is computed rather than dragged.
+ *
+ * One pass rather than a fold over `moveClass`, which would copy the class array once per
+ * class and turn arranging a 200-class schema into 200 copies of it. Classes the arrangement
+ * does not mention keep the position they had.
+ */
+export function placeClasses(
+  ontology: Ontology,
+  positions: ReadonlyMap<string, Position>,
+): Ontology {
+  if (positions.size === 0) return ontology;
+  return {
+    ...ontology,
+    classes: ontology.classes.map((entity) => {
+      const position = positions.get(entity.id);
+      return position === undefined ? entity : { ...entity, position };
+    }),
+  };
+}
+
+/**
  * Deleting a class cascades to its usages: every attribute row it carried and every
  * relation pointing at or away from it goes with it. The properties themselves survive in
  * the pool, because they were never owned by the class.
