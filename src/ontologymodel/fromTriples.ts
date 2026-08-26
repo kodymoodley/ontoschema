@@ -350,20 +350,36 @@ export function ontologyFromTriples(
   const shapePairs = pairingsFromShapes(index);
 
   /*
-   * A property with no domain or range of its own is still usable when an ancestor has both:
+   * A property with an end missing borrows it from the nearest ancestor that states one:
    * `hasParent` under `relatedTo` means whatever `relatedTo` means, narrowed. Walking up is
    * what lets a hierarchy survive a document that states the ends once, at the top.
+   *
+   * **One end at a time.** This used to climb until it found an ancestor stating *both*, and
+   * then take that ancestor's pair whole — which threw away the end the property itself
+   * declared. In the Building Assessment Ontology, `hasCategory` states `rdfs:range :Category`
+   * and no domain, and is a sub-property of `hasPart`, whose two ends are both `Part`; it was
+   * imported as `Part -> Part`, with `Category` discarded. Six properties in that one file were
+   * silently repointed, and saving it would have written the change back out.
+   *
+   * Per end is also what RDFS means. `rdfs:domain` and `rdfs:range` are independent assertions,
+   * and a sub-property inherits each of them separately; nothing ties them together such that
+   * stating one should cost you the other.
    */
   const inheritedEnds = (iri: string) => {
-    const seen = new Set<string>();
-    let current: string | undefined = iri;
-    while (current && !seen.has(current)) {
+    const own = endsOf(iri);
+    let domains = own.domains;
+    let ranges = own.ranges;
+
+    const seen = new Set<string>([iri]);
+    let current: string | undefined = parentsOf(iri)[0];
+    while (current && !seen.has(current) && (domains.length === 0 || ranges.length === 0)) {
       seen.add(current);
       const ends = endsOf(current);
-      if (ends.domains.length > 0 && ends.ranges.length > 0) return ends;
+      if (domains.length === 0) domains = ends.domains;
+      if (ranges.length === 0) ranges = ends.ranges;
       current = parentsOf(current)[0];
     }
-    return { domains: [] as string[], ranges: [] as string[] };
+    return { domains, ranges };
   };
 
   /*

@@ -610,6 +610,86 @@ describe('property hierarchies', () => {
   });
 
   /*
+   * The case that was wrong, and it is the ordinary shape of a part-whole vocabulary rather than
+   * a corner. `hasCategory` in the Building Assessment Ontology states `rdfs:range :Category`
+   * and no domain, under a `hasPart` whose two ends are both `Part`.
+   *
+   * Inheriting the pair whole threw the stated end away: it imported as `Part -> Part`, and
+   * `Category` -- the one thing the property says for itself -- was gone. Six properties in that
+   * file were repointed this way, and saving it would have written the change back out.
+   */
+  it('fills in only the end a property is missing, keeping the one it states', () => {
+    const { ontology } = ontologyFromTriples([
+      ...base,
+      aClass('Team'),
+      typed(`${AUTO}hasTeam`, `${OWL}ObjectProperty`),
+      {
+        subject: `${AUTO}hasTeam`,
+        predicate: `${RDFS}subPropertyOf`,
+        object: iri(`${AUTO}relatedTo`),
+      },
+      // A range of its own; no domain, so the domain is the one worth inheriting.
+      { subject: `${AUTO}hasTeam`, predicate: `${RDFS}range`, object: iri(`${AUTO}Team`) },
+    ]);
+
+    const named = (localName: string) =>
+      ontology.classes.find((entity) => entity.localName === localName)?.id;
+    const hasTeam = ontology.relations.find((entity) => entity.localName === 'hasTeam');
+    const usage = ontology.usages.find((one) => one.propertyId === hasTeam?.id);
+
+    expect(usage?.subjectClassId, 'the domain should come from the parent').toBe(named('Person'));
+    expect(usage?.objectClassId, 'the stated range must survive').toBe(named('Team'));
+  });
+
+  /* The mirror: a stated domain and an inherited range. `isCategoryOf` is this shape. */
+  it('keeps a stated domain while inheriting the range', () => {
+    const { ontology } = ontologyFromTriples([
+      ...base,
+      aClass('Team'),
+      typed(`${AUTO}teamOf`, `${OWL}ObjectProperty`),
+      {
+        subject: `${AUTO}teamOf`,
+        predicate: `${RDFS}subPropertyOf`,
+        object: iri(`${AUTO}relatedTo`),
+      },
+      { subject: `${AUTO}teamOf`, predicate: `${RDFS}domain`, object: iri(`${AUTO}Team`) },
+    ]);
+
+    const named = (localName: string) =>
+      ontology.classes.find((entity) => entity.localName === localName)?.id;
+    const teamOf = ontology.relations.find((entity) => entity.localName === 'teamOf');
+    const usage = ontology.usages.find((one) => one.propertyId === teamOf?.id);
+
+    expect(usage?.subjectClassId, 'the stated domain must survive').toBe(named('Team'));
+    expect(usage?.objectClassId, 'the range should come from the parent').toBe(
+      named('Organisation'),
+    );
+  });
+
+  /* Each end may come from a different ancestor: they are independent assertions in RDFS. */
+  it('takes the two ends from wherever each is first stated', () => {
+    const { ontology } = ontologyFromTriples([
+      aClass('Person'),
+      aClass('Team'),
+      typed(`${AUTO}top`, `${OWL}ObjectProperty`),
+      { subject: `${AUTO}top`, predicate: `${RDFS}range`, object: iri(`${AUTO}Team`) },
+      typed(`${AUTO}middle`, `${OWL}ObjectProperty`),
+      { subject: `${AUTO}middle`, predicate: `${RDFS}subPropertyOf`, object: iri(`${AUTO}top`) },
+      { subject: `${AUTO}middle`, predicate: `${RDFS}domain`, object: iri(`${AUTO}Person`) },
+      typed(`${AUTO}leaf`, `${OWL}ObjectProperty`),
+      { subject: `${AUTO}leaf`, predicate: `${RDFS}subPropertyOf`, object: iri(`${AUTO}middle`) },
+    ]);
+
+    const named = (localName: string) =>
+      ontology.classes.find((entity) => entity.localName === localName)?.id;
+    const leaf = ontology.relations.find((entity) => entity.localName === 'leaf');
+    const usage = ontology.usages.find((one) => one.propertyId === leaf?.id);
+
+    expect(usage?.subjectClassId).toBe(named('Person'));
+    expect(usage?.objectClassId).toBe(named('Team'));
+  });
+
+  /*
    * A document can say two properties are each other's parent. The climb has to stop rather
    * than walk the ring for ever, and neither property has ends, so neither is placed.
    */
