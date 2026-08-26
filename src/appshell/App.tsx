@@ -83,8 +83,16 @@ function canvasHint(state: {
 }): string {
   if (state.view === 'schema')
     return 'Drag from a class edge to another class to create a relation.';
-  if (state.relations === 'selected' && !state.hasSelection) {
-    return 'Select a class to see its relations.';
+  if (state.relations === 'selected') {
+    /*
+     * The second line teaches the gesture at the moment it becomes useful, and only then: you
+     * are looking at one class's relations, which is the first point at which adding a second
+     * means anything. A gesture nobody is told about is a feature only its author can use, and
+     * this slot is empty in that state anyway.
+     */
+    return state.hasSelection
+      ? 'Ctrl or Cmd click another class to compare them.'
+      : 'Select a class to see its relations.';
   }
   return '';
 }

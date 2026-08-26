@@ -269,9 +269,19 @@ const MAX_ROW_WIDTH = 1800;
  */
 export type TaxonomyRelations = 'off' | 'selected';
 
+/**
+ * The classes whose relations the taxonomy view is showing.
+ *
+ * A set rather than the one selected class, because relations are read by comparing: what a
+ * Policy touches is only half a question, and the other half is what it touches that a Claim
+ * does not. Ctrl or Cmd click adds a class to this set; see `TaxonomyCanvas`.
+ *
+ * The app's selection stays single — it drives the inspector, which shows one entity — so this
+ * is the canvas's own state and not a second opinion about what is selected.
+ */
 export function taxonomyGraph(
   ontology: Ontology,
-  selectedId: string | null,
+  shown: ReadonlySet<string>,
   relations: TaxonomyRelations = 'off',
 ): { nodes: Node[]; edges: Edge[] } {
   const modules = taxonomyModules(ontology);
@@ -336,7 +346,7 @@ export function taxonomyGraph(
         extent: 'parent',
         draggable: false,
         position: { x: placed.x + MODULE_PADDING, y: placed.y + MODULE_PADDING + MODULE_HEADER },
-        selected: entity.id === selectedId,
+        selected: shown.has(entity.id),
         data: {
           entity,
           classId: entity.id,
@@ -363,7 +373,7 @@ export function taxonomyGraph(
   }
 
   if (relations !== 'off') {
-    edges.push(...relationEdges(ontology, index, nodes, selectedId));
+    edges.push(...relationEdges(ontology, index, nodes, shown));
   }
 
   return { nodes, edges };
@@ -375,12 +385,16 @@ export function taxonomyGraph(
  * A class reachable from two roots appears in both modules, so one usage can have more than
  * one pair of endpoints. Every visible pair is drawn: leaving some out would show a relation
  * as attached to one copy of a class and not the other, which is a picture of nothing.
+ *
+ * A relation is drawn when *either* end is in `shown`, so adding a second class reveals what
+ * joins the two of them as well as what each reaches on its own. One usage between two shown
+ * classes is still one edge -- the loop below visits each usage once.
  */
 function relationEdges(
   ontology: Ontology,
   index: ReturnType<typeof indexOntology>,
   nodes: readonly Node[],
-  selectedId: string | null,
+  shown: ReadonlySet<string>,
 ): Edge[] {
   /** Every taxonomy node showing a given class, keyed by the class it shows. */
   const appearances = new Map<string, string[]>();
@@ -422,7 +436,7 @@ function relationEdges(
   for (const usage of ontology.usages) {
     const property = index.relationById.get(usage.propertyId);
     if (!property || usage.objectClassId === null) continue;
-    if (selectedId !== usage.subjectClassId && selectedId !== usage.objectClassId) continue;
+    if (!shown.has(usage.subjectClassId) && !shown.has(usage.objectClassId)) continue;
 
     const sources = appearances.get(usage.subjectClassId) ?? [];
     const targets = appearances.get(usage.objectClassId) ?? [];

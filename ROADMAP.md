@@ -780,6 +780,24 @@ root class, superclasses above" described a picture that explains itself, in a t
 every other character is a control. Its removal also settled a smaller complaint: prose that comes
 and goes was moving the relation switch beside it, so the switch now sits ahead of the hint.
 
+That last part was only half a fix, and adding a longer hint found the other half. The toolbar is
+a flex row, so a hint too long for the space left makes everything **before** it shrink, and the
+switch moved anyway — ordering had bought a guarantee that held only for wording short enough. The
+hint now takes the room that is left and never asks for more (`flex: 1 1 0`, `min-width: 0`, and an
+ellipsis), so the guarantee holds for any wording rather than by coincidence.
+
+**Comparing two classes in the taxonomy view** — _shipped._ Ctrl or Cmd click adds a class to the
+relation layer instead of replacing it, because "what does a Track touch" is half a question and
+the other half is what it touches that an Album does not. A plain click narrows back to one, the
+canvas clears it, and selecting from the search box or the tree starts again.
+
+The set lives in the canvas, not in the store. Making the app's selection multi-valued was the
+obvious route and was turned down: selection drives the inspector, which shows one entity, so it
+would have forced "what does the inspector show when three are selected?" — a much larger question
+for no benefit to either. The canvas tracks which selections it made itself, because membership was
+the first test tried and it is wrong: searching for a class already in the comparison looks exactly
+like a Ctrl-click from the canvas, and the set survived a search that should have cleared it.
+
 **A tooltip for the drag-a-relation hint** — _done by deletion._ Put behind a question mark first,
 then removed outright: the palette entries already say what each thing is.
 
