@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { downloadExport, openApp, selectClass } from './ontoschema';
+import { downloadExport, openApp, openSection, selectClass } from './ontoschema';
 
 /**
  * Choosing a language for a label, in a real browser.
@@ -17,6 +17,7 @@ async function labelledClass(page: Page) {
   await selectClass(page, 'NewClass');
   // Through the form, which is where a label is written: a box called Label, and a language
   // beside it. The term list behind "Other properties" holds everything that has no such box.
+  await openSection(page, 'Documentation');
   await page.getByLabel('Label', { exact: true }).fill('Car');
 }
 

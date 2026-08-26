@@ -81,17 +81,19 @@ export function Inspector() {
 /**
  * One heading in the inspector, and the block it labels, which folds away under it.
  *
- * Open by default and collapsed by hand: the panel is one scrolling column now, and on a long
- * class the section someone is not reading is a screen of scrolling between them and the one
- * they are. Which is folded is per section and lasts as long as the panel is on screen, so it
- * survives clicking from one class to the next.
+ * Closed by default and opened by hand. The panel is one scrolling column, so a section left
+ * open is a screen of scrolling between someone and the one they actually want; starting closed
+ * makes the whole panel a list of headings, which is the fastest thing to read and the shortest
+ * distance to any of them. Which is open is per section and lasts as long as the panel is on
+ * screen, so it survives clicking from one class to the next -- open Documentation once and it
+ * stays open while you work through the classes.
  *
  * Hidden rather than unmounted, so a half-typed definition is still there when the section comes
  * back. `hidden` also takes it out of the accessibility tree, which `display: none` alone would
  * do but without saying why.
  */
 function Section({ title, children }: { title: string; children: ReactNode }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const bodyId = useId();
 
   return (

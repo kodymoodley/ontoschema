@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { chooseProjectAction, openApp, selectClass, settled } from './ontoschema';
+import { chooseProjectAction, openApp, openSection, selectClass, settled } from './ontoschema';
 
 /**
  * The shell is a three-column grid, which crushes the canvas on a laptop and overflows on
@@ -341,6 +341,9 @@ test.describe('on a phone', () => {
     await page.getByLabel('Search by name or description').fill(name);
     await page.locator(`[data-result="${name}"]`).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    // Both, because the inspector opens folded and these tests measure fields inside each.
+    await openSection(page, 'Documentation');
+    await openSection(page, 'Details');
   }
 
   test('fits a class, a relation and an attribute without scrolling sideways', async ({ page }) => {
@@ -530,6 +533,7 @@ test.describe('rows on a wide screen', () => {
     await page.keyboard.press('Control+k');
     await page.getByLabel('Search by name or description').fill('Track');
     await page.locator('[data-result="Track"]').click();
+    await openSection(page, 'Details');
     await expect(page.getByLabel('Class local name')).toHaveValue('Track');
 
     const row = page.locator('li', {

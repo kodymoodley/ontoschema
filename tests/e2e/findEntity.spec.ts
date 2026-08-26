@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { openApp, openExamples, settledViewport } from './ontoschema';
+import { openApp, openExamples, openSection, settledViewport } from './ontoschema';
 
 /**
  * Finding something in a schema too big to scan.
@@ -115,6 +115,7 @@ test('opens even while a field has the keyboard', async ({ page }) => {
   // nodes overlap each other on some engines, which has nothing to do with what is being tested.
   await openApp(page);
   await page.locator('[data-palette-kind="class"]').click();
+  await openSection(page, 'Details');
   await page.getByLabel('Class local name').click();
 
   await page.keyboard.press('Control+k');

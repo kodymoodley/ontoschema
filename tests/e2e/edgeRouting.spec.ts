@@ -6,6 +6,7 @@ import {
   freePointOnClass,
   openApp,
   openExamples,
+  openSection,
   relate,
   settled,
   settledViewport,
@@ -274,6 +275,7 @@ test('the schema canvas draws no subclass links', async ({ page }) => {
   await newClass(page, 'Vehicle', 300, 300);
   await newClass(page, 'Car', 300, 620);
   await page.locator('[data-class-name="Car"] header').click();
+  await openSection(page, 'Details');
   await page.getByLabel('Superclass').selectOption({ label: 'Vehicle' });
 
   // The class says whose subclass it is, where it has always said so.

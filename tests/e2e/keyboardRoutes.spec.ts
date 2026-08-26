@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { addAttribute, downloadExport, openApp, selectClass } from './ontoschema';
+import { addAttribute, downloadExport, openApp, openSection, selectClass } from './ontoschema';
 
 /**
  * Every outcome that also has a drag gesture, reached with the keyboard alone.
@@ -159,6 +159,7 @@ test('a attribute is put on a second class with the keyboard', async ({ page }) 
 test('an relation is re-parented with the keyboard', async ({ page }) => {
   await twoClasses(page);
   await page.locator('[data-palette-kind="relation"]').click();
+  await openSection(page, 'Details');
   await page.getByLabel('Relation local name').fill('partOf');
   await page.locator('[data-palette-kind="relation"]').click();
   await page.getByLabel('Relation local name').fill('componentOf');
