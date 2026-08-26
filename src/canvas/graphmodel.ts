@@ -12,7 +12,8 @@ import {
   sourceHandleId,
   targetHandleId,
 } from './layout';
-import type { Box } from './layout';
+import type { Box, Side } from './layout';
+import { atSide, endpointOffsets, sourceEnd, targetEnd } from './bundles';
 import { orthogonalPath, routeEdges } from './routing';
 import type { EdgeEnds, Rect } from './routing';
 
@@ -75,6 +76,13 @@ export interface RelationEdgeData extends Record<string, unknown> {
   property: Relation;
   /** True when the same property is also used elsewhere in the schema. */
   shared: boolean;
+  /**
+   * How far each end is shifted along the side of the box it meets, so two relations reaching
+   * the same side of the same class do not land on the same pixel. See `bundles.ts`. Absent on
+   * the taxonomy canvas, which separates them inside its own routing.
+   */
+  sourceOffset?: number;
+  targetOffset?: number;
   /**
    * The right-angled route the canvas worked out: out of one class, along a lane clear of
    * everything, and down into the other. Absent on the schema canvas, which routes its own.
@@ -182,7 +190,16 @@ export function sameRelationEdge(left: Edge, right: Edge): boolean {
     left.targetHandle === right.targetHandle &&
     before.usage === after.usage &&
     before.property === after.property &&
-    before.shared === after.shared
+    before.shared === after.shared &&
+    /*
+     * The lanes belong here for the same reason the handles do: they decide where the line is
+     * drawn. Leaving them out kept an edge whose handles had not changed but whose neighbours
+     * had -- a class arriving on the same side of the same box changes how many lanes that side
+     * is divided into, and every edge already there has to move over. Without this the canvas
+     * held the old lane and two edges shared one, which is the collision this was meant to end.
+     */
+    before.sourceOffset === after.sourceOffset &&
+    before.targetOffset === after.targetOffset
   );
 }
 
@@ -216,20 +233,49 @@ export function schemaEdges(ontology: Ontology): Edge[] {
     ]),
   );
 
+  /** Every relation that will be drawn, so the ones sharing a pair of classes can be fanned. */
+  const drawable = ontology.usages.filter(
+    (usage) =>
+      usage.objectClassId !== null &&
+      index.relationById.has(usage.propertyId) &&
+      index.classById.has(usage.subjectClassId) &&
+      index.classById.has(usage.objectClassId),
+  );
+  /*
+   * Which sides each relation uses, worked out for all of them before any is drawn. The fan
+   * below needs to know who else is meeting a given side, and that cannot be answered one edge
+   * at a time.
+   */
+  const chosen = new Map<string, { source: Side; target: Side }>();
+  for (const usage of drawable) {
+    const from = boxes.get(usage.subjectClassId);
+    const to = boxes.get(usage.objectClassId ?? usage.subjectClassId);
+    chosen.set(
+      usage.id,
+      selfLoop(usage)
+        ? SELF_LOOP_SIDES
+        : from && to
+          ? chooseSides(from, to)
+          : { source: 'right' as const, target: 'left' as const },
+    );
+  }
+
+  const offsets = endpointOffsets(
+    drawable.flatMap((usage) => {
+      const sides = chosen.get(usage.id);
+      if (!sides || usage.objectClassId === null) return [];
+      return [
+        { key: sourceEnd(usage.id), at: atSide(usage.subjectClassId, sides.source) },
+        { key: targetEnd(usage.id), at: atSide(usage.objectClassId, sides.target) },
+      ];
+    }),
+  );
+
   const relations: Edge[] = [];
-  for (const usage of ontology.usages) {
+  for (const usage of drawable) {
     const property = index.relationById.get(usage.propertyId);
     if (!property || usage.objectClassId === null) continue;
-    if (!index.classById.has(usage.subjectClassId) || !index.classById.has(usage.objectClassId)) {
-      continue;
-    }
-    const from = boxes.get(usage.subjectClassId);
-    const to = boxes.get(usage.objectClassId);
-    const sides = selfLoop(usage)
-      ? SELF_LOOP_SIDES
-      : from && to
-        ? chooseSides(from, to)
-        : { source: 'right' as const, target: 'left' as const };
+    const sides = chosen.get(usage.id) ?? { source: 'right' as const, target: 'left' as const };
 
     relations.push({
       // The edge is the usage, not the property: one property can be drawn many times.
@@ -244,6 +290,8 @@ export function schemaEdges(ontology: Ontology): Edge[] {
         usage,
         property,
         shared: (index.usagesByProperty.get(usage.propertyId) ?? []).length > 1,
+        sourceOffset: offsets.get(sourceEnd(usage.id)) ?? 0,
+        targetOffset: offsets.get(targetEnd(usage.id)) ?? 0,
       } satisfies RelationEdgeData,
     });
   }
@@ -463,13 +511,12 @@ function relationEdges(
       }
     }
   }
-  const ends: EdgeEnds[] = pending
-    .map((entry) => ({
-      id: entry.id,
-      from: rects.get(entry.source),
-      to: rects.get(entry.target),
-    }))
-    .filter((entry): entry is EdgeEnds => Boolean(entry.from && entry.to));
+  const ends: EdgeEnds[] = pending.flatMap((entry) => {
+    const from = rects.get(entry.source);
+    const to = rects.get(entry.target);
+    if (!from || !to) return [];
+    return [{ id: entry.id, from, to }];
+  });
   const routes = new Map(routeEdges(ends, [...rects.values()]).map((r) => [r.id, r]));
 
   return pending.map((entry) => {

@@ -17,6 +17,8 @@
  * class costs them the picture they were reading. Here nothing moves but the line.
  */
 
+import { atSide, endpointOffsets, sourceEnd, targetEnd } from './bundles';
+
 export interface Rect {
   x: number;
   y: number;
@@ -54,6 +56,9 @@ export interface Route {
 const sameBox = (a: Rect, b: Rect) =>
   a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 
+/** A box's identity for grouping, which for these purposes is where it is and how big it is. */
+const boxKey = (rect: Rect) => `${rect.x},${rect.y},${rect.width},${rect.height}`;
+
 /**
  * Lays every visible relation out at once, because lanes only make sense together.
  *
@@ -78,6 +83,20 @@ export function routeEdges(edges: readonly EdgeEnds[], obstacles: readonly Rect[
     above: (centreY(edge.from) + centreY(edge.to)) / 2 < middle,
     span: Math.abs(centreX(edge.to) - centreX(edge.from)),
   }));
+
+  /*
+   * Which endpoints share a box edge, so they can be fanned along it.
+   *
+   * Lanes already keep the horizontal runs apart, so two relations between the same pair were
+   * never drawn as one line -- but both dropped into the box at its centre, so one's arrowhead
+   * still landed on the other's tail. Separating the runs is not the same as separating the ends.
+   */
+  const offsets = endpointOffsets(
+    withSide.flatMap(({ edge, above }) => [
+      { key: sourceEnd(edge.id), at: atSide(boxKey(edge.from), String(above)) },
+      { key: targetEnd(edge.id), at: atSide(boxKey(edge.to), String(above)) },
+    ]),
+  );
 
   const routes: Route[] = [];
   for (const goingAbove of [true, false]) {
@@ -106,8 +125,8 @@ export function routeEdges(edges: readonly EdgeEnds[], obstacles: readonly Rect[
        */
       const loop = sameBox(edge.from, edge.to);
       const spread = loop ? edge.from.width / 4 : 0;
-      const start = attach(edge.from, -spread);
-      const end = attach(edge.to, spread);
+      const start = attach(edge.from, (offsets.get(sourceEnd(edge.id)) ?? 0) - spread);
+      const end = attach(edge.to, (offsets.get(targetEnd(edge.id)) ?? 0) + spread);
 
       routes.push({
         id: edge.id,

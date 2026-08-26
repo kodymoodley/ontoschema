@@ -250,6 +250,46 @@ describe('what survives a re-derive', () => {
     expect(sameRelationEdge(before!, after!)).toBe(false);
   });
 
+  /*
+   * The lanes decide where a line is drawn, exactly as the handles do, so an edge whose lane
+   * changed is not the same edge.
+   *
+   * Leaving them out of the comparison was a real bug and a quiet one. An edge's lane depends on
+   * how many others meet the same side of the same box, so a class arriving on that side moves
+   * every line already there -- without its handles changing. The canvas kept the old objects
+   * with the old lanes, two edges ended up sharing one, and the arrowheads went back to landing
+   * on top of each other in exactly the arrangement this was built to fix.
+   */
+  it('changes an edge whose lane moved even though its handles did not', () => {
+    const first = addClass(createEmptyOntology(), { localName: 'A', position: { x: 0, y: 0 } });
+    const second = addClass(first.ontology, { localName: 'B', position: { x: 600, y: 0 } });
+    const alone = addRelationBetween(second.ontology, {
+      localName: 'points',
+      subjectClassId: first.id,
+      objectClassId: second.id,
+    });
+
+    // A second relation between the same two classes: same sides, but now two lanes to share.
+    const crowded = addRelationBetween(alone.ontology, {
+      localName: 'back',
+      subjectClassId: second.id,
+      objectClassId: first.id,
+    });
+
+    const edgeFor = (model: typeof alone.ontology, usageId: string) =>
+      schemaEdges(model).find((edge) => edge.id === usageId);
+    const before = edgeFor(alone.ontology, alone.usageId);
+    const after = edgeFor(crowded.ontology, alone.usageId);
+    expect(before).toBeDefined();
+    expect(after).toBeDefined();
+    if (!before || !after) return;
+
+    expect(after.sourceHandle, 'the handles are meant to be unchanged here').toBe(
+      before.sourceHandle,
+    );
+    expect(sameRelationEdge(before, after)).toBe(false);
+  });
+
   it('refuses to compare anything without derived data', () => {
     const [node] = schemaNodes(schema().ontology);
     expect(sameClassNode(node!, { ...node!, data: undefined as never })).toBe(false);

@@ -1,4 +1,4 @@
-import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, Position, getSmoothStepPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import type { Relation, PropertyUsage } from '../ontologymodel';
 import { useProjectStore } from '../projectstore';
@@ -12,6 +12,20 @@ import styles from './relationeditor.module.css';
  * The edge is the *usage*, not the property: the same property can be drawn several times
  * between different pairs of classes, and each drawing is its own constraint.
  */
+/**
+ * Slides an endpoint along the side of the box it attaches to.
+ *
+ * Along the side rather than square to the line, so the end stays on the border: a left or
+ * right handle moves up and down, a top or bottom handle moves across. Shifting perpendicular
+ * to the line would separate the edges but leave them floating off the box they belong to.
+ */
+function slide(x: number, y: number, side: Position, offset: number) {
+  if (offset === 0) return { x, y };
+  return side === Position.Left || side === Position.Right
+    ? { x, y: y + offset }
+    : { x: x + offset, y };
+}
+
 export function RelationEdge({
   id,
   sourceX,
@@ -27,6 +41,8 @@ export function RelationEdge({
     usage?: PropertyUsage;
     property?: Relation;
     shared?: boolean;
+    sourceOffset?: number;
+    targetOffset?: number;
     route?: { path: string; label: { x: number; y: number } };
   };
   const select = useProjectStore((state) => state.select);
@@ -38,11 +54,21 @@ export function RelationEdge({
    * rather than by how they are drawn. `chooseSides` has already picked the pair of sides the
    * classes face each other across, so the step needed here is the plain one between them.
    */
+  /*
+   * Fanned apart when more than one relation joins the same two classes, which is what an
+   * relation meets the same side of the same box. There is one handle per side, so without this
+   * they attach at the identical point and one edge's arrowhead sits exactly on another's tail,
+   * drawing what looks like a single line with a head at both ends. `bundles.ts` works out how
+   * far each end moves; nothing shifts an end that has its side to itself.
+   */
+  const from = slide(sourceX, sourceY, sourcePosition, payload.sourceOffset ?? 0);
+  const to = slide(targetX, targetY, targetPosition, payload.targetOffset ?? 0);
+
   const [stepped, steppedLabelX, steppedLabelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
+    sourceX: from.x,
+    sourceY: from.y,
+    targetX: to.x,
+    targetY: to.y,
     sourcePosition,
     targetPosition,
     borderRadius: 6,
