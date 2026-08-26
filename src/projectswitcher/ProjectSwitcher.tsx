@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { UNTITLED, useActiveProject, useProjectStore, useProjects } from '../projectstore';
-import { EXAMPLES, exampleSize } from '../examplelibrary';
+import type { Example } from '../examplelibrary';
 import {
   Button,
   Field,
@@ -51,6 +51,33 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
 
   const [creating, setCreating] = useState(false);
   const [browsingExamples, setBrowsingExamples] = useState(false);
+
+  /*
+   * The example library is fetched when the picker is opened, not when the app is.
+   *
+   * Five fully documented schemas are a lot of prose -- every class, relation and attribute
+   * carries a label, a definition, a note and an example -- and it came to eighteen kilobytes
+   * gzipped in the chunk everyone downloads. Almost nobody opening this to work on their own
+   * schema ever looks at one, so it is loaded the way the RDF/XML parser is: on reaching the
+   * feature that needs it. The alternative was raising the bundle budget, which would have made
+   * the app slower to open for everybody in exchange for prose most of them never read.
+   */
+  const [catalogue, setCatalogue] = useState<
+    { example: Example; size: { classes: number; relations: number; attributes: number } }[] | null
+  >(null);
+  useEffect(() => {
+    if (!browsingExamples || catalogue !== null) return;
+    let current = true;
+    void import('../examplelibrary').then((library) => {
+      if (!current) return;
+      setCatalogue(
+        library.EXAMPLES.map((example) => ({ example, size: library.exampleSize(example) })),
+      );
+    });
+    return () => {
+      current = false;
+    };
+  }, [browsingExamples, catalogue]);
   const [newName, setNewName] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -297,8 +324,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
           Each opens as a new project, so anything you are already working on is left alone.
         </p>
         <ul className={styles.exampleList}>
-          {EXAMPLES.map((example) => {
-            const size = exampleSize(example);
+          {(catalogue ?? []).map(({ example, size }) => {
             return (
               <li key={example.key}>
                 <button

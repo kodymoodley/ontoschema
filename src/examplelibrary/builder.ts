@@ -19,25 +19,54 @@ import type { XsdDatatype } from '../annotationvocabulary';
 /** `[value, languageTag]`, e.g. `['Auto', 'nl']`. */
 export type LocalisedText = readonly [string, string];
 
-export interface ClassSpec {
+/**
+ * The prose every term carries, and what each field is for.
+ *
+ * The four are the inspector's Documentation section, and an example schema fills all of them:
+ * these exist to be opened and read, and a panel of empty boxes teaches nothing about what
+ * belongs in them. They are also what makes an export worth looking at — the same four terms
+ * are what a published vocabulary is expected to carry.
+ *
+ * `label` is derived from the local name unless it is given, because that is what a person
+ * types: `trackTitle` becomes `Track title`. It is worth stating only where the rule gets it
+ * wrong, which is initialisms — `isrc` is `ISRC`, not `Isrc`.
+ */
+export interface Documented {
+  /** `rdfs:label`. Omit to derive it from the name. */
+  label?: string;
+  /** `skos:definition`: what the term means, in a sentence. */
+  definition: string;
+  /** `rdfs:comment`: the modelling note — why it is here, or what it deliberately excludes. */
+  comment: string;
+  /** `skos:example`: a concrete instance or value, never a restatement of the definition. */
+  example: string;
+}
+
+export interface AttributeSpec extends Documented {
+  name: string;
+  range: XsdDatatype;
+}
+
+export interface ClassSpec extends Documented {
   name: string;
   /** Parent class name, if this one sits under another. */
   parent?: string;
   /** Where it lands on the schema canvas. */
   at: readonly [number, number];
-  /** One-line definition, exported as `skos:definition`. */
-  definition?: string;
   /** Extra labels, for showing off language tags. */
   labels?: readonly LocalisedText[];
   /** Attributes this class carries. */
-  attributes?: readonly (readonly [string, XsdDatatype])[];
+  attributes?: readonly AttributeSpec[];
 }
 
-export interface RelationSpec {
+/**
+ * One drawing of a relation. A property drawn between several pairs of classes is written once
+ * per pair, and only the first needs the prose: they are the same property throughout.
+ */
+export interface RelationSpec extends Partial<Documented> {
   name: string;
   from: string;
   to: string;
-  definition?: string;
 }
 
 export interface ExampleSpec {
@@ -56,11 +85,57 @@ export interface ExampleSpec {
    * Relations declared but not drawn anywhere — they sit in the property list ready
    * to be used, which is the quickest way to see what an unused property looks like.
    */
-  spareProperties?: readonly (readonly [string, string])[];
+  spareProperties?: readonly (Documented & { name: string })[];
 }
 
 export interface Example extends ExampleSpec {
   build(): Ontology;
+}
+
+/**
+ * The human-readable form of a local name: `trackTitle` becomes `Track title`.
+ *
+ * Splitting on the case change is the whole rule, because the names here are camelCase by
+ * construction — the editor's own validator sees to that. Runs of capitals are left whole, so
+ * an initialism written as one survives as one.
+ */
+export function readableName(localName: string): string {
+  const words = localName
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .trim()
+    .split(/\s+/)
+    // Sentence case, so `isSoldOut` reads as "Is sold out" rather than as a headline. A word
+    // that is already all capitals is an initialism and keeps its shape: `ISRC`, not `Isrc`.
+    .map((word) => (word === word.toUpperCase() && /[A-Z]/.test(word) ? word : word.toLowerCase()));
+  const sentence = words.join(' ');
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1);
+}
+
+/** Writes the four Documentation fields onto one term. */
+function document(
+  ontology: Ontology,
+  owner: 'class' | 'relation' | 'attribute',
+  ownerId: string,
+  name: string,
+  prose: Partial<Documented>,
+): Ontology {
+  let next = addAnnotation(
+    ontology,
+    owner,
+    ownerId,
+    'rdfs:label',
+    prose.label ?? readableName(name),
+    'en',
+  );
+  for (const [term, value] of [
+    ['skos:definition', prose.definition],
+    ['rdfs:comment', prose.comment],
+    ['skos:example', prose.example],
+  ] as const) {
+    if (value) next = addAnnotation(next, owner, ownerId, term, value, 'en');
+  }
+  return next;
 }
 
 /**
@@ -95,21 +170,17 @@ export function buildExample(spec: ExampleSpec): Ontology {
     const classId = classIds.get(entry.name);
     if (!classId) continue;
 
-    if (entry.definition) {
-      ontology = addAnnotation(
-        ontology,
-        'class',
-        classId,
-        'skos:definition',
-        entry.definition,
-        'en',
-      );
-    }
+    ontology = document(ontology, 'class', classId, entry.name, entry);
     for (const [value, language] of entry.labels ?? []) {
       ontology = addAnnotation(ontology, 'class', classId, 'skos:prefLabel', value, language);
     }
-    for (const [localName, range] of entry.attributes ?? []) {
-      ontology = addAttributeToClass(ontology, { classId, localName, range }).ontology;
+    for (const attribute of entry.attributes ?? []) {
+      const added = addAttributeToClass(ontology, {
+        classId,
+        localName: attribute.name,
+        range: attribute.range,
+      });
+      ontology = document(added.ontology, 'attribute', added.propertyId, attribute.name, attribute);
     }
   }
 
@@ -126,16 +197,7 @@ export function buildExample(spec: ExampleSpec): Ontology {
       ontology = added.ontology;
       propertyId = added.id;
       propertyIds.set(relation.name, propertyId);
-      if (relation.definition) {
-        ontology = addAnnotation(
-          ontology,
-          'relation',
-          propertyId,
-          'skos:definition',
-          relation.definition,
-          'en',
-        );
-      }
+      ontology = document(ontology, 'relation', propertyId, relation.name, relation);
     }
 
     const subject = classIds.get(relation.from);
@@ -148,16 +210,9 @@ export function buildExample(spec: ExampleSpec): Ontology {
     }).ontology;
   }
 
-  for (const [name, definition] of spec.spareProperties ?? []) {
-    const added = addRelation(ontology, { localName: name });
-    ontology = addAnnotation(
-      added.ontology,
-      'relation',
-      added.id,
-      'skos:definition',
-      definition,
-      'en',
-    );
+  for (const spare of spec.spareProperties ?? []) {
+    const added = addRelation(ontology, { localName: spare.name });
+    ontology = document(added.ontology, 'relation', added.id, spare.name, spare);
   }
 
   return ontology;
