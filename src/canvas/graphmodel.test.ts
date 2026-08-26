@@ -88,6 +88,33 @@ describe('schemaEdges', () => {
     expect(edge?.targetHandle).toBe('target-left');
   });
 
+  /*
+   * A relation from a class to itself -- `hasSubCategory` on Category, which published
+   * ontologies are full of. `chooseSides` cannot answer this one: both centres are the same
+   * point, so every comparison ties and it returns right-to-left, which is a line from the box's
+   * right edge back to its own left edge. Drawn, that runs straight through the box and hides
+   * behind it, and all that showed on the canvas was an arrowhead arriving at the left side from
+   * nothing at all.
+   *
+   * The two ends must be on *different* sides, so a right-angled step between them has to go
+   * around the outside.
+   */
+  it('sends a relation from a class to itself out one side and into another', () => {
+    const first = addClass(createEmptyOntology(), { position: { x: 100, y: 100 } });
+    const { ontology } = addRelationBetween(first.ontology, {
+      localName: 'hasSubCategory',
+      subjectClassId: first.id,
+      objectClassId: first.id,
+    });
+
+    const [edge] = schemaEdges(ontology).filter((item) => item.type === EDGE_TYPE.relation);
+    expect(edge?.source).toBe(first.id);
+    expect(edge?.target).toBe(first.id);
+    expect(edge?.sourceHandle).not.toBe(edge?.targetHandle?.replace('target', 'source'));
+    expect(edge?.sourceHandle).toBe('source-right');
+    expect(edge?.targetHandle).toBe('target-top');
+  });
+
   it('re-routes when the target is moved round to the other side', () => {
     const { ontology, source, target } = twoClasses({ x: 0, y: 0 }, { x: 600, y: 0 });
     const { ontology: related } = addRelationBetween(ontology, {

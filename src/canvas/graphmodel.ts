@@ -3,6 +3,7 @@ import { indexOntology, subClassEdges, taxonomyModules } from '../ontologymodel'
 import type { Attribute, Relation, Ontology, OntologyClass, PropertyUsage } from '../ontologymodel';
 import {
   CLASS_NODE_WIDTH,
+  SELF_LOOP_SIDES,
   TAXONOMY_NODE_HEIGHT,
   TAXONOMY_NODE_WIDTH,
   chooseSides,
@@ -189,6 +190,13 @@ function sameNames(before: string[], after: string[]): boolean {
   return before.length === after.length && before.every((name, index) => name === after[index]);
 }
 
+/**
+ * A relation whose subject and object are the same class — `hasSubCategory` on Category, say.
+ * Legal, common in published ontologies, and the one case the geometry has to be told about
+ * rather than allowed to work out.
+ */
+const selfLoop = (usage: PropertyUsage) => usage.subjectClassId === usage.objectClassId;
+
 export function schemaEdges(ontology: Ontology): Edge[] {
   const index = indexOntology(ontology);
 
@@ -217,8 +225,11 @@ export function schemaEdges(ontology: Ontology): Edge[] {
     }
     const from = boxes.get(usage.subjectClassId);
     const to = boxes.get(usage.objectClassId);
-    const sides =
-      from && to ? chooseSides(from, to) : { source: 'right' as const, target: 'left' as const };
+    const sides = selfLoop(usage)
+      ? SELF_LOOP_SIDES
+      : from && to
+        ? chooseSides(from, to)
+        : { source: 'right' as const, target: 'left' as const };
 
     relations.push({
       // The edge is the usage, not the property: one property can be drawn many times.

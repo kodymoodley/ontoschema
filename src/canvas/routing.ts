@@ -47,6 +47,14 @@ export interface Route {
 }
 
 /**
+ * Whether an edge's two ends are the same box, which is how a relation from a class to itself
+ * arrives here. Compared by geometry rather than by identity so it does not depend on the
+ * caller having handed us the same object twice; no two taxonomy nodes share a position.
+ */
+const sameBox = (a: Rect, b: Rect) =>
+  a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+
+/**
  * Lays every visible relation out at once, because lanes only make sense together.
  *
  * Above or below is chosen per edge by which side its two ends are nearer, so an edge between
@@ -82,12 +90,24 @@ export function routeEdges(edges: readonly EdgeEnds[], obstacles: readonly Rect[
       const laneY = goingAbove ? top - LANE_GAP * (index + 1) : bottom + LANE_GAP * (index + 1);
 
       // The drops start at the box's own edge, so a line never runs up through what it leaves.
-      const attach = (rect: Rect) => ({
-        x: centreX(rect),
+      const attach = (rect: Rect, offset = 0) => ({
+        x: centreX(rect) + offset,
         y: goingAbove ? rect.y : rect.y + rect.height,
       });
-      const start = attach(edge.from);
-      const end = attach(edge.to);
+
+      /*
+       * A relation from a class to itself leaves and returns on either side of its own centre,
+       * rather than from the one point twice. Both ends attaching at the centre made the route
+       * go out to the lane and straight back down the line it had just drawn: a stub with no
+       * width, no visible direction, and its name stacked on top of itself.
+       *
+       * A quarter of the box either way is enough to read as a loop and stays inside the class
+       * it belongs to, so it cannot be mistaken for a line reaching some neighbour.
+       */
+      const loop = sameBox(edge.from, edge.to);
+      const spread = loop ? edge.from.width / 4 : 0;
+      const start = attach(edge.from, -spread);
+      const end = attach(edge.to, spread);
 
       routes.push({
         id: edge.id,
