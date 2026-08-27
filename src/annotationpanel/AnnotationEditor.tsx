@@ -195,7 +195,7 @@ function AnnotationRow({ annotation, terms, onChange, onRemove }: AnnotationRowP
             aria-label={`${annotation.term} language tag`}
             onChange={(event) => onChange({ language: event.target.value })}
           >
-            <LanguageOptions />
+            <LanguageOptions selected={annotation.language ?? ''} />
           </Select>
         ) : (
           <span className={styles.kindTag}>{kind === 'iri' ? 'IRI' : kind}</span>

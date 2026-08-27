@@ -96,16 +96,34 @@
   gap: var(--space-3);
 }
 
-/* A value and, where it is prose, the language it is written in. */
+/*
+ * A value and, where it is prose, the language it is written in — the language underneath.
+ *
+ * Beside it, the language took a fixed column out of every documentation field at every width,
+ * and the box people actually type into got what was left. Underneath, the box has the whole
+ * panel: 315px against 187px before this, on a 1500px window. Prose is what these fields are
+ * for and a tag is set once and rarely looked at again, so the width belongs to the prose.
+ *
+ * The cost is a row per field, which is real on a scrolling column — and the reason the sections
+ * fold. It is worth it here because a language tag is short and the value never is.
+ */
 .namedValue {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
 }
 
-/* Wide enough for a language name rather than the first three letters of one. */
+/*
+ * Only as wide as what a closed select shows: a two-letter code, or `none`. It used to hold a
+ * full language name, and the name now lives in the open list, which costs the panel nothing.
+ * `align-self` keeps it from stretching to the width of the value above it, which would be a
+ * 300px box saying `en`.
+ */
 .namedValue > select {
-  flex: 0 0 7.5rem;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  width: 4.5rem;
 }
 
 .namedValue > :first-child {
@@ -148,17 +166,8 @@
 }
 
 /*
- * On a phone the panel is a 160px drawer, and a value with its language beside it leaves the
- * value 18px wide — a box you cannot type into, and one nothing overflowed to complain about.
- * The language goes underneath instead, where it has room to say which language it is.
+ * The language used to be moved underneath here, for a phone: a 160px drawer with the language
+ * beside the value left the value 18px wide, a box you could not type into and that nothing
+ * overflowed to complain about. It is underneath at every width now, so this override has
+ * nothing left to say.
  */
-@media (max-width: 1024px) {
-  .namedValue {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .namedValue > select {
-    flex: 0 0 auto;
-  }
-}

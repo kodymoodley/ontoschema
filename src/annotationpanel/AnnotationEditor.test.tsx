@@ -215,6 +215,37 @@ describe('the language tag control', () => {
     expect(dutch?.textContent).toContain('Dutch');
   });
 
+  /*
+   * A closed select shows the selected option and nothing else, so that option is the only one
+   * costing width in the panel. It carries the code alone; every other option keeps its name,
+   * because the open list is an overlay and costs the panel nothing.
+   */
+  it('shows the chosen language as a bare code, and names the rest', async () => {
+    const user = userEvent.setup();
+    renderForClass();
+    await addLabel(user);
+    await user.selectOptions(languageField(), 'nl');
+
+    const options = [...languageField().options];
+    const chosen = options.find((option) => option.value === 'nl');
+    const other = options.find((option) => option.value === 'de');
+    expect(chosen?.textContent).toBe('nl');
+    expect(other?.textContent).toContain('German');
+  });
+
+  it('says none rather than no language when that is what is showing', async () => {
+    const user = userEvent.setup();
+    renderForClass();
+    await addLabel(user);
+
+    const empty = () => [...languageField().options].find((option) => option.value === '');
+    // Spelled out while something else is chosen, because then it is only a row in the list.
+    expect(empty()?.textContent).toBe('no language');
+
+    await user.selectOptions(languageField(), '');
+    expect(empty()?.textContent).toBe('none');
+  });
+
   it('stores the language that was chosen', async () => {
     const user = userEvent.setup();
     const id = renderForClass();
