@@ -78,9 +78,17 @@ const BUDGETS = {
  *
  * `rdfxml.js` is vite's `rdfxml-streaming-parser-*` chunk, behind the dynamic import in
  * `serialization/read.ts`, and is downloaded only by someone opening an RDF/XML file.
+ *
+ * `examplelibrary.js` is the five example schemas, behind the dynamic import in
+ * `ProjectSwitcher`, and is downloaded only by someone opening the example picker. It is mostly
+ * prose: every class, relation and attribute in them carries a label, a definition, a modelling
+ * note and an example, which is what makes them worth reading and what makes them large. In the
+ * eager bundle that was eighteen kilobytes gzipped charged to everyone who opens the app,
+ * almost none of whom ever look at an example.
  */
 const LAZY_BUDGETS = {
   'rdfxml.js': 45,
+  'examplelibrary.js': 32,
 };
 
 /** `index-DgDSQNvl.js` and `index.js` are the same chunk; compare on the stable part. */

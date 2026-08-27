@@ -8,6 +8,7 @@ import {
   openExamples,
   closeMetadata,
   openMetadata,
+  openSection,
   selectClass,
 } from './ontoschema';
 
@@ -161,6 +162,45 @@ test('an example carries its metadata and language tags', async ({ page }) => {
   expect(turtle).toContain('"Recipe Collection"@en');
   expect(turtle).toContain('"Recept"@nl');
   expect(turtle).toContain('"Rezept"@de');
+});
+
+/*
+ * The four Documentation fields, in the panel a newcomer actually reads.
+ *
+ * A unit test already holds every term in every example to having all four, but it checks the
+ * model. What is being promised here is what the inspector shows: someone opens an example,
+ * clicks a class, opens Documentation, and finds four filled boxes that demonstrate the
+ * difference between a definition, a note and an example. Only a browser can answer that the
+ * named fields read the terms the builder writes.
+ */
+test('an example fills in every documentation field, on a class and on an attribute', async ({
+  page,
+}) => {
+  await openApp(page);
+  await openExample(page, 'Music library');
+  await selectClass(page, 'Track');
+  await openSection(page, 'Documentation');
+
+  const filled = async (label: string) => {
+    const field = page.getByLabel(label, { exact: true });
+    await expect(field).toBeVisible();
+    return (await field.inputValue()).trim();
+  };
+
+  for (const label of ['Label', 'Definition', 'Comment', 'Example']) {
+    expect(await filled(label), `${label} was empty on the Track class`).not.toBe('');
+  }
+  // The prose is about this class, not a placeholder repeated everywhere.
+  expect(await filled('Definition')).toContain('recorded');
+
+  // An attribute too, which is where the volume of this is and where it was missing entirely.
+  await page.getByRole('button', { name: 'durationSeconds', exact: true }).click();
+  await openSection(page, 'Documentation');
+  for (const label of ['Label', 'Definition', 'Comment', 'Example']) {
+    expect(await filled(label), `${label} was empty on the durationSeconds attribute`).not.toBe('');
+  }
+  // The label is the readable form of the name, which is what the builder derives.
+  expect(await filled('Label')).toBe('Duration seconds');
 });
 
 test('two examples can be open at once without colliding', async ({ page }) => {

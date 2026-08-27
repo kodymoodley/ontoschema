@@ -18,3 +18,4 @@ export type {
 } from './graphmodel';
 export { layoutTaxonomyModule, nextFreePosition } from './layout';
 export { frameAll } from './framing';
+export { arrangeSchema, unplaced } from './arrange';

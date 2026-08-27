@@ -170,3 +170,20 @@ export function PanelsAsideIcon() {
 export function PanelsBackIcon() {
   return <PanelsAsideGlyph inward />;
 }
+
+/**
+ * Tidy the schema: three boxes in ranks with a line running through them, which is what the
+ * arrangement produces. Not a magic wand and not a pair of arrows — this button rearranges
+ * what is already there rather than creating or moving anything on its own.
+ */
+export function ArrangeIcon() {
+  return (
+    <svg {...common}>
+      <rect x="1.25" y="5.5" width="4" height="5" rx="1" />
+      <rect x="10.75" y="1.75" width="4" height="4.5" rx="1" />
+      <rect x="10.75" y="9.75" width="4" height="4.5" rx="1" />
+      <path d="M5.25 8h2.5V4h3" />
+      <path d="M7.75 8v4h3" />
+    </svg>
+  );
+}

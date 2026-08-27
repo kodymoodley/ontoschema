@@ -143,3 +143,44 @@ describe('drawing the path', () => {
     expect(Math.max(...numbers)).toBeLessThanOrEqual(4);
   });
 });
+
+/*
+ * A relation from a class to itself. Both ends are the same box, so both attach points used to
+ * land on the same coordinate: the route went out to the lane and came straight back down the
+ * line it had just drawn, which is a stub with no width, no readable direction, and its own
+ * name stacked on top of itself.
+ */
+describe('a relation from a class to itself', () => {
+  const box = { x: 100, y: 100, width: 168, height: 46 };
+
+  it('leaves and returns either side of the centre, so the loop has width', () => {
+    const [route] = routeEdges([{ id: 'loop', from: box, to: box }], [box]);
+    expect(route).toBeDefined();
+    if (!route) return;
+
+    const [start, , , end] = route.points;
+    expect(start).toBeDefined();
+    expect(end).toBeDefined();
+    if (!start || !end) return;
+
+    expect(start.x).not.toBe(end.x);
+    expect(Math.abs(end.x - start.x)).toBeGreaterThan(0);
+  });
+
+  it('keeps the loop inside the class it belongs to', () => {
+    const [route] = routeEdges([{ id: 'loop', from: box, to: box }], [box]);
+    const xs = (route?.points ?? []).map((point) => point.x);
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(box.x);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(box.x + box.width);
+  });
+
+  it('puts the name on the run rather than on the drop', () => {
+    const [route] = routeEdges([{ id: 'loop', from: box, to: box }], [box]);
+    const first = route?.points[0];
+    expect(first).toBeDefined();
+    if (!route || !first) return;
+    expect(route.label.x).not.toBe(first.x);
+    // On the lane, which is clear of the box either above it or below it.
+    expect(route.label.y < box.y || route.label.y > box.y + box.height).toBe(true);
+  });
+});

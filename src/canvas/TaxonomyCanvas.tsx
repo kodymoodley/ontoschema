@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -34,9 +34,50 @@ function TaxonomyCanvasInner({ nodeTypes, edgeTypes }: TaxonomyCanvasProps) {
   const select = useProjectStore((state) => state.select);
 
   const relations = useTaxonomyRelations();
+
+  /*
+   * Which classes are showing their relations. Usually the one that is selected; more when
+   * they have been added with Ctrl or Cmd, which is how two classes get compared.
+   *
+   * Held here rather than in the store because the store's selection is single and drives the
+   * inspector, which shows one entity at a time. Making it a list to serve this view would
+   * force a much larger question -- what does the inspector show when three are selected? --
+   * for no benefit to either.
+   */
+  const [shown, setShown] = useState<string[]>([]);
+
+  /*
+   * Selection made anywhere else -- the tree, the search box, a deletion -- resets this to just
+   * that class. Someone who goes to the search box has stopped looking at what was on screen,
+   * and inheriting a comparison they set up before that shows relations for classes they are no
+   * longer asking about.
+   *
+   * Which means this has to know which selections came from its own clicks. Membership was the
+   * obvious test and it is wrong: searching for a class that is *already* in the comparison
+   * looks exactly like a Ctrl-click from here, so the set survived a search that should have
+   * cleared it. Remembering what we selected distinguishes the two with no guessing.
+   */
+  const selectedId = selection?.kind === 'class' ? selection.id : null;
+  const chose = useRef<string | null>(null);
+  useEffect(() => {
+    if (chose.current === selectedId) return;
+    chose.current = selectedId;
+    setShown(selectedId === null ? [] : [selectedId]);
+  }, [selectedId]);
+
+  /** Selects a class and records that this canvas is the one that did it. */
+  const take = useCallback(
+    (classId: string | null) => {
+      chose.current = classId;
+      select(classId === null ? null : { kind: 'class', id: classId });
+    },
+    [select],
+  );
+
+  const shownSet = useMemo(() => new Set(shown), [shown]);
   const { nodes, edges } = useMemo(
-    () => taxonomyGraph(ontology, selection?.id ?? null, relations),
-    [ontology, selection?.id, relations],
+    () => taxonomyGraph(ontology, shownSet, relations),
+    [ontology, shownSet, relations],
   );
 
   // The layout is derived, so the camera is framed explicitly whenever the shape of the
@@ -92,18 +133,49 @@ function TaxonomyCanvasInner({ nodeTypes, edgeTypes }: TaxonomyCanvasProps) {
          * out of, which is the thing the automatic mode exists for.
          */
         zIndexMode="manual"
-        onNodeClick={(_event, node) => {
+        onNodeClick={(event, node) => {
           if (node.type !== NODE_TYPE.taxonomyClass) return;
           const classId = classIdFromTaxonomyNode(node.id);
+
+          /*
+           * Ctrl, Cmd or Shift adds a class to what is showing instead of replacing it, which
+           * is the gesture every list and canvas already uses for "and this one too".
+           */
+          if (event.ctrlKey || event.metaKey || event.shiftKey) {
+            const already = shown.includes(classId);
+            const next = already ? shown.filter((id) => id !== classId) : [...shown, classId];
+            setShown(next);
+            /*
+             * The inspector follows the last class touched, and something has to be selected
+             * for the set to survive the effect above. Removing the last one clears both.
+             */
+            take(already ? (next[next.length - 1] ?? null) : classId);
+            return;
+          }
+
           /*
            * Clicking the class that is already selected puts it away. With relations shown, the
            * click that revealed them is the obvious one to hide them with, and hunting for empty
            * canvas to click instead is the sort of small tax that makes an interface feel
            * stubborn -- the same reasoning that made touching the canvas dismiss a drawer.
+           *
+           * A plain click with several showing narrows to the one clicked rather than putting
+           * it away, even when it is the selected one: the way out of a comparison is the click
+           * that starts the next one.
            */
-          select(selection?.id === classId ? null : { kind: 'class', id: classId });
+          const only = shown.length <= 1;
+          if (only && selection?.id === classId) {
+            setShown([]);
+            take(null);
+            return;
+          }
+          setShown([classId]);
+          take(classId);
         }}
-        onPaneClick={() => select(null)}
+        onPaneClick={() => {
+          setShown([]);
+          take(null);
+        }}
         zoomOnDoubleClick={false}
         minZoom={0.15}
         maxZoom={2}

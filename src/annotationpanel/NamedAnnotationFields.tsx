@@ -123,7 +123,7 @@ function NamedAnnotationField({ target, field, current }: FieldProps) {
               editAnnotation(target, current.id, { language: event.target.value })
             }
           >
-            <LanguageOptions />
+            <LanguageOptions selected={current.language ?? ''} />
           </Select>
         ) : null}
       </div>

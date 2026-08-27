@@ -136,6 +136,22 @@ export function chooseSides(source: Box, target: Box): { source: Side; target: S
   return dy >= 0 ? { source: 'bottom', target: 'top' } : { source: 'top', target: 'bottom' };
 }
 
+/**
+ * Where a relation from a class to itself leaves and comes back.
+ *
+ * `chooseSides` cannot answer this and must not be asked: both centres are the same point, so
+ * `dx` and `dy` are zero, every comparison ties, and it returns right-to-left — a line from the
+ * node's right edge back to its own left edge, which is drawn straight through the box and
+ * hidden behind it. All that showed was an arrowhead arriving at the left side from nothing,
+ * which is what a self-relation looked like on the canvas for as long as one could be drawn.
+ *
+ * Out of the right and into the top, so the two ends are on different sides and a right-angled
+ * step between them has to go around the corner rather than through the middle. Any two
+ * adjacent sides would do; this pair puts the loop in the top-right, clear of the superclass
+ * line under the header and of the attribute rows below it.
+ */
+export const SELF_LOOP_SIDES: { source: Side; target: Side } = { source: 'right', target: 'top' };
+
 export const sourceHandleId = (side: Side) => `source-${side}`;
 export const targetHandleId = (side: Side) => `target-${side}`;
 

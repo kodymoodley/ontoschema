@@ -22,6 +22,9 @@ import {
 } from './graphmodel';
 import { CLASS_NODE_WIDTH } from './layout';
 
+/** The classes whose relations the taxonomy view is showing. */
+const showing = (...ids: string[]) => new Set(ids);
+
 /**
  * The React Flow graph derived from an ontology. What matters here is the part React Flow
  * cannot work out for itself: how big a node is before it has been measured, and which of
@@ -85,6 +88,33 @@ describe('schemaEdges', () => {
     expect(edge?.targetHandle).toBe('target-left');
   });
 
+  /*
+   * A relation from a class to itself -- `hasSubCategory` on Category, which published
+   * ontologies are full of. `chooseSides` cannot answer this one: both centres are the same
+   * point, so every comparison ties and it returns right-to-left, which is a line from the box's
+   * right edge back to its own left edge. Drawn, that runs straight through the box and hides
+   * behind it, and all that showed on the canvas was an arrowhead arriving at the left side from
+   * nothing at all.
+   *
+   * The two ends must be on *different* sides, so a right-angled step between them has to go
+   * around the outside.
+   */
+  it('sends a relation from a class to itself out one side and into another', () => {
+    const first = addClass(createEmptyOntology(), { position: { x: 100, y: 100 } });
+    const { ontology } = addRelationBetween(first.ontology, {
+      localName: 'hasSubCategory',
+      subjectClassId: first.id,
+      objectClassId: first.id,
+    });
+
+    const [edge] = schemaEdges(ontology).filter((item) => item.type === EDGE_TYPE.relation);
+    expect(edge?.source).toBe(first.id);
+    expect(edge?.target).toBe(first.id);
+    expect(edge?.sourceHandle).not.toBe(edge?.targetHandle?.replace('target', 'source'));
+    expect(edge?.sourceHandle).toBe('source-right');
+    expect(edge?.targetHandle).toBe('target-top');
+  });
+
   it('re-routes when the target is moved round to the other side', () => {
     const { ontology, source, target } = twoClasses({ x: 0, y: 0 }, { x: 600, y: 0 });
     const { ontology: related } = addRelationBetween(ontology, {
@@ -114,7 +144,9 @@ describe('schemaEdges', () => {
     expect(schemaEdges(linked).some((edge) => edge.type === EDGE_TYPE.subClassOf)).toBe(false);
     // And the model still holds it: this is about what is drawn, not about what exists.
     expect(
-      taxonomyGraph(linked, null, 'off').edges.some((edge) => edge.type === EDGE_TYPE.subClassOf),
+      taxonomyGraph(linked, showing(), 'off').edges.some(
+        (edge) => edge.type === EDGE_TYPE.subClassOf,
+      ),
     ).toBe(true);
   });
 
@@ -216,6 +248,46 @@ describe('what survives a re-derive', () => {
     );
 
     expect(sameRelationEdge(before!, after!)).toBe(false);
+  });
+
+  /*
+   * The lanes decide where a line is drawn, exactly as the handles do, so an edge whose lane
+   * changed is not the same edge.
+   *
+   * Leaving them out of the comparison was a real bug and a quiet one. An edge's lane depends on
+   * how many others meet the same side of the same box, so a class arriving on that side moves
+   * every line already there -- without its handles changing. The canvas kept the old objects
+   * with the old lanes, two edges ended up sharing one, and the arrowheads went back to landing
+   * on top of each other in exactly the arrangement this was built to fix.
+   */
+  it('changes an edge whose lane moved even though its handles did not', () => {
+    const first = addClass(createEmptyOntology(), { localName: 'A', position: { x: 0, y: 0 } });
+    const second = addClass(first.ontology, { localName: 'B', position: { x: 600, y: 0 } });
+    const alone = addRelationBetween(second.ontology, {
+      localName: 'points',
+      subjectClassId: first.id,
+      objectClassId: second.id,
+    });
+
+    // A second relation between the same two classes: same sides, but now two lanes to share.
+    const crowded = addRelationBetween(alone.ontology, {
+      localName: 'back',
+      subjectClassId: second.id,
+      objectClassId: first.id,
+    });
+
+    const edgeFor = (model: typeof alone.ontology, usageId: string) =>
+      schemaEdges(model).find((edge) => edge.id === usageId);
+    const before = edgeFor(alone.ontology, alone.usageId);
+    const after = edgeFor(crowded.ontology, alone.usageId);
+    expect(before).toBeDefined();
+    expect(after).toBeDefined();
+    if (!before || !after) return;
+
+    expect(after.sourceHandle, 'the handles are meant to be unchanged here').toBe(
+      before.sourceHandle,
+    );
+    expect(sameRelationEdge(before, after)).toBe(false);
   });
 
   it('refuses to compare anything without derived data', () => {
@@ -331,7 +403,7 @@ describe('relations in the taxonomy view', () => {
 
   it('draws none by default, which is why the view reads cleanly', () => {
     const { ontology } = twoModules();
-    const { edges } = taxonomyGraph(ontology, null);
+    const { edges } = taxonomyGraph(ontology, showing());
 
     expect(relationEdgesOf(edges)).toHaveLength(0);
     // The subclass links are still there: this hides one layer, not the view.
@@ -341,21 +413,27 @@ describe('relations in the taxonomy view', () => {
   it("draws only the selected class's relations in between", () => {
     const { ontology, car, vehicle } = twoModules();
 
-    expect(relationEdgesOf(taxonomyGraph(ontology, car, 'selected').edges)).toHaveLength(1);
+    expect(relationEdgesOf(taxonomyGraph(ontology, showing(car), 'selected').edges)).toHaveLength(
+      1,
+    );
     // Vehicle is in the same module as Car and takes part in nothing.
-    expect(relationEdgesOf(taxonomyGraph(ontology, vehicle, 'selected').edges)).toHaveLength(0);
+    expect(
+      relationEdgesOf(taxonomyGraph(ontology, showing(vehicle), 'selected').edges),
+    ).toHaveLength(0);
     // Nothing selected, so there is nothing to draw the relations of.
-    expect(relationEdgesOf(taxonomyGraph(ontology, null, 'selected').edges)).toHaveLength(0);
+    expect(relationEdgesOf(taxonomyGraph(ontology, showing(), 'selected').edges)).toHaveLength(0);
   });
 
   it('counts the far end too, not only the class the relation starts at', () => {
     const { ontology, dealer } = twoModules();
-    expect(relationEdgesOf(taxonomyGraph(ontology, dealer, 'selected').edges)).toHaveLength(1);
+    expect(
+      relationEdgesOf(taxonomyGraph(ontology, showing(dealer), 'selected').edges),
+    ).toHaveLength(1);
   });
 
   it('joins nodes that exist, so React Flow has both ends of every edge', () => {
     const { ontology, dealer } = twoModules();
-    const { nodes, edges } = taxonomyGraph(ontology, dealer, 'selected');
+    const { nodes, edges } = taxonomyGraph(ontology, showing(dealer), 'selected');
     const ids = new Set(nodes.map((node) => node.id));
 
     for (const edge of relationEdgesOf(edges) as { source: string; target: string }[]) {
@@ -373,7 +451,7 @@ describe('relations in the taxonomy view', () => {
     const { ontology, car, dealer, vehicle } = twoModules();
     // Dealership now hangs under Vehicle as well, so it appears in two modules.
     const shared = addSubClassOf(ontology, dealer, vehicle);
-    const { edges } = taxonomyGraph(shared, car, 'selected');
+    const { edges } = taxonomyGraph(shared, showing(car), 'selected');
 
     expect(relationEdgesOf(edges)).toHaveLength(2);
     expect(new Set(relationEdgesOf(edges).map((edge) => (edge as { id: string }).id)).size).toBe(2);

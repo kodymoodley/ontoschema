@@ -301,9 +301,24 @@
   background: var(--surface-base);
 }
 
+/*
+ * The hint takes the room that is left and never asks for more.
+ *
+ * Putting it after the controls it used to push was only half the fix: the toolbar is a flex
+ * row, so a hint long enough to overflow makes everything before it shrink, and the switch
+ * moved anyway. `flex: 1 1 0` with `min-width: 0` makes this the element that gives, and the
+ * ellipsis is what giving looks like. The guarantee now holds for any wording rather than for
+ * wording that happens to be short enough, which is the difference between a fix and a
+ * coincidence.
+ */
 .viewHint {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stack {

@@ -8,6 +8,7 @@ import {
   addRelation,
   addRelationBetween,
   addSubClassOf,
+  placeClasses,
   removeSubClassOf,
   attachProperty,
   deleteClass,
@@ -464,5 +465,67 @@ describe('ontology header', () => {
   it('normalises the namespace when the base IRI is set', () => {
     const ontology = setOntologyIri(createEmptyOntology(), 'https://example.org/auto');
     expect(ontology.iri).toBe('https://example.org/auto#');
+  });
+});
+
+describe('placing many classes at once', () => {
+  const three = () => {
+    let ontology = createEmptyOntology();
+    const ids: string[] = [];
+    for (const localName of ['One', 'Two', 'Three']) {
+      const added = addClass(ontology, { localName, position: { x: 0, y: 0 } });
+      ontology = added.ontology;
+      ids.push(added.id);
+    }
+    return { ontology, ids };
+  };
+
+  it('moves the classes it is given', () => {
+    const { ontology, ids } = three();
+    const first = ids[0];
+    const second = ids[1];
+    if (first === undefined || second === undefined) throw new Error('fixture');
+
+    const moved = placeClasses(
+      ontology,
+      new Map([
+        [first, { x: 10, y: 20 }],
+        [second, { x: 30, y: 40 }],
+      ]),
+    );
+
+    expect(moved.classes.map((entity) => entity.position)).toEqual([
+      { x: 10, y: 20 },
+      { x: 30, y: 40 },
+      { x: 0, y: 0 },
+    ]);
+  });
+
+  /*
+   * An arrangement covers the classes it knows about. A class added since -- or one the layout
+   * skipped -- keeps where it was rather than being swept to the origin.
+   */
+  it('leaves the classes it is not given alone', () => {
+    const { ontology, ids } = three();
+    const third = ids[2];
+    if (third === undefined) throw new Error('fixture');
+
+    const moved = placeClasses(ontology, new Map([[third, { x: 99, y: 99 }]]));
+    expect(moved.classes.filter((entity) => entity.position.x === 0)).toHaveLength(2);
+  });
+
+  it('hands back the same ontology when there is nothing to place', () => {
+    const { ontology } = three();
+    expect(placeClasses(ontology, new Map())).toBe(ontology);
+  });
+
+  it('ignores an id that is not a class here', () => {
+    const { ontology } = three();
+    const moved = placeClasses(ontology, new Map([['not-a-class', { x: 5, y: 5 }]]));
+    expect(moved.classes.map((entity) => entity.position)).toEqual([
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+    ]);
   });
 });

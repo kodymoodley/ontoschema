@@ -158,8 +158,24 @@ export async function doubleClickClass(page: Page, className: string) {
     .not.toBe(before);
 }
 
+/**
+ * Opens one of the inspector's sections if it is folded.
+ *
+ * The panel starts with both folded, so it opens as a list of headings rather than a screen of
+ * fields. Anything reaching a field inside one has to open it first, exactly as a person would;
+ * doing it in these helpers rather than in every test keeps the tests about what they are
+ * testing. Safe to call twice, like `openOtherProperties` below.
+ */
+export async function openSection(page: Page, title: 'Documentation' | 'Details') {
+  const toggle = page.getByRole('button', { name: new RegExp(title) });
+  await expect(toggle).toBeVisible();
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+}
+
 export async function selectClass(page: Page, localName: string) {
   await page.locator(`[data-class-name="${localName}"] header`).click();
+  await openSection(page, 'Details');
   await expect(page.getByLabel('Class local name')).toHaveValue(localName);
 }
 
@@ -234,6 +250,7 @@ export async function relate(
 
 /** Adds an attribute to the selected class through the inspector. */
 export async function addAttribute(page: Page, name: string, range: string) {
+  await openSection(page, 'Details');
   await page.getByLabel('New attribute name').fill(name);
   // By value, which is the datatype itself. The option now reads `string` rather than
   // `xsd:string`: the prefix is the only part of a datatype name that is jargon.
@@ -245,6 +262,7 @@ export async function addAttribute(page: Page, name: string, range: string) {
 /** Creates an relation in the pool, without using it anywhere. */
 export async function createRelation(page: Page, localName: string) {
   await page.locator('[data-palette-kind="relation"]').click();
+  await openSection(page, 'Details');
   await page.getByLabel('Relation local name').fill(localName);
 }
 
@@ -268,6 +286,7 @@ const NAMED_FIELD: Record<string, string> = {
 
 /** Opens the disclosure holding every term that has no field of its own. Safe to call twice. */
 export async function openOtherProperties(page: Page) {
+  await openSection(page, 'Documentation');
   const summary = page.getByText('Other properties', { exact: true }).first();
   const open = await summary.evaluate((element) => element.closest('details')?.open === true);
   if (!open) await summary.click();
@@ -276,6 +295,7 @@ export async function openOtherProperties(page: Page) {
 
 /** Adds an annotation to whatever is selected, with an optional language tag. */
 export async function addAnnotation(page: Page, term: string, value: string, language?: string) {
+  await openSection(page, 'Documentation');
   const named = NAMED_FIELD[term];
   if (named) {
     // The form, which is where this term is written now.

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createEmptyOntology } from '../ontologymodel';
+import {
+  addAnnotation,
+  addAttributeToClass,
+  addClass,
+  createEmptyOntology,
+} from '../ontologymodel';
 import type { Annotation, Ontology } from '../ontologymodel';
 import { search, tokenize } from './bm25';
 import { searchEntities } from './entities';
@@ -209,6 +214,64 @@ describe('finding something in the open schema', () => {
     expect(searchEntities(schema(), 'wheels')[0]?.context).toBe('A road vehicle with four wheels');
     // Matched on the name itself, so there is nothing to add.
     expect(searchEntities(schema(), 'car')[0]?.context).toBeNull();
+  });
+
+  /*
+   * A name typed in full wins outright, whatever the ranking would otherwise have said.
+   *
+   * Weighting the name field highest is not enough on its own: scores are summed across name,
+   * label and prose, so an entity matching in all three can pass one that matches the name
+   * exactly and says little else. Typing `venue` put the `venueName` attribute above the `Venue`
+   * class, which is not a ranking anyone would defend.
+   */
+  describe('a name typed in full', () => {
+    /** A class whose name is a word, beside an attribute that merely contains it. */
+    function pair(): Ontology {
+      let ontology = createEmptyOntology('https://example.org/x/', 'x');
+      const venue = addClass(ontology, { localName: 'Venue' });
+      ontology = addAnnotation(
+        venue.ontology,
+        'class',
+        venue.id,
+        'skos:definition',
+        'A place where concerts are held.',
+        'en',
+      );
+      const attribute = addAttributeToClass(ontology, {
+        classId: venue.id,
+        localName: 'venueName',
+      });
+      ontology = attribute.ontology;
+      for (const [term, value] of [
+        ['rdfs:label', 'Venue name'],
+        ['skos:definition', 'What the venue is called.'],
+        ['rdfs:comment', 'The current name of the venue.'],
+        ['skos:example', 'Freebody Park'],
+      ] as const) {
+        ontology = addAnnotation(ontology, 'attribute', attribute.propertyId, term, value, 'en');
+      }
+      return ontology;
+    }
+
+    it('comes first however much else matches', () => {
+      expect(searchEntities(pair(), 'venue')[0]?.localName).toBe('Venue');
+    });
+
+    it('ignores case and surrounding space', () => {
+      expect(searchEntities(pair(), '  VENUE ')[0]?.localName).toBe('Venue');
+    });
+
+    it('leaves a partial name to the ranking', () => {
+      // `ven` is not a name, so nothing is promoted and the scores decide as they always did.
+      const found = searchEntities(pair(), 'ven').map((hit) => hit.localName);
+      expect(found).toContain('Venue');
+      expect(found).toContain('venueName');
+    });
+
+    it('keeps everything else in the order the ranking gave it', () => {
+      const promoted = searchEntities(pair(), 'venue').map((hit) => hit.localName);
+      expect(promoted).toEqual(['Venue', 'venueName']);
+    });
   });
 
   it('finds nothing in an empty schema without complaint', () => {

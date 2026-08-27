@@ -17,6 +17,8 @@
  * class costs them the picture they were reading. Here nothing moves but the line.
  */
 
+import { atSide, endpointOffsets, sourceEnd, targetEnd } from './bundles';
+
 export interface Rect {
   x: number;
   y: number;
@@ -47,6 +49,17 @@ export interface Route {
 }
 
 /**
+ * Whether an edge's two ends are the same box, which is how a relation from a class to itself
+ * arrives here. Compared by geometry rather than by identity so it does not depend on the
+ * caller having handed us the same object twice; no two taxonomy nodes share a position.
+ */
+const sameBox = (a: Rect, b: Rect) =>
+  a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+
+/** A box's identity for grouping, which for these purposes is where it is and how big it is. */
+const boxKey = (rect: Rect) => `${rect.x},${rect.y},${rect.width},${rect.height}`;
+
+/**
  * Lays every visible relation out at once, because lanes only make sense together.
  *
  * Above or below is chosen per edge by which side its two ends are nearer, so an edge between
@@ -71,6 +84,20 @@ export function routeEdges(edges: readonly EdgeEnds[], obstacles: readonly Rect[
     span: Math.abs(centreX(edge.to) - centreX(edge.from)),
   }));
 
+  /*
+   * Which endpoints share a box edge, so they can be fanned along it.
+   *
+   * Lanes already keep the horizontal runs apart, so two relations between the same pair were
+   * never drawn as one line -- but both dropped into the box at its centre, so one's arrowhead
+   * still landed on the other's tail. Separating the runs is not the same as separating the ends.
+   */
+  const offsets = endpointOffsets(
+    withSide.flatMap(({ edge, above }) => [
+      { key: sourceEnd(edge.id), at: atSide(boxKey(edge.from), String(above)) },
+      { key: targetEnd(edge.id), at: atSide(boxKey(edge.to), String(above)) },
+    ]),
+  );
+
   const routes: Route[] = [];
   for (const goingAbove of [true, false]) {
     const side = withSide
@@ -82,12 +109,24 @@ export function routeEdges(edges: readonly EdgeEnds[], obstacles: readonly Rect[
       const laneY = goingAbove ? top - LANE_GAP * (index + 1) : bottom + LANE_GAP * (index + 1);
 
       // The drops start at the box's own edge, so a line never runs up through what it leaves.
-      const attach = (rect: Rect) => ({
-        x: centreX(rect),
+      const attach = (rect: Rect, offset = 0) => ({
+        x: centreX(rect) + offset,
         y: goingAbove ? rect.y : rect.y + rect.height,
       });
-      const start = attach(edge.from);
-      const end = attach(edge.to);
+
+      /*
+       * A relation from a class to itself leaves and returns on either side of its own centre,
+       * rather than from the one point twice. Both ends attaching at the centre made the route
+       * go out to the lane and straight back down the line it had just drawn: a stub with no
+       * width, no visible direction, and its name stacked on top of itself.
+       *
+       * A quarter of the box either way is enough to read as a loop and stays inside the class
+       * it belongs to, so it cannot be mistaken for a line reaching some neighbour.
+       */
+      const loop = sameBox(edge.from, edge.to);
+      const spread = loop ? edge.from.width / 4 : 0;
+      const start = attach(edge.from, (offsets.get(sourceEnd(edge.id)) ?? 0) - spread);
+      const end = attach(edge.to, (offsets.get(targetEnd(edge.id)) ?? 0) + spread);
 
       routes.push({
         id: edge.id,
