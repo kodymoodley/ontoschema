@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { openApp, openExamples } from './ontoschema';
+import { openApp, openExamples, settledViewport } from './ontoschema';
 
 /**
  * The relation layer in the taxonomy view.
@@ -13,11 +13,38 @@ import { openApp, openExamples } from './ontoschema';
 // Only the relation edges: React Flow puts a test id on every edge, subclass links included.
 const relationEdges = (page: Page) => page.locator('[data-relation-name]');
 
+/*
+ * **Never read this count straight after a click.** Poll for the number you expect instead.
+ *
+ * A click schedules a React render; the count is only true once that render has been drawn, and
+ * a read taken in between can land while React Flow has torn the edge layer down and not yet
+ * rebuilt it. It comes back as 0 — not a wrong comparison, an empty one.
+ *
+ * That cost a red build: `adds a second class` read the count immediately after the Ctrl-click
+ * and got 0 where it wanted more than 5. Three other tests read their baseline the same way and
+ * failed in the more dangerous direction — a baseline of 0 turns `toBeGreaterThan(baseline)`
+ * into `toBeGreaterThan(0)`, which passes whatever happens, so they would have gone quietly
+ * green while checking nothing.
+ *
+ * Reading the count *after* a poll has settled is fine: nothing is pending by then.
+ */
+
 async function taxonomyOf(page: Page, example: string) {
   await openApp(page);
   await openExamples(page);
   await page.getByText(example).click();
   await page.getByRole('tab', { name: 'Taxonomy' }).click();
+  /*
+   * The camera is still moving when the view appears. The taxonomy lays itself out and frames
+   * the result, an animation that carries a node up to 294px across the pane -- so a click
+   * resolved against an early position can land on bare canvas, and a click on bare canvas
+   * clears the relation layer to nothing. That is the zero this file was failing on.
+   *
+   * Playwright waits for an element to hold still for two animation frames, which is not enough
+   * here: on a loaded two-core runner the frames are paced erratically and two samples can match
+   * while the camera is still travelling. Waiting for the transform itself is what settles it.
+   */
+  await settledViewport(page);
 }
 
 test('offers the toggle only where it applies, and starts off', async ({ page }) => {
@@ -190,8 +217,8 @@ test('adds a second class to the relations on Ctrl or Cmd click', async ({ page 
     .locator('[data-taxonomy-class="Venue"]')
     .first()
     .click({ modifiers: ['ControlOrMeta'] });
+  await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(forTrack);
   const forBoth = await relationEdges(page).count();
-  expect(forBoth).toBeGreaterThan(forTrack);
 
   // And it is genuinely both, not merely the second one: Venue alone draws fewer than the pair.
   await page.locator('[data-taxonomy-class="Venue"]').first().click();
@@ -206,6 +233,7 @@ test('takes a class back out when it is Ctrl clicked again', async ({ page }) =>
   const venue = page.locator('[data-taxonomy-class="Venue"]').first();
 
   await track.click();
+  await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(0);
   const forTrack = await relationEdges(page).count();
   await venue.click({ modifiers: ['ControlOrMeta'] });
   await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(forTrack);
@@ -225,6 +253,7 @@ test('narrows back to one class on a plain click', async ({ page }) => {
 
   const track = page.locator('[data-taxonomy-class="Track"]').first();
   await track.click();
+  await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(0);
   const forTrack = await relationEdges(page).count();
 
   await page
@@ -262,6 +291,7 @@ test('starts again when a class is chosen from the search box', async ({ page })
   await page.getByTestId('toggle-relations').click();
 
   await page.locator('[data-taxonomy-class="Track"]').first().click();
+  await expect.poll(() => relationEdges(page).count()).toBeGreaterThan(0);
   const forTrack = await relationEdges(page).count();
   await page
     .locator('[data-taxonomy-class="Venue"]')
