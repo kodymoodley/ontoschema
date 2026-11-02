@@ -162,7 +162,7 @@ out rather than drawing it over wherever the classes were dragged.
 | `npm run build`            | Typecheck, then production build to `dist/`                              |
 | `npm run preview`          | Serve the production build                                               |
 | `npm run typecheck`        | `tsc --noEmit`                                                           |
-| `npm run lint`             | ESLint, **including the architectural boundary rules**                   |
+| `npm run lint`             | Oxlint, **including the architectural boundary rules**                   |
 | `npm run format`           | Prettier write (`format:check` to check only)                            |
 | `npm test`                 | The unit tier: pure logic, in node                                       |
 | `npm run test:component`   | The component tier: React panels in jsdom                                |
@@ -206,21 +206,20 @@ validated in the tests by parsing their output with real, independent parsers.
 
 ### Development and testing
 
-| Library                                                | The specific job it does here                                                           |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| `vite` + `@vitejs/plugin-react`                        | Dev server and production bundler                                                       |
-| `typescript`                                           | Types across the whole codebase; `strict` plus `noUncheckedIndexedAccess`               |
-| `vitest`                                               | Unit and integration test runner (two projects: `unit` in Node, `integration` in jsdom) |
-| `@vitest/coverage-v8`                                  | Coverage for the domain, serialization and store layers                                 |
-| `jsdom`                                                | DOM for the integration tier, which exercises `localStorage` persistence                |
-| `@playwright/test`                                     | End-to-end tests driving a real Chromium: drag-and-drop, edge drawing, file downloads   |
-| `rdfxml-streaming-parser`                              | Parses generated RDF/XML back in tests — an independent check on our writer             |
-| `jsonld-streaming-parser`                              | Parses generated JSON-LD back in tests — likewise                                       |
-| `eslint`, `@eslint/js`, `typescript-eslint`, `globals` | Linting, and the `no-restricted-imports` rules that enforce the module boundaries       |
-| `eslint-plugin-react-hooks`                            | Catches hook misuse, including setState-in-effect                                       |
-| `prettier`                                             | Formatting                                                                              |
-| `husky` + `lint-staged`                                | Pre-commit hook: format, lint, and the unit tests affected by staged files              |
-| `@types/*`                                             | Type definitions for node, react, react-dom and n3                                      |
+| Library                         | The specific job it does here                                                           |
+| ------------------------------- | --------------------------------------------------------------------------------------- |
+| `vite` + `@vitejs/plugin-react` | Dev server and production bundler                                                       |
+| `typescript`                    | Types across the whole codebase; `strict` plus `noUncheckedIndexedAccess`               |
+| `vitest`                        | Unit and integration test runner (two projects: `unit` in Node, `integration` in jsdom) |
+| `@vitest/coverage-v8`           | Coverage for the domain, serialization and store layers                                 |
+| `jsdom`                         | DOM for the integration tier, which exercises `localStorage` persistence                |
+| `@playwright/test`              | End-to-end tests driving a real Chromium: drag-and-drop, edge drawing, file downloads   |
+| `rdfxml-streaming-parser`       | Parses generated RDF/XML back in tests — an independent check on our writer             |
+| `jsonld-streaming-parser`       | Parses generated JSON-LD back in tests — likewise                                       |
+| `oxlint`                        | Linting: the module-boundary rules, and React hook misuse such as setState-in-effect    |
+| `prettier`                      | Formatting                                                                              |
+| `husky` + `lint-staged`         | Pre-commit hook: format, lint, and the unit tests affected by staged files              |
+| `@types/*`                      | Type definitions for node, react, react-dom and n3                                      |
 
 ---
 
@@ -289,7 +288,7 @@ src/
 
 ### Dependency rules
 
-These are **enforced by ESLint**, not just documented. `npm run lint` fails on a violation.
+These are **enforced by oxlint**, not just documented. `npm run lint` fails on a violation.
 
 | Layer                   | May import                                                                                    | May **not** import                                   |
 | ----------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -302,8 +301,8 @@ These are **enforced by ESLint**, not just documented. `npm run lint` fails on a
 | UI modules              | `ontologymodel/`, `projectstore/`, `designsystem/`, `annotationvocabulary/`, `serialization/` | **each other**, and `appshell/`                      |
 | `appshell/`             | anything                                                                                      | —                                                    |
 
-To confirm the rules still bite, add `import { useProjectStore } from '../projectstore'` to any file
-in `src/serialization/` and run `npm run lint`.
+`tests/integration/lintBoundaries.test.ts` checks that every one of these rules still bites: it
+writes imports that cross each boundary and fails if any of them goes unreported.
 
 Two consequences worth calling out:
 
@@ -379,7 +378,7 @@ It is not part of CI, because it needs a Python toolchain the rest of the projec
 - **CI** — `.github/workflows/ci.yml` runs typecheck, lint, format check, build, unit, integration
   and Playwright on every push to `main` and every pull request, with the Playwright browser cached
   and the HTML report uploaded on failure.
-- **Pre-commit** — `.husky/pre-commit` runs `lint-staged` (Prettier then `eslint --fix` on staged
+- **Pre-commit** — `.husky/pre-commit` runs `lint-staged` (Prettier then `oxlint --fix` on staged
   files) followed by `vitest related` for the unit tests affected by those files. Integration and
   e2e are left to CI so committing stays quick.
 
