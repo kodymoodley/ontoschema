@@ -17,15 +17,40 @@ updates:
       # grouped bump is still verified end to end.
       react:
         patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+      # `typescript` is in here with `typescript-eslint`, for the same reason `@stryker-mutator/*`
+      # is grouped below: the linter's peer range is what decides which compiler versions can be
+      # installed at all. Grouped, a compiler major arrives alongside the linter release that
+      # accepts it, rather than as a pull request that cannot resolve.
       tooling:
         patterns:
-          ['eslint*', '@eslint/*', 'typescript-eslint', 'prettier', 'vite', 'vitest', '@vitest/*']
+          [
+            'eslint*',
+            '@eslint/*',
+            'typescript',
+            'typescript-eslint',
+            'prettier',
+            'vite',
+            'vitest',
+            '@vitest/*',
+          ]
       # `@stryker-mutator/*` is here as one pattern rather than left ungrouped, because its
       # packages peer-depend on each other at an exact version. Bumping the core alone is not a
       # partial upgrade, it is an unresolvable tree: `npm ci` fails outright. They move together
       # or not at all.
       testing:
         patterns: ['@playwright/*', '@testing-library/*', '@stryker-mutator/*']
+
+    ignore:
+      # TypeScript majors are held back until `typescript-eslint` accepts them. As of 8.68.0 --
+      # and of its 8.68.1 alphas -- it still declares `typescript >=4.8.4 <6.1.0`, so 7.0.2
+      # cannot be installed beside it: `npm ci` fails to build a tree at all, and every attempt
+      # spends CI minutes on a run that cannot pass.
+      #
+      # Delete this rule as soon as `typescript-eslint` ships a release whose typescript peer
+      # range admits the next major. Check with:
+      #   npm view typescript-eslint@latest peerDependencies
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /
