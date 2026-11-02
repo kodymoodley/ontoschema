@@ -19,7 +19,7 @@ to ignore. Run it locally before anything that touches the canvas, the store or 
 
 ## The architectural rules are enforced, not suggested
 
-`eslint.config.js` encodes the module boundaries. `npm run lint` fails if you break them.
+`.oxlintrc.json` encodes the module boundaries. `npm run lint` fails if you break them.
 
 | Layer                   | May import                                | May **not** import              |
 | ----------------------- | ----------------------------------------- | ------------------------------- |
@@ -35,8 +35,8 @@ If two UI modules need to agree on something, it belongs in `projectstore/` (see
 `dragpayload.ts` and `pendingConnection` for the two existing examples), or the composition
 belongs in `appshell/`.
 
-To check the rules still bite, add `import { useProjectStore } from '../projectstore'` to any
-file under `src/serialization/` and run `npm run lint`.
+`tests/integration/lintBoundaries.test.ts` checks that every one of these rules still bites: it
+writes imports that cross each boundary and fails if any of them goes unreported.
 
 ## Which test tier to use
 

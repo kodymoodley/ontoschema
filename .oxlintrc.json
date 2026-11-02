@@ -1,0 +1,794 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+
+  /*
+   * Architectural boundaries are enforced here, not merely documented in the README.
+   *
+   *   annotationvocabulary  leaf, pure data
+   *   ontologymodel         pure; may use annotationvocabulary only
+   *   serialization         pure; may use ontologymodel + annotationvocabulary only
+   *   search                pure; may use ontologymodel + annotationvocabulary only
+   *   designsystem          leaf UI primitives; imports nothing from src/
+   *   projectstore          app state; may use ontologymodel + annotationvocabulary
+   *   <ui modules>          may use the layers above, never each other
+   *   appshell              the single composition point, may import anything
+   *
+   * `npm run lint` fails if any of these is violated, and tests/lint/boundaries.test.ts proves
+   * that it still does.
+   *
+   * Each module appears twice in an import group, as the folder and as everything inside it:
+   * `../projectstore` resolves through the module's index, so the glob for the folder's contents
+   * alone does not match it.
+   *
+   * The rules are listed one by one rather than taken from oxlint's categories. They are exactly
+   * what ESLint's and typescript-eslint's recommended sets applied before the move, so switching
+   * linters changed the tool and not the policy. Three of those rules have no oxlint equivalent
+   * and need none: `no-octal` and `no-dupe-args` are syntax errors in module code, which the
+   * parser already rejects, and React's `config` and `gating` rules check settings for the
+   * React Compiler, which this project does not use.
+   */
+  "plugins": ["typescript", "react"],
+  "categories": { "correctness": "off" },
+
+  /*
+   * Build output and tool scratch space. `.stryker-tmp` is a copy of the whole repository that
+   * mutation testing works in, and it is left behind when a run crashes -- linting it would
+   * report every finding twice, for whoever last ran `npm run mutation` and for no one else.
+   */
+  "ignorePatterns": [
+    "dist",
+    "coverage",
+    "playwright-report",
+    "test-results",
+    "node_modules",
+    ".stryker-tmp",
+    "mutation"
+  ],
+
+  "rules": {
+    "eslint/for-direction": "error",
+    "eslint/no-async-promise-executor": "error",
+    "eslint/no-case-declarations": "error",
+    "eslint/no-compare-neg-zero": "error",
+    "eslint/no-cond-assign": "error",
+    "eslint/no-constant-binary-expression": "error",
+    "eslint/no-constant-condition": "error",
+    "eslint/no-control-regex": "error",
+    "eslint/no-debugger": "error",
+    "eslint/no-delete-var": "error",
+    "eslint/no-dupe-else-if": "error",
+    "eslint/no-duplicate-case": "error",
+    "eslint/no-empty": "error",
+    "eslint/no-empty-character-class": "error",
+    "eslint/no-empty-pattern": "error",
+    "eslint/no-empty-static-block": "error",
+    "eslint/no-ex-assign": "error",
+    "eslint/no-extra-boolean-cast": "error",
+    "eslint/no-fallthrough": "error",
+    "eslint/no-global-assign": "error",
+    "eslint/no-invalid-regexp": "error",
+    "eslint/no-irregular-whitespace": "error",
+    "eslint/no-loss-of-precision": "error",
+    "eslint/no-misleading-character-class": "error",
+    "eslint/no-nonoctal-decimal-escape": "error",
+    "eslint/no-prototype-builtins": "error",
+    "eslint/no-regex-spaces": "error",
+    "eslint/no-self-assign": "error",
+    "eslint/no-shadow-restricted-names": "error",
+    "eslint/no-sparse-arrays": "error",
+    "eslint/no-unassigned-vars": "error",
+    "eslint/no-unexpected-multiline": "error",
+    "eslint/no-unsafe-finally": "error",
+    "eslint/no-unsafe-optional-chaining": "error",
+    "eslint/no-unused-labels": "error",
+    "eslint/no-unused-private-class-members": "error",
+    "eslint/no-useless-assignment": "error",
+    "eslint/no-useless-backreference": "error",
+    "eslint/no-useless-catch": "error",
+    "eslint/no-useless-escape": "error",
+    "eslint/preserve-caught-error": "error",
+    "eslint/require-yield": "error",
+    "eslint/use-isnan": "error",
+    "eslint/valid-typeof": "error",
+    "eslint/no-var": "error",
+    "eslint/prefer-const": "error",
+    "eslint/prefer-rest-params": "error",
+    "eslint/prefer-spread": "error",
+
+    "typescript/ban-ts-comment": "error",
+    "eslint/no-array-constructor": "error",
+    "typescript/no-duplicate-enum-values": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-extra-non-null-assertion": "error",
+    "typescript/no-misused-new": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-non-null-asserted-optional-chain": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-this-alias": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-declaration-merging": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "eslint/no-unused-expressions": "error",
+    "typescript/no-wrapper-object-types": "error",
+    "typescript/prefer-as-const": "error",
+    "typescript/prefer-namespace-keyword": "error",
+    "typescript/triple-slash-reference": "error",
+
+    "typescript/no-unused-vars": [
+      "error",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+    ],
+    "typescript/consistent-type-imports": ["error", { "prefer": "type-imports" }],
+    "eslint/eqeqeq": ["error", "always"],
+    "eslint/no-console": ["warn", { "allow": ["warn", "error"] }]
+  },
+
+  "overrides": [
+    // TypeScript checks these itself, so they only earn their place on plain JavaScript.
+    {
+      "files": ["**/*.{js,mjs,cjs}"],
+      "env": { "node": true },
+      "rules": {
+        "eslint/constructor-super": "error",
+        "eslint/getter-return": "error",
+        "eslint/no-class-assign": "error",
+        "eslint/no-const-assign": "error",
+        "eslint/no-dupe-class-members": "error",
+        "eslint/no-dupe-keys": "error",
+        "eslint/no-func-assign": "error",
+        "eslint/no-import-assign": "error",
+        "eslint/no-new-native-nonconstructor": "error",
+        "eslint/no-obj-calls": "error",
+        "eslint/no-redeclare": "error",
+        "eslint/no-setter-return": "error",
+        "eslint/no-this-before-super": "error",
+        "eslint/no-undef": "error",
+        "eslint/no-unreachable": "error",
+        "eslint/no-unsafe-negation": "error",
+        "eslint/no-with": "error"
+      }
+    },
+
+    {
+      "files": ["src/**/*.tsx"],
+      "rules": {
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "warn",
+        "react/static-components": "error",
+        "react/use-memo": "error",
+        "react/preserve-manual-memoization": "error",
+        "react/incompatible-library": "warn",
+        "react/immutability": "error",
+        "react/globals": "error",
+        "react/refs": "error",
+        "react/set-state-in-effect": "error",
+        "react/error-boundaries": "error",
+        "react/purity": "error",
+        "react/set-state-in-render": "error",
+        "react/unsupported-syntax": "warn"
+      }
+    },
+
+    {
+      "files": ["src/ontologymodel/**/*.ts", "src/annotationvocabulary/**/*.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "react",
+                  "react-dom",
+                  "react/*",
+                  "react-dom/*",
+                  "@xyflow/react",
+                  "@xyflow/*",
+                  "zustand",
+                  "zustand/*"
+                ],
+                "message": "The domain layer must stay framework-agnostic: no React, canvas or store imports here."
+              },
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**",
+                  "**/projectstore",
+                  "**/projectstore/**",
+                  "**/designsystem",
+                  "**/designsystem/**",
+                  "**/appshell",
+                  "**/appshell/**"
+                ],
+                "message": "The domain layer must not depend on UI or app-state modules."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    // The example schemas are data built through the model, and nothing more.
+    {
+      "files": ["src/examplelibrary/**/*.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "react",
+                  "react-dom",
+                  "react/*",
+                  "react-dom/*",
+                  "@xyflow/react",
+                  "@xyflow/*",
+                  "zustand",
+                  "zustand/*"
+                ],
+                "message": "The domain layer must stay framework-agnostic: no React, canvas or store imports here."
+              },
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**",
+                  "**/projectstore",
+                  "**/projectstore/**",
+                  "**/designsystem",
+                  "**/designsystem/**",
+                  "**/appshell",
+                  "**/appshell/**"
+                ],
+                "message": "examplelibrary/ builds ontologies; it must not reach into UI or app state."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/serialization/**/*.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "react",
+                  "react-dom",
+                  "react/*",
+                  "react-dom/*",
+                  "@xyflow/react",
+                  "@xyflow/*",
+                  "zustand",
+                  "zustand/*"
+                ],
+                "message": "The domain layer must stay framework-agnostic: no React, canvas or store imports here."
+              },
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**",
+                  "**/projectstore",
+                  "**/projectstore/**",
+                  "**/designsystem",
+                  "**/designsystem/**",
+                  "**/appshell",
+                  "**/appshell/**"
+                ],
+                "message": "Serialization depends on the domain model only, never on UI or app state."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/search/**/*.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "react",
+                  "react-dom",
+                  "react/*",
+                  "react-dom/*",
+                  "@xyflow/react",
+                  "@xyflow/*",
+                  "zustand",
+                  "zustand/*"
+                ],
+                "message": "The domain layer must stay framework-agnostic: no React, canvas or store imports here."
+              },
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**",
+                  "**/projectstore",
+                  "**/projectstore/**",
+                  "**/designsystem",
+                  "**/designsystem/**",
+                  "**/appshell",
+                  "**/appshell/**"
+                ],
+                "message": "Search depends on the domain model only, so the same ranking can serve an imported vocabulary later."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/designsystem/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**",
+                  "**/projectstore",
+                  "**/projectstore/**",
+                  "**/appshell",
+                  "**/appshell/**",
+                  "**/ontologymodel",
+                  "**/ontologymodel/**",
+                  "**/annotationvocabulary",
+                  "**/annotationvocabulary/**",
+                  "**/serialization",
+                  "**/serialization/**"
+                ],
+                "message": "designsystem/ is a leaf: it must not import other src/ modules."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    // A UI module may not import any sibling UI module; it goes through the store or appshell.
+    {
+      "files": ["src/canvas/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**"
+                ],
+                "message": "UI modules are self-contained: canvas/ must not import a sibling UI module. Share through projectstore/ or compose in appshell/."
+              },
+              {
+                "group": ["**/appshell", "**/appshell/**"],
+                "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/classeditor/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**"
+                ],
+                "message": "UI modules are self-contained: classeditor/ must not import a sibling UI module. Share through projectstore/ or compose in appshell/."
+              },
+              {
+                "group": ["**/appshell", "**/appshell/**"],
+                "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/relationeditor/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**"
+                ],
+                "message": "UI modules are self-contained: relationeditor/ must not import a sibling UI module. Share through projectstore/ or compose in appshell/."
+              },
+              {
+                "group": ["**/appshell", "**/appshell/**"],
+                "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/taxonomytree/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**"
+                ],
+                "message": "UI modules are self-contained: taxonomytree/ must not import a sibling UI module. Share through projectstore/ or compose in appshell/."
+              },
+              {
+                "group": ["**/appshell", "**/appshell/**"],
+                "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/annotationpanel/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**"
+                ],
+                "message": "UI modules are self-contained: annotationpanel/ must not import a sibling UI module. Share through projectstore/ or compose in appshell/."
+              },
+              {
+                "group": ["**/appshell", "**/appshell/**"],
+                "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/ontologymetadata/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**"
+                ],
+                "message": "UI modules are self-contained: ontologymetadata/ must not import a sibling UI module. Share through projectstore/ or compose in appshell/."
+              },
+              {
+                "group": ["**/appshell", "**/appshell/**"],
+                "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/exportpanel/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**"
+                ],
+                "message": "UI modules are self-contained: exportpanel/ must not import a sibling UI module. Share through projectstore/ or compose in appshell/."
+              },
+              {
+                "group": ["**/appshell", "**/appshell/**"],
+                "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/projectswitcher/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**"
+                ],
+                "message": "UI modules are self-contained: projectswitcher/ must not import a sibling UI module. Share through projectstore/ or compose in appshell/."
+              },
+              {
+                "group": ["**/appshell", "**/appshell/**"],
+                "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["src/entitysearch/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**"
+                ],
+                "message": "UI modules are self-contained: entitysearch/ must not import a sibling UI module. Share through projectstore/ or compose in appshell/."
+              },
+              {
+                "group": ["**/appshell", "**/appshell/**"],
+                "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": ["tests/**/*.ts", "**/*.test.ts", "**/*.test.tsx"],
+      "rules": { "eslint/no-restricted-imports": "off", "eslint/no-console": "off" }
+    },
+
+    // Build scripts are Node programs, not browser or app code.
+    {
+      "files": ["scripts/**/*.mjs"],
+      "rules": { "eslint/no-console": "off" }
+    }
+  ]
+}
