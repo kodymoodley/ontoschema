@@ -170,6 +170,8 @@ test('still draws a relation between two classes across the gap', async ({ page 
 test('draws it in the taxonomy view too, with width', async ({ page }) => {
   await openSelfRelating(page);
   await page.getByRole('tab', { name: 'Taxonomy' }).click();
+  // The taxonomy frames itself on arrival; clicking mid-animation lands on bare canvas.
+  await settledViewport(page);
   await page.getByTestId('toggle-relations').click();
   await page.locator('[data-taxonomy-class="Category"]').first().click();
 

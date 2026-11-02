@@ -142,6 +142,8 @@ ex:assesses a owl:ObjectProperty ; rdfs:domain ex:Credit ; rdfs:range ex:Feature
 test('separates them in the taxonomy view too', async ({ page }) => {
   await openPair(page);
   await page.getByRole('tab', { name: 'Taxonomy' }).click();
+  // The taxonomy frames itself on arrival; clicking mid-animation lands on bare canvas.
+  await settledViewport(page);
   await page.getByTestId('toggle-relations').click();
   await page.locator('[data-taxonomy-class="Credit"]').first().click();
 
