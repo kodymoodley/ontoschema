@@ -42,16 +42,29 @@ document left behind. The inspector is one scrolling panel that opens on selecti
 its metadata is an ordinary form with the vocabulary behind a switch, and both side panels fold
 away. The audit is done and every finding in [AUDIT.md](AUDIT.md) is closed.
 
-**One item is sequenced and it is not ready to start**, which is the point of saying so here:
+**The owner's November wishlist comes first** (todos 38–43). Each is specified in full in its
+theme section below. Smallest and most self-contained first, and the item that has to be measured
+before it can be designed last:
 
-1. **`owl:imports`, term reuse and read-only imported terms** (todo 10) — last by decision rather
-   than by size. It is the largest new dependency surface on the list and the only item that makes
-   this tool depend on vocabularies it does not control. It wants a design note before any code;
-   most of that note is already written, under
-   [Resolving external vocabularies](#resolving-external-vocabularies).
+1. **Snap a relation to the class under the pointer** (todo 39, **S**) — the one gesture every
+   relation starts with, and today it fails silently unless you let go within 20 pixels of a dot.
+2. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
+   meant, and reuse already exists; this offers it at the moment a name collides.
+3. **Save straight back to the file you opened, and tell Save from Export** (todos 43 and 42,
+   **M**) — one piece of work, because once Save writes to a file the two menu items stop
+   looking alike. Five decisions first, listed with the two items.
+4. **Hide and show relations** (todo 38, **S–M**) — wants one decision first: what the switch
+   hides, and how it relates to the subschema filter already on the list.
+5. **Untangle the layout** (todo 40, **M–L**) — **measure first**. Dagre already minimises
+   crossings, so the first job is to find where the crossings that remain actually come from.
 
-**Filed, and deliberately not sequenced.** Neither is a commitment until it appears above:
+**Parked by the owner** on 2026-11-02, in favour of the list above. None is a commitment until it
+appears there again:
 
+- **`owl:imports`, term reuse and read-only imported terms** (todo 10) — the largest new
+  dependency surface on the list and the only item that makes this tool depend on vocabularies it
+  does not control. It wants a design note before any code; most of that note is already written,
+  under [Resolving external vocabularies](#resolving-external-vocabularies).
 - **Harden the layout annotation** (todo 20) — owed work rather than wanted work. The positions
   shipped with the happy path tested and little else, and the entry below lists exactly what is
   untested so the debt stays legible. Parked at the back of the queue by the owner.
@@ -251,6 +264,82 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > Nothing is blocked in the meantime. Named shapes stay addressable, so whichever way it goes, the
 > constraints attach to shapes that already exist.
 
+### Tell Save from Export (todo 42)
+
+**Size S, done with todo 43.** The file menu has **Save as…** and **Export…**, and they open the
+same dialog: a list of formats, a preview, and a download button on each. Only the list differs,
+and one sentence at the top. So they read as the same action twice, and the difference that
+matters is not visible from the menu: a saved file opens here again, and an exported one does not.
+
+**What it should do.** Once todo 43 gives **Save** its usual meaning, the menu explains itself:
+
+- **File › Save** (`Ctrl`/`Cmd`+`S`) writes the schema back to the file it came from.
+- **File › Save as…** writes it to a new `.ttl`, `.rdf` or `.owl` file, and Save writes there
+  from then on.
+- **File › Export for other tools…** writes the SHACL shapes on their own for a validator,
+  JSON-LD, or a Mermaid diagram for documentation. The dialog's title and each entry say which
+  tool the file is for, rather than only which format it is in.
+
+**Done when:** the menu reads as above, someone new can tell which item keeps their work without
+opening either, and the README's _Saving, and exporting_ section says the same thing.
+
+**To decide first:** the wording of the export item. The recommendation is **Export for other
+tools…**, because it says what the file is for, which is the question the person is asking.
+
+### Save straight back to the file you opened (todo 43)
+
+**Size M.** Opening a `.ttl` reads a copy of it into the browser. Every edit is kept, but in the
+browser's `localStorage`, not in the file. Getting the changes back into `schema.ttl` means
+**Save as…**, which downloads a new file, usually into Downloads and often as `schema (1).ttl`,
+and then moving it over the original by hand. The file in the repository goes stale, and it is
+easy to lose track of which copy is current.
+
+**What it should do.** Remember which file a schema was opened from, and write changes back to it.
+
+- **Opening** uses the browser's file picker that can grant write access, so the app keeps a
+  handle on the file rather than a one-off copy of its contents.
+- **Save** writes the schema back to that file, in the format it already has: a `.ttl` stays
+  Turtle, and an `.rdf` or `.owl` stays RDF/XML.
+- **The header** shows the file's name, and whether there are changes not yet written to it.
+- **`localStorage` stays** the working copy and the safety net, exactly as now, so closing the tab
+  still loses nothing.
+- **Only one module knows about file handles**, the way `projectstore/persistence.ts` is the only
+  one that knows about storage. That keeps a desktop shell, if one is ever built, a swap of two
+  small modules.
+
+**Browser support.** This is the File System Access API, available in desktop Chromium browsers
+such as Chrome and Edge. In Firefox and Safari, Save falls back to downloading a file, as Save as
+does today, and the menu says **Download** there rather than promising something it cannot do.
+
+**Two rules that keep it safe:**
+
+- **A foreign document is not overwritten silently.** Opening a file written elsewhere keeps what
+  this app models and drops the rest, such as individuals and restrictions, and the report says
+  so. Writing that file back would delete what was dropped. When the report was not empty, the
+  first Save asks first, names what will be lost, and offers Save as… as the default.
+- **A file changed on disk is not overwritten silently.** If the file was modified since it was
+  opened or last saved, by an editor or a `git pull`, Save warns before replacing it.
+
+**Done when:**
+
+- In Chrome and Edge: open a `.ttl`, edit, press `Ctrl`+`S`, and the change is in the file on
+  disk. Tested end to end with the browser's file picker stubbed, since automated browsers cannot
+  drive the real one.
+- In Firefox and Safari, Save downloads a file and is labelled accordingly.
+- Both safety rules are tested.
+- A project that was never opened from a file behaves exactly as it does now.
+
+**To decide first:**
+
+1. **Explicit Save, or autosave to the file?** The recommendation is explicit Save. The browser
+   copy already autosaves, and a file in a repository should change when its owner says so.
+2. **Is the link to the file remembered across a reload?** The handle can be kept, but the
+   browser asks for permission again after a reload, so reopening would cost one click.
+3. **One file per project.** A workspace holds several projects, so each project remembers its
+   own file, and switching project switches file.
+4. **What happens when the file has gone,** because it was moved, renamed or deleted: fall back to
+   Save as…, and say why.
+
 ### Resolving external vocabularies
 
 **Decided: vocabularies are bundled, and refreshed at build time — the browser never fetches one.**
@@ -390,6 +479,79 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Subschema filter** — the first thing that bites past about thirty classes, and cheaper than any amount of auto-layout, because hiding is the only thing that scales. Do it before the layout and grouping items below; it may make them unnecessary. Narrow the canvas to a chosen set of classes and relations, or to one class and what it touches, and hide the rest. The answer to a spaghetti diagram that no amount of layout fixes, and the only thing that actually scales. _Was listed twice: also appeared under Editing workflow as "filter schema for subschemas"._ | M    |
 | **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | M    |
 
+### Hide and show relations (todo 38)
+
+**Size S–M.** The schema view draws every relation, all the time. Past a couple of dozen classes,
+the lines and their labels cover the classes they connect, and there is no way to put them away
+while you work on the classes themselves: arranging them, reading their attributes, renaming.
+
+**What it should do.** A **Relations** switch in the canvas toolbar, beside the layout button,
+with a keyboard shortcut. Off, the schema view draws classes only. On, it draws everything, as
+now. It is a way of looking at the schema, not a change to it.
+
+**Done when:**
+
+- The switch hides and shows every relation and its label in the schema view. The taxonomy view's
+  relation layer is unaffected.
+- Drawing a relation while they are hidden turns them back on, so nothing is ever created out of
+  sight.
+- Nothing in a saved file, an export or the undo history changes when it is used.
+- The setting is remembered per project in the browser, and survives a reload.
+- It works from the keyboard, and the button says whether relations are showing (`aria-pressed`).
+
+**To decide first:** whether the switch has a middle setting, "only the selected class's
+relations". That is the cheapest slice of the **subschema filter** in the table above. The
+recommendation is a plain on/off switch here, with "selected class only" built as the first step
+of the subschema filter rather than as a third state of this switch.
+
+### Snap a relation to the class under the pointer (todo 39)
+
+**Size S.** A relation is drawn by dragging from a dot on one class to a dot on another. The dots
+light up as you approach, but the connection only lands if you let go within 20 pixels of one,
+React Flow's default `connectionRadius`. Let go over the body of the class, or near a corner, and
+the drag ends with nothing drawn and no message. On a large class the four dots are far apart, so
+most of the class is a miss.
+
+**What it should do.** While a relation is being dragged, the whole of a class is the drop
+target. The side nearest the pointer lights up, and letting go anywhere over the class connects
+to it. The side matters less than it looks: the canvas already re-routes every edge to whichever
+sides the two classes face.
+
+**Done when:**
+
+- Letting go anywhere over a class connects to it, including its middle and corners, at any zoom.
+- The dot that lights up is always the one the new relation attaches to.
+- Letting go over empty canvas still cancels, as now.
+- Dragging back onto the starting class still draws a relation from a class to itself.
+- It works by touch as well as with a mouse.
+
+### Untangle the layout (todo 40)
+
+**Size M–L, after measuring.** _Tidy up_ (Shift+A) ranks the classes with dagre, left to right by
+relation. On a dense schema the result still has relations crossing one another, lines passing
+through classes, and labels piling up where lines converge.
+
+**What is known.** Dagre already minimises crossings between ranks. What it cannot see is
+everything that happens after it: the side each edge attaches to is chosen once the classes are
+placed, edges are drawn as right angles that do not avoid the boxes in their way, and disconnected
+groups are laid out apart and packed together. So the crossings that remain may come from the
+routing rather than the ranking, and a stronger ranking algorithm would not remove those.
+
+**What it should do.** Measure first: count crossings and lines through classes on the five
+example schemas and on two or three real imported ones, before and after Shift+A. Then take
+whichever remedy the numbers point to:
+
+- **Ranking.** ELK's layered algorithm (`elkjs`) minimises crossings harder than dagre. Its
+  package is several times the size of dagre's, so it would load on demand, the way the RDF/XML
+  parser does, and only when the button is pressed.
+- **Routing.** Lines that go around classes rather than through them. That is the same work as
+  **edge label collision avoidance** above, and the two may turn out to be one item.
+
+Either way it stays **deterministic** and one undo away, as the current button is.
+
+**Done when:** the measurement is written down here, the chosen change reduces crossings on those
+schemas by an amount stated beside it, and the startup bundle does not grow.
+
 ## Editing workflow
 
 | Item                                                                                                                                                                                                                                                                                                                                     | Size |
@@ -397,6 +559,45 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Multi-select** — box-select several classes, then move or delete them together.                                                                                                                                                                                                                                                        | M    |
 | **Duplicate a class** — with its attributes, as a starting point for a sibling.                                                                                                                                                                                                                                                          | S    |
 | **Schema diffing (given two loaded schemas) to compute and generate changelog entries using the Keep a Changelog standard** — governance for a vocabulary that other teams depend on. Sized up from S: it needs two ontologies loaded at once, a structural diff that survives renames, and a mapping from diff to changelog categories. | L    |
+
+### Reuse a term instead of minting `name2` (todo 41)
+
+**Size S–M.** Type a name that is already taken and the app quietly appends a number. Adding an
+attribute `name` to a second class creates `name2`. Creating a relation `hasOwner` in the
+connection dialog when one exists creates `hasOwner2`. Renaming a class to `Vehicle` when there is
+one already gives `Vehicle2`. The number is almost never what was meant. The person usually wanted
+the existing term, and the schema now has two properties where it should have one, with two sets
+of SHACL shapes and data that will be mapped against either.
+
+Reuse already exists: dragging an attribute from the pool onto a class, or picking a relation from
+the list in the connection dialog. It is just not offered at the moment a name is typed, which is
+when the collision happens.
+
+**What it should do.** When a typed name matches an existing term, say so before anything is
+created, and offer the existing term:
+
+- **Adding an attribute** with an existing attribute's name offers "Use the existing `name`", and
+  that is the default. It does exactly what dragging it from the pool does.
+- **Creating a relation** with an existing relation's name selects that relation in the dialog's
+  list, which is already how reuse is offered there.
+- **Renaming** to a name already in use is refused with a message that names the term holding it
+  ("`Vehicle` is already a class"), and the field stays open. Merging two terms into one is a
+  different and larger feature.
+- **A name held by the other kind of property** is refused and explained. Attributes and
+  relations share one namespace, and an attribute cannot reuse a relation.
+
+**Done when:**
+
+- No path where a person typed the name produces a numbered name.
+- Typing an existing attribute's name on a class reuses it, and the inspector shows it as reused.
+- Typing an existing relation's name in the connection dialog switches the dialog to reuse.
+- Renaming to a taken name shows an inline error and changes nothing.
+- Each reuse is a single step on the undo stack.
+
+**To decide first:** whether names nobody typed keep their numbers. Dropping a second fresh
+**Class** from the palette, or adding an attribute without naming it, still needs a free name.
+The recommendation is to keep `Class2` and `newAttribute2` there, because no one chose those names,
+and to stop numbering everywhere else.
 
 ### Small screens
 
@@ -445,9 +646,11 @@ change how the tool is delivered.
 
 What would genuinely justify a desktop build is filesystem and local-network access: `Ctrl`+`S`
 straight to `schema.ttl` rather than a downloads-folder dance, no `localStorage` quota, and
-reaching a GraphDB on the local network. None of those are on this roadmap, and the first is
-partly available already — the File System Access API gives a persistent file handle in Chromium
-browsers, with the existing download path as the fallback elsewhere.
+reaching a GraphDB on the local network. The first is now on this roadmap without a desktop
+build: the File System Access API gives a persistent file handle in Chromium browsers, with the
+existing download path as the fallback elsewhere. See
+[Save straight back to the file you opened](#save-straight-back-to-the-file-you-opened-todo-43).
+The other two are not on the roadmap.
 
 Against it: the touch and mobile work becomes dead weight; code signing, auto-update and a
 cross-platform build matrix are real ongoing costs for a deliberately lightweight tool; and "open
@@ -555,11 +758,17 @@ constraint authoring belongs in this tool at all. See the note under
 Filed into the sections above, each entry tagged with its number so the two can be matched. The
 list as originally written is in the git history; ask and it comes back.
 
-| #   | Now lives in       | As                                                                  | Size |
-| --- | ------------------ | ------------------------------------------------------------------- | ---- |
-| 9   | Modelling power    | Nine, three times over — 729 classes, enforced; parked as a project | L    |
-| 10  | Export and interop | Folded into the `owl:imports` item; its ranking comes from 29       | L    |
-| 20  | Export and interop | Harden the layout annotation — parked to the back of the queue      | S–M  |
+| #   | Now lives in           | As                                                                  | Size |
+| --- | ---------------------- | ------------------------------------------------------------------- | ---- |
+| 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project | L    |
+| 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29       | L    |
+| 20  | Export and interop     | Harden the layout annotation — parked to the back of the queue      | S–M  |
+| 38  | Canvas and readability | Hide and show relations                                             | S–M  |
+| 39  | Canvas and readability | Snap a relation to the class under the pointer                      | S    |
+| 40  | Canvas and readability | Untangle the layout — measure first                                 | M–L  |
+| 41  | Editing workflow       | Reuse a term instead of minting `name2`                             | S–M  |
+| 42  | Export and interop     | Tell Save from Export — done with 43                                | S    |
+| 43  | Export and interop     | Save straight back to the file you opened                           | M    |
 
 **Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37 — kept as numbers so a commit message naming one can still be resolved.
 
