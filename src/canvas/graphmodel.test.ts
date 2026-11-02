@@ -333,7 +333,8 @@ describe('how widely an attribute is used', () => {
 
   const rowsOf = (ontology: Ontology, classId: string) => {
     const node = schemaNodes(ontology).find((entry) => entry.id === classId);
-    return (node?.data as { attributes: { usedOnOtherClasses: number }[] }).attributes;
+    expect(node, `no node drawn for class ${classId}`).toBeDefined();
+    return (node!.data as { attributes: { usedOnOtherClasses: number }[] }).attributes;
   };
 
   it('counts nothing else when a property sits on one class alone', () => {
