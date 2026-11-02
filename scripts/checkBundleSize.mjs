@@ -87,7 +87,12 @@ const BUDGETS = {
  * almost none of whom ever look at an example.
  */
 const LAZY_BUDGETS = {
-  'rdfxml.js': 45,
+  /**
+   * 45 to 48 for n3 2.13, which no longer imports the `buffer` polyfill. The RDF/XML parser still
+   * does, so the polyfill moved out of the eager `rdf.js` and into this chunk: 38.2 to 45.5 here,
+   * 19.3 to 16.1 there. Opening the app got cheaper; only opening an RDF/XML file got dearer.
+   */
+  'rdfxml.js': 48,
   'examplelibrary.js': 32,
 };
 
