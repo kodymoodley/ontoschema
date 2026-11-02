@@ -54,8 +54,9 @@ designed last:
    relation starts with, and today it fails silently unless you let go within 20 pixels of a dot.
 3. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
    meant, and reuse already exists; this offers it at the moment a name collides.
-4. **Hide and show relations** (todo 38, **S–M**) — wants one decision first: what the switch
-   hides, and how it relates to the subschema filter already on the list.
+4. **Hide and show relations** (todo 38, **M**) — an eye on each row of the entities panel's
+   Relation tab, appearing on hover, that hides every line drawn with that relation. On touch
+   screens the eye appears on the selected row instead. Three decisions first, listed with it.
 5. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
    tidy layout, fanned out left to right or top to bottom, and animates the classes there. A
    different arrangement on every press, none of them worse than _Tidy up_. The engine is chosen
@@ -484,28 +485,59 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 
 ### Hide and show relations (todo 38)
 
-**Size S–M.** The schema view draws every relation, all the time. Past a couple of dozen classes,
-the lines and their labels cover the classes they connect, and there is no way to put them away
-while you work on the classes themselves: arranging them, reading their attributes, renaming.
+**Size M.** The schema view draws every relation, all the time. Past a couple of dozen classes,
+the lines and their labels cover the classes they connect, and there is no way to put any of them
+away. This works one relation at a time, so you can hide the relations that are in the way and
+keep the ones you are working on.
 
-**What it should do.** A **Relations** switch in the canvas toolbar, beside the layout button,
-with a keyboard shortcut. Off, the schema view draws classes only. On, it draws everything, as
-now. It is a way of looking at the schema, not a change to it.
+**What it should do.** Hiding lives in the entities panel's **Relation** tab, the tree of
+relations and their subrelations.
+
+- **Hover a row** and an eye icon fades in at its right-hand end: an open eye if the relation is
+  showing, a closed eye if it is hidden. It waits a moment before appearing, about 150 ms, then
+  fades in over about 150 ms. Running the pointer down the list therefore does not make every row
+  flicker. Move off the row and it fades out again.
+- **Away from the pointer the eye is not drawn at all.** The rows stay as clean as they are now.
+- **Click the eye** to hide every line drawn with that relation on the schema canvas, together
+  with its label. Click again to bring them back. The click does not select the row or start a
+  drag, so re-parenting by dragging still works exactly as now.
+- **A hidden row is still recognisable without hovering.** Its name is drawn dimmed, so the list
+  always says which relations are hidden while the eye itself stays out of sight.
+- **The canvas says when anything is hidden.** A small note in its toolbar reads "3 relations
+  hidden · Show all", so a hidden relation is never lost behind a panel that happens to be folded
+  away.
+
+**On touch screens**, where nothing can be hovered, the selected row takes the place of the
+hovered one. Tap a row to select it, as now, and its eye fades in. Tap the eye to toggle. Every
+other row stays clean, the dimmed names still show what is hidden, and "Show all" on the canvas
+brings everything back. The switch between the two behaviours is the CSS `hover` media feature,
+not the screen width, so a tablet with a mouse gets hover and a touch laptop gets the touch
+behaviour.
 
 **Done when:**
 
-- The switch hides and shows every relation and its label in the schema view. The taxonomy view's
-  relation layer is unaffected.
-- Drawing a relation while they are hidden turns them back on, so nothing is ever created out of
+- Hovering a row fades its eye in after the delay, and leaving fades it out. With reduced motion
+  turned on, it appears and disappears without the fade.
+- Toggling hides or shows every line of that relation on the schema canvas at once, without
+  moving any class. The taxonomy view is unaffected.
+- On a touch screen, the selected row shows its eye and tapping it toggles.
+- Drawing a new line with a hidden relation unhides that relation, so nothing is created out of
   sight.
-- Nothing in a saved file, an export or the undo history changes when it is used.
-- The setting is remembered per project in the browser, and survives a reload.
-- It works from the keyboard, and the button says whether relations are showing (`aria-pressed`).
+- Nothing in a saved file, an export or the undo history changes. The hidden set is remembered per
+  project in the browser and survives a reload.
+- It works from the keyboard. Focusing a row shows its eye as hovering does, and the eye is a
+  button that says what it will do ("Hide `hasOwner`") and whether it is pressed.
 
-**To decide first:** whether the switch has a middle setting, "only the selected class's
-relations". That is the cheapest slice of the **subschema filter** in the table above. The
-recommendation is a plain on/off switch here, with "selected class only" built as the first step
-of the subschema filter rather than as a third state of this switch.
+**To decide first:**
+
+1. **Subrelations.** Hiding `hasParticipant` could hide `hasDriver` beneath it as well. The
+   recommendation is yes, with the child's eye showing as hidden by its parent, because that is
+   how a hierarchy reads.
+2. **The Class tab.** An eye on a class row could hide every relation touching that class. The
+   recommendation is to leave the Class tab alone: hiding by class is the **subschema filter** in
+   the table above, and it should be built there once rather than twice.
+3. **Show all.** Whether the canvas note is enough, or the Relation tab also needs a "Show all"
+   at its head. The recommendation is the canvas note alone, to start with.
 
 ### Snap a relation to the class under the pointer (todo 39)
 
@@ -814,7 +846,7 @@ list as originally written is in the git history; ask and it comes back.
 | 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project | L    |
 | 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29       | L    |
 | 20  | Export and interop     | Harden the layout annotation — parked to the back of the queue      | S–M  |
-| 38  | Canvas and readability | Hide and show relations                                             | S–M  |
+| 38  | Canvas and readability | Hide and show relations, from the entities panel                    | M    |
 | 39  | Canvas and readability | Snap a relation to the class under the pointer                      | S    |
 | 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                     | L    |
 | 41  | Editing workflow       | Reuse a term instead of minting `name2`                             | S–M  |
