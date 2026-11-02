@@ -47,9 +47,10 @@ theme section below. Saving to the file comes first, as the owner's most urgent 
 the smallest and most self-contained, and the item that has to be measured before it can be
 designed last:
 
-1. **Save straight back to the file you opened, and tell Save from Export** (todos 43 and 42,
-   **M**) — one piece of work, because once Save writes to a file the two menu items stop
-   looking alike. Five decisions first, listed with the two items.
+1. **Edit a schema file in place, with autosave, and tell Save from Export** (todos 43 and 42,
+   **L**) — clone a repository, open its `.ttl` here, edit, and the file on disk keeps up, ready
+   for `git commit`. One piece of work with telling Save from Export, because once the file
+   saves itself the two menu items stop looking alike.
 2. **Snap a relation to the class under the pointer** (todo 39, **S**) — the one gesture every
    relation starts with, and today it fails silently unless you let go within 20 pixels of a dot.
 3. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
@@ -275,11 +276,13 @@ same dialog: a list of formats, a preview, and a download button on each. Only t
 and one sentence at the top. So they read as the same action twice, and the difference that
 matters is not visible from the menu: a saved file opens here again, and an exported one does not.
 
-**What it should do.** Once todo 43 gives **Save** its usual meaning, the menu explains itself:
+**What it should do.** Once todo 43 makes a schema save itself to its file, the menu explains
+itself:
 
-- **File › Save** (`Ctrl`/`Cmd`+`S`) writes the schema back to the file it came from.
-- **File › Save as…** writes it to a new `.ttl`, `.rdf` or `.owl` file, and Save writes there
-  from then on.
+- **No Save item is needed** for a schema linked to a file, because it saves on its own. The
+  header says so, and `Ctrl`/`Cmd`+`S` writes at once for anyone who presses it from habit.
+- **File › Save as…** writes the schema to a new `.ttl`, `.rdf` or `.owl` file and links it
+  there, so it saves itself to that file from then on.
 - **File › Export for other tools…** writes the SHACL shapes on their own for a validator,
   JSON-LD, or a Mermaid diagram for documentation. The dialog's title and each entry say which
   tool the file is for, rather than only which format it is in.
@@ -287,62 +290,104 @@ matters is not visible from the menu: a saved file opens here again, and an expo
 **Done when:** the menu reads as above, someone new can tell which item keeps their work without
 opening either, and the README's _Saving, and exporting_ section says the same thing.
 
-**To decide first:** the wording of the export item. The recommendation is **Export for other
-tools…**, because it says what the file is for, which is the question the person is asking.
+**Wording:** **Export for other tools…**, because it says what the file is for, which is the
+question the person is asking.
 
-### Save straight back to the file you opened (todo 43)
+### Edit a schema file in place, with autosave (todo 43)
 
-**Size M.** Opening a `.ttl` reads a copy of it into the browser. Every edit is kept, but in the
-browser's `localStorage`, not in the file. Getting the changes back into `schema.ttl` means
-**Save as…**, which downloads a new file, usually into Downloads and often as `schema (1).ttl`,
-and then moving it over the original by hand. The file in the repository goes stale, and it is
-easy to lose track of which copy is current.
+**Size L.** The workflow this serves: clone a repository, open `schemas/insurance.ttl` in
+OntoSchema, edit it, then `git add`, `git commit` and `git push`. No download, no copying files
+into the repository by hand, and colleagues doing the same on their own clones.
 
-**What it should do.** Remember which file a schema was opened from, and write changes back to it.
+Today, opening a `.ttl` reads a copy of it into the browser. Every edit is kept, but in the
+browser's `localStorage`, not in the file. Getting the changes back means **Save as…**, which
+downloads a new file, usually into Downloads and often as `insurance (1).ttl`, and then moving it
+over the original by hand. The file in the repository goes stale, and it is easy to lose track of
+which copy is current.
 
-- **Opening** uses the browser's file picker that can grant write access, so the app keeps a
-  handle on the file rather than a one-off copy of its contents.
-- **Save** writes the schema back to that file, in the format it already has: a `.ttl` stays
-  Turtle, and an `.rdf` or `.owl` stays RDF/XML.
-- **The header** shows the file's name, and whether there are changes not yet written to it.
-- **`localStorage` stays** the working copy and the safety net, exactly as now, so closing the tab
-  still loses nothing.
+**What it should do.** Link a schema to the file it came from, and keep that file up to date.
+
+- **Opening links the file.** File › Open… uses the browser's file picker that hands the app a
+  handle on the file, so it can write back to it later, not just read it once.
+- **Edits save themselves to the file**, about half a second after editing pauses, through the
+  same batching the browser copy already uses, and at once when the tab is hidden or closed.
+  `Ctrl`/`Cmd`+`S` writes immediately. Each write is atomic, because the browser writes a
+  temporary file and swaps it in, so git never sees a half-written file.
+- **The header says where the work is.** "Saved to insurance.ttl", "Saving…", or why it could not
+  save, beside the project's name.
+- **The link survives a reload.** The handle is kept in IndexedDB. With Chrome's "Allow on every
+  visit" permission, reopening needs no prompt at all; otherwise it costs one click.
+- **The app follows git.** When the file changes on disk, through `git pull`, `git checkout`,
+  `git stash` or another editor, the app reloads it. Chrome's `FileSystemObserver` reports the
+  change as it happens; where that is missing, the file is checked whenever the tab regains focus.
+- **`localStorage` stays the working copy** and the safety net, exactly as now.
+- **One file per project.** Each project remembers its own file, and switching project switches
+  file.
 - **Only one module knows about file handles**, the way `projectstore/persistence.ts` is the only
-  one that knows about storage. That keeps a desktop shell, if one is ever built, a swap of two
-  small modules.
+  one that knows about storage. A desktop shell, if one is ever built, swaps that module.
 
-**Browser support.** This is the File System Access API, available in desktop Chromium browsers
-such as Chrome and Edge. In Firefox and Safari, Save falls back to downloading a file, as Save as
-does today, and the menu says **Download** there rather than promising something it cannot do.
+**Output that works with git.** These rules decide whether a diff is reviewable and whether two
+colleagues' edits merge:
 
-**Two rules that keep it safe:**
+- **The same schema always gives the same file.** Measured: true today, byte for byte.
+- **Nothing is written until something changes.** Opening a file and closing it again leaves it
+  untouched, so `git status` stays clean.
+- **A small edit gives a small diff.** Measured: adding an attribute to the insurance example
+  changes 2 of its 889 lines.
+- **One class's position per line.** This is not true today, and it has to be. Every position
+  sits in one literal on one line, 857 characters long in the insurance example, so moving any
+  class rewrites that line. Two colleagues who each move a different class always get a merge
+  conflict, on a line nobody can read. Each class's position moves onto that class's own lines;
+  files in the old form keep opening. This is also most of todo 20, _Harden the layout
+  annotation_.
+- **LF line endings and a final newline**, whatever the operating system.
+
+**Three rules that keep it safe:**
 
 - **A foreign document is not overwritten silently.** Opening a file written elsewhere keeps what
   this app models and drops the rest, such as individuals and restrictions, and the report says
-  so. Writing that file back would delete what was dropped. When the report was not empty, the
-  first Save asks first, names what will be lost, and offers Save as… as the default.
-- **A file changed on disk is not overwritten silently.** If the file was modified since it was
-  opened or last saved, by an editor or a `git pull`, Save warns before replacing it.
+  so. Saving into that file would delete what was dropped, so autosave does not start until the
+  person agrees, with the report in front of them and **Save as a new file** as the default.
+- **Two changes at once are not settled silently.** If the file changes on disk while edits are
+  still waiting to be written, the app asks: keep these edits and write over the file, or take
+  the file and drop them. Real merging is git's job, not this app's.
+- **A file that has gone stops the autosave.** If it was moved, renamed or deleted, the header
+  says so and offers Save as….
+
+**Browser support.** The File System Access API is in desktop Chrome and Edge. Firefox and Safari
+have declined to implement it, so there the app works exactly as it does now: the browser copy
+saves itself, and saving a file downloads it. The header says the work is kept in this browser,
+rather than implying a file is up to date. For a colleague on Firefox or Safari the git workflow
+is not available. Only a desktop shell would bring it to them; see
+[Staying a web app](#staying-a-web-app).
+
+**Libraries, rather than reinventing them.** There is no single library for this; the platform
+itself is the new part. `browser-fs-access` from Google Chrome Labs, which Excalidraw uses, opens
+and saves files with a fallback for browsers without the API. `idb-keyval` keeps the file handle
+in IndexedDB. `FileSystemObserver` is native. The startup bundle stands at 206.0 of its 210 kB,
+so whatever does not fit there loads when a file is first linked.
+
+**Later, not now:** opening a whole cloned repository as a folder and choosing among its schema
+files, the way vscode.dev does, and installing the app so that double-clicking a `.ttl` opens it
+here.
 
 **Done when:**
 
-- In Chrome and Edge: open a `.ttl`, edit, press `Ctrl`+`S`, and the change is in the file on
-  disk. Tested end to end with the browser's file picker stubbed, since automated browsers cannot
-  drive the real one.
-- In Firefox and Safari, Save downloads a file and is labelled accordingly.
-- Both safety rules are tested.
-- A project that was never opened from a file behaves exactly as it does now.
+- In Chrome and Edge: open a `.ttl`, edit, and within a second the file on disk has the change,
+  and `git diff` shows only that change.
+- Opening a file and closing it without editing leaves it byte for byte the same.
+- After a reload the file is still linked, at the cost of one click at most.
+- Checking out another version of the file shows it in the app, within a second where the
+  observer exists and on returning to the tab where it does not.
+- Two branches that each move a different class merge without a conflict.
+- All three safety rules are tested.
+- Firefox and Safari behave as now, and the header says the work is kept in the browser.
+- End-to-end tests drive it with the browser's file pickers stubbed, since automated browsers
+  cannot drive the real ones.
 
-**To decide first:**
-
-1. **Explicit Save, or autosave to the file?** The recommendation is explicit Save. The browser
-   copy already autosaves, and a file in a repository should change when its owner says so.
-2. **Is the link to the file remembered across a reload?** The handle can be kept, but the
-   browser asks for permission again after a reload, so reopening would cost one click.
-3. **One file per project.** A workspace holds several projects, so each project remembers its
-   own file, and switching project switches file.
-4. **What happens when the file has gone,** because it was moved, renamed or deleted: fall back to
-   Save as…, and say why.
+**Decided.** Autosave to the file, by the owner on 2026-11-02, for the git workflow above. Taken
+as recommended: the link survives a reload, one file per project, and a missing file stops the
+autosave and offers Save as….
 
 ### Resolving external vocabularies
 
@@ -732,7 +777,7 @@ straight to `schema.ttl` rather than a downloads-folder dance, no `localStorage`
 reaching a GraphDB on the local network. The first is now on this roadmap without a desktop
 build: the File System Access API gives a persistent file handle in Chromium browsers, with the
 existing download path as the fallback elsewhere. See
-[Save straight back to the file you opened](#save-straight-back-to-the-file-you-opened-todo-43).
+[Edit a schema file in place, with autosave](#edit-a-schema-file-in-place-with-autosave-todo-43).
 The other two are not on the roadmap.
 
 Against it: the touch and mobile work becomes dead weight; code signing, auto-update and a
@@ -851,7 +896,7 @@ list as originally written is in the git history; ask and it comes back.
 | 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                     | L    |
 | 41  | Editing workflow       | Reuse a term instead of minting `name2`                             | S–M  |
 | 42  | Export and interop     | Tell Save from Export — done with 43                                | S    |
-| 43  | Export and interop     | Save straight back to the file you opened                           | M    |
+| 43  | Export and interop     | Edit a schema file in place, with autosave, for git                 | L    |
 
 **Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37 — kept as numbers so a commit message naming one can still be resolved.
 
