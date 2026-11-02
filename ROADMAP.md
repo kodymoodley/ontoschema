@@ -56,8 +56,10 @@ designed last:
    meant, and reuse already exists; this offers it at the moment a name collides.
 4. **Hide and show relations** (todo 38, **S–M**) — wants one decision first: what the switch
    hides, and how it relates to the subschema filter already on the list.
-5. **Untangle the layout** (todo 40, **M–L**) — **measure first**. Dagre already minimises
-   crossings, so the first job is to find where the crossings that remain actually come from.
+5. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
+   tidy layout, fanned out left to right or top to bottom, and animates the classes there. A
+   different arrangement on every press, none of them worse than _Tidy up_. The engine is chosen
+   by benchmark, and this reverses the earlier decision to keep the layout button deterministic.
 
 **Parked by the owner** on 2026-11-02, in favour of the list above. None is a commitment until it
 appears there again:
@@ -526,32 +528,80 @@ sides the two classes face.
 - Dragging back onto the starting class still draws a relation from a class to itself.
 - It works by touch as well as with a mouse.
 
-### Untangle the layout (todo 40)
+### Shuffle the layout (todo 40)
 
-**Size M–L, after measuring.** _Tidy up_ (Shift+A) ranks the classes with dagre, left to right by
-relation. On a dense schema the result still has relations crossing one another, lines passing
-through classes, and labels piling up where lines converge.
+**Size L.** _Tidy up_ (Shift+A) ranks the classes with dagre, left to right by relation, and gives
+the same answer every time. On a dense schema that answer still has relations crossing one
+another, lines passing through classes, and labels piling up where lines converge, and there is
+no way to ask for a different one.
 
-**What is known.** Dagre already minimises crossings between ranks. What it cannot see is
-everything that happens after it: the side each edge attaches to is chosen once the classes are
-placed, edges are drawn as right angles that do not avoid the boxes in their way, and disconnected
-groups are laid out apart and packed together. So the crossings that remain may come from the
-routing rather than the ranking, and a stronger ranking algorithm would not remove those.
+**What it should do.** A **Shuffle** button in the canvas toolbar, with a keyboard shortcut. One
+press rearranges the whole schema into a clean layered layout, fanned out **left to right** or
+**top to bottom**, and the classes glide to their new places rather than jumping, so you can
+follow where everything went. Each press gives a different arrangement. Press again until one
+reads well; undo goes back to the one before.
 
-**What it should do.** Measure first: count crossings and lines through classes on the five
-example schemas and on two or three real imported ones, before and after Shift+A. Then take
-whichever remedy the numbers point to:
+**Random, and tidy every time.** The randomness goes into the search, not into the result.
+Minimising crossings is a heuristic, and where it starts decides where it ends. Shuffle runs it
+from several random starting points at once, scores each result on crossings, lines through
+classes and total line length, and shows the best one not already shown. So every press is
+different, and no press is a scrambled mess: a shuffle never has more crossings than _Tidy up_
+has on the same schema.
 
-- **Ranking.** ELK's layered algorithm (`elkjs`) minimises crossings harder than dagre. Its
-  package is several times the size of dagre's, so it would load on demand, the way the RDF/XML
-  parser does, and only when the button is pressed.
-- **Routing.** Lines that go around classes rather than through them. That is the same work as
-  **edge label collision avoidance** above, and the two may turn out to be one item.
+**This reverses an earlier decision**, made by the owner on 2026-11-02. _Tidy up_ was built
+deterministic on the grounds that a second random roll had no reason to beat the first. Scoring
+answers that objection, because a roll is only shown if it is at least as tidy. _Tidy up_ stays
+exactly as it is, for when you want the same answer twice.
 
-Either way it stays **deterministic** and one undo away, as the current button is.
+**What current tools use**, researched on 2026-11-02:
 
-**Done when:** the measurement is written down here, the chosen change reduces crossings on those
-schemas by an amount stated beside it, and the startup bundle does not grow.
+- **Placing the classes.** ELK's layered algorithm (`elkjs`) is the standard. Mermaid 12 made it
+  its default, and D2 bundles it beside its own port of dagre. It takes a random seed, which is
+  exactly what a shuffle needs. Its cost is size: React Flow's comparison lists it at about 36
+  times dagre's.
+- **Drawing the lines.** libavoid, compiled to WebAssembly as `libavoid-js` and run in a Web
+  Worker, routes right-angle lines around boxes. React Flow's own example and JointJS's router
+  both use it. That would also settle most of **edge label collision avoidance** above.
+- **Faster placement.** d3-dag's fast preset claims about four times dagre's speed. There are
+  Sugiyama engines written in Rust and compiled to WebAssembly, and AntV ships dagre and force
+  layouts the same way. None of these has an independent benchmark, so the choice is measured
+  here rather than taken on trust.
+
+**How fast, as targets the benchmark has to confirm.** On the 200-class schema the timing suite
+already uses:
+
+- A new arrangement is computed in under 50 ms, and the glide to it takes about 300 ms, so a press
+  is settled in about a third of a second.
+- Layout and routing run in a Web Worker, so the canvas never stops responding while they work.
+- The engine is downloaded on first use, as its own lazy chunk with its own budget, and fetched
+  ahead when the pointer reaches the button. The startup bundle does not grow, and nothing needs
+  the network.
+
+**Choosing the engine.** Benchmark ELK, d3-dag's fast preset and a WebAssembly Sugiyama engine on
+the five example schemas, the 200-class schema and two or three real imported schemas. Record
+time, crossings and lines through classes for each, here, and take the fastest engine that meets
+the quality bar.
+
+**Done when:**
+
+- One press, by button or shortcut, produces a new arrangement and animates to it within the
+  targets above.
+- A switch chooses left to right or top to bottom.
+- Two presses in a row never give the same arrangement, and no shuffle has more crossings than
+  _Tidy up_ on the same schema.
+- Relations route around classes, and fan apart where several meet the same class.
+- Each shuffle is one step on the undo stack.
+- The timing suite has a test for a shuffle on the 200-class schema, and the benchmark numbers
+  are written down here.
+
+**To decide first:**
+
+1. **One button or two.** The recommendation is two: _Tidy up_ stays on Shift+A, and Shuffle gets
+   its own button and shortcut.
+2. **Classes placed by hand.** The recommendation is that a shuffle moves everything, and undo is
+   the way back. Pinning a class in place can come later if it is missed.
+3. **The default direction.** The recommendation is left to right, which is what the canvas does
+   today.
 
 ## Editing workflow
 
@@ -766,7 +816,7 @@ list as originally written is in the git history; ask and it comes back.
 | 20  | Export and interop     | Harden the layout annotation — parked to the back of the queue      | S–M  |
 | 38  | Canvas and readability | Hide and show relations                                             | S–M  |
 | 39  | Canvas and readability | Snap a relation to the class under the pointer                      | S    |
-| 40  | Canvas and readability | Untangle the layout — measure first                                 | M–L  |
+| 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                     | L    |
 | 41  | Editing workflow       | Reuse a term instead of minting `name2`                             | S–M  |
 | 42  | Export and interop     | Tell Save from Export — done with 43                                | S    |
 | 43  | Export and interop     | Save straight back to the file you opened                           | M    |
