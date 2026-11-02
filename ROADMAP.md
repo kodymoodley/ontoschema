@@ -43,16 +43,17 @@ its metadata is an ordinary form with the vocabulary behind a switch, and both s
 away. The audit is done and every finding in [AUDIT.md](AUDIT.md) is closed.
 
 **The owner's November wishlist comes first** (todos 38–43). Each is specified in full in its
-theme section below. Smallest and most self-contained first, and the item that has to be measured
-before it can be designed last:
+theme section below. Saving to the file comes first, as the owner's most urgent item. After it,
+the smallest and most self-contained, and the item that has to be measured before it can be
+designed last:
 
-1. **Snap a relation to the class under the pointer** (todo 39, **S**) — the one gesture every
-   relation starts with, and today it fails silently unless you let go within 20 pixels of a dot.
-2. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
-   meant, and reuse already exists; this offers it at the moment a name collides.
-3. **Save straight back to the file you opened, and tell Save from Export** (todos 43 and 42,
+1. **Save straight back to the file you opened, and tell Save from Export** (todos 43 and 42,
    **M**) — one piece of work, because once Save writes to a file the two menu items stop
    looking alike. Five decisions first, listed with the two items.
+2. **Snap a relation to the class under the pointer** (todo 39, **S**) — the one gesture every
+   relation starts with, and today it fails silently unless you let go within 20 pixels of a dot.
+3. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
+   meant, and reuse already exists; this offers it at the moment a name collides.
 4. **Hide and show relations** (todo 38, **S–M**) — wants one decision first: what the switch
    hides, and how it relates to the subschema filter already on the list.
 5. **Untangle the layout** (todo 40, **M–L**) — **measure first**. Dagre already minimises
