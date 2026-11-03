@@ -44,6 +44,7 @@ export const ANNOTATION_TERMS: readonly AnnotationTerm[] = [
 
   term('owl:versionInfo', 'Version info', 'plain', 'Version string'),
   term('owl:deprecated', 'Deprecated', 'plain', 'true / false'),
+  term('owl:versionIRI', 'Version IRI', 'iri', 'IRI of this version'),
   term('owl:priorVersion', 'Prior version', 'iri', 'Previous version IRI'),
   term('owl:incompatibleWith', 'Incompatible with', 'iri', 'Incompatible version IRI'),
 
@@ -109,6 +110,7 @@ export const ONTOLOGY_ANNOTATION_TERMS: readonly AnnotationTerm[] = ANNOTATION_T
     'dcterms:license',
     'dcterms:rights',
     'owl:versionInfo',
+    'owl:versionIRI',
     'owl:priorVersion',
     'rdfs:label',
     'rdfs:comment',

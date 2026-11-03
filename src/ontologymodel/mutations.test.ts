@@ -37,6 +37,7 @@ import {
   usagesOfProperty,
 } from './ontology';
 import type { Ontology } from './types';
+import { headerIri } from './identifier';
 
 describe('class mutations', () => {
   it('normalises the name of a newly dropped class', () => {
@@ -527,5 +528,24 @@ describe('placing many classes at once', () => {
       { x: 0, y: 0 },
       { x: 0, y: 0 },
     ]);
+  });
+});
+
+describe('an ontology IRI kept from a file', () => {
+  const opened = {
+    ...createEmptyOntology('https://example.org/apco#'),
+    ontologyIri: 'https://example.org/apco#',
+  };
+
+  it('stays when the namespace is written back unchanged', () => {
+    expect(setOntologyIri(opened, 'https://example.org/apco#').ontologyIri).toBe(
+      'https://example.org/apco#',
+    );
+  });
+
+  it('is let go when the namespace moves, so the header follows it', () => {
+    const moved = setOntologyIri(opened, 'https://example.org/other#');
+    expect(moved.ontologyIri).toBeUndefined();
+    expect(headerIri(moved)).toBe('https://example.org/other');
   });
 });

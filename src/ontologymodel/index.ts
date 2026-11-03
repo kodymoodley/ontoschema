@@ -41,6 +41,7 @@ export {
   namespaceOf,
   normalizeNamespaceIri,
   ontologyIri,
+  headerIri,
   sanitizeLocalName,
   toClassLocalName,
   toPropertyLocalName,

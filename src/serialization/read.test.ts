@@ -162,3 +162,60 @@ describe('the prefixes a document declares', () => {
     expect(prefixes.owl).toBe('http://www.w3.org/2002/07/owl#');
   });
 });
+
+describe("the ontology header's own IRIs, kept through a save", () => {
+  const apco = `
+    @prefix owl: <http://www.w3.org/2002/07/owl#>.
+    @prefix apco: <https://example.org/vocabularies/apco#>.
+    <https://example.org/vocabularies/apco#> a owl:Ontology;
+      owl:versionIRI <https://example.org/vocabularies/apco/1.2.0>;
+      owl:priorVersion <https://example.org/vocabularies/apco/1.1.0>.
+    apco:Policy a owl:Class.
+  `;
+  const VERSION = 'https://example.org/vocabularies/apco/1.2.0';
+  const HEADER = 'https://example.org/vocabularies/apco#';
+  const ontologySubjects = (content: string, format: 'turtle' | 'rdfxml') =>
+    parseDocument(content, format).then(({ triples }) =>
+      triples
+        .filter((t) => t.object.type === 'iri' && t.object.value.endsWith('#Ontology'))
+        .map((t) => t.subject),
+    );
+
+  it('reads owl:versionIRI as an annotation on the header', async () => {
+    const { ontology } = await readOntology(apco, 'turtle');
+    const version = ontology.annotations.find((a) => a.term === 'owl:versionIRI');
+    expect(version?.value).toBe(VERSION);
+  });
+
+  it.each(['turtle', 'rdfxml'] as const)(
+    'writes owl:versionIRI back, and the header IRI as the file stated it (%s)',
+    async (format) => {
+      const { ontology } = await readOntology(apco, 'turtle');
+      const saved = serialize(ontology, format, 'apco').content;
+      const { triples } = await parseDocument(saved, format);
+
+      expect(await ontologySubjects(saved, format)).toEqual([HEADER]);
+      expect(
+        triples.some(
+          (t) =>
+            t.subject === HEADER &&
+            t.predicate === 'http://www.w3.org/2002/07/owl#versionIRI' &&
+            t.object.type === 'iri' &&
+            t.object.value === VERSION,
+        ),
+      ).toBe(true);
+
+      // And again: one more open and save changes nothing.
+      const { ontology: reopened } = await readOntology(saved, format);
+      expect(reopened.ontologyIri).toBe(HEADER);
+      expect(reopened.annotations.find((a) => a.term === 'owl:versionIRI')?.value).toBe(VERSION);
+    },
+  );
+
+  it('keeps nothing extra for a header that follows the namespace', async () => {
+    const { ontology } = buildAutoOntology();
+    const turtle = serialize(ontology, 'turtle', 'auto').content;
+    const { ontology: restored } = await readOntology(turtle, 'turtle');
+    expect(restored.ontologyIri).toBeUndefined();
+  });
+});

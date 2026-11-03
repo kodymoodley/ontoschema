@@ -147,6 +147,7 @@ function reviveOntology(value: unknown): Ontology | null {
   );
   return {
     ...base,
+    ...(typeof value.ontologyIri === 'string' ? { ontologyIri: value.ontologyIri } : {}),
     annotations: reviveAnnotations(value.annotations),
     classes: records(value.classes)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')

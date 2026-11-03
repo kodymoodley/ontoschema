@@ -32,7 +32,7 @@ import {
   ABSOLUTE_IRI_VALUE,
   entityIri,
   normalizeNamespaceIri,
-  ontologyIri,
+  headerIri,
   uniqueLocalName,
 } from './identifier';
 import { indexOntology, classLocalNames, propertyLocalNames } from './ontology';
@@ -194,7 +194,7 @@ export function ontologyToTriples(
   const expressions: Triple[] = [];
   const mintBlank = blankAllocator();
 
-  const header = ontologyIri(namespace);
+  const header = headerIri(ontology);
   triples.push({ subject: header, predicate: RDF_TYPE, object: iri(OWL_ONTOLOGY) });
   triples.push(...annotationTriples(header, ontology.annotations));
 

@@ -454,8 +454,17 @@ export function removeAnnotation(
 
 /* -------------------------------------------------------- ontology header */
 
+/**
+ * Changes the namespace. An ontology IRI kept from an opened file belonged to the old
+ * namespace, so it is let go: the header follows the new namespace, as it would for a schema
+ * made here. Writing the same namespace back keeps it.
+ */
 export function setOntologyIri(ontology: Ontology, iri: string): Ontology {
-  return { ...ontology, iri: normalizeNamespaceIri(iri) };
+  const namespace = normalizeNamespaceIri(iri);
+  if (namespace === ontology.iri) return ontology;
+  const next: Ontology = { ...ontology, iri: namespace };
+  delete next.ontologyIri;
+  return next;
 }
 
 export function setOntologyPrefix(ontology: Ontology, prefix: string): Ontology {

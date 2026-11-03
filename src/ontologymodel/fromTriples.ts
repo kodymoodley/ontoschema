@@ -30,6 +30,7 @@ import {
   localNameOf,
   namespaceOf,
   normalizeNamespaceIri,
+  ontologyIri,
   toClassLocalName,
   toPropertyLocalName,
   uniqueLocalName,
@@ -495,6 +496,9 @@ export function ontologyFromTriples(
   return {
     ontology: {
       ...base,
+      // Kept only when it differs, so a file that follows the convention stays free to follow
+      // a later change of namespace.
+      ...(header && header !== ontologyIri(base.iri) ? { ontologyIri: header } : {}),
       annotations: header ? annotationsOn(header) : [],
       classes,
       relations,
