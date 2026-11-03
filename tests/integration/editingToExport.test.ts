@@ -202,12 +202,14 @@ describe('exports of a store-built ontology', () => {
     expect(turtle).toMatch(/auto:Car_price[\s\S]*sh:datatype xsd:decimal/);
   });
 
-  it('exports an empty project as a valid document with only the header', async () => {
+  it('exports an empty project as a valid document with only the header and its version', async () => {
     store().newProject('Empty');
     store().setBaseIri('https://example.org/empty/');
     const quads = parseTurtle(serialize(ontology(), 'turtle').content);
-    expect(quads).toHaveLength(1);
+    expect(quads).toHaveLength(2);
     expect(quads[0]?.object.value).toBe('http://www.w3.org/2002/07/owl#Ontology');
+    expect(quads[1]?.predicate.value).toBe('http://www.w3.org/2002/07/owl#versionIRI');
+    expect(quads[1]?.object.value).toBe('https://example.org/empty/0.0.1');
   });
 });
 

@@ -6,6 +6,7 @@ import {
   findAnnotationTerm,
 } from '../annotationvocabulary';
 import type { AnnotationTerm } from '../annotationvocabulary';
+import { VERSION_IRI_TERM } from '../ontologymodel';
 import type { Annotation, EntityRef } from '../ontologymodel';
 import { useOntology, useProjectStore } from '../projectstore';
 import { Button, EmptyState, Select, TextArea, TextInput } from '../designsystem';
@@ -52,6 +53,14 @@ export function AnnotationEditor({ target, fields }: EditorProps) {
 
   if (all === null) return null;
   const annotations = unnamedAnnotations(all, fields);
+  /*
+   * The schema's version IRI is required: every schema carries one, and no file is written
+   * without it. Its row can be edited but not removed, nor turned into another term, while it
+   * is the only one.
+   */
+  const versionIris = all.filter((annotation) => annotation.term === VERSION_IRI_TERM);
+  const isRequired = (annotation: Annotation) =>
+    target.kind === 'ontology' && annotation.term === VERSION_IRI_TERM && versionIris.length === 1;
 
   /*
    * A term with a field of its own is offered here only once it is already in use, because then
@@ -82,6 +91,7 @@ export function AnnotationEditor({ target, fields }: EditorProps) {
             key={annotation.id}
             annotation={annotation}
             terms={available}
+            required={isRequired(annotation)}
             onChange={(patch) => editAnnotation(target, annotation.id, patch)}
             onRemove={() => deleteAnnotation(target, annotation.id)}
           />
@@ -138,11 +148,13 @@ function TermOptions({ terms }: { terms: readonly AnnotationTerm[] }) {
 interface AnnotationRowProps {
   annotation: Annotation;
   terms: readonly AnnotationTerm[];
+  /** Kept in place: its value can change, but it cannot be removed or re-termed. */
+  required?: boolean;
   onChange: (patch: Partial<Pick<Annotation, 'term' | 'value' | 'language'>>) => void;
   onRemove: () => void;
 }
 
-function AnnotationRow({ annotation, terms, onChange, onRemove }: AnnotationRowProps) {
+function AnnotationRow({ annotation, terms, required, onChange, onRemove }: AnnotationRowProps) {
   const term = findAnnotationTerm(annotation.term);
   const kind = term?.kind ?? 'text';
   const supportsLanguage = kind === 'text';
@@ -155,18 +167,21 @@ function AnnotationRow({ annotation, terms, onChange, onRemove }: AnnotationRowP
           className={styles.termSelect}
           value={annotation.term}
           aria-label="Annotation term"
+          disabled={required}
           onChange={(event) => onChange({ term: event.target.value })}
         >
           <TermOptions terms={terms} />
         </Select>
-        <button
-          type="button"
-          className={styles.remove}
-          aria-label={`Remove ${annotation.term}`}
-          onClick={onRemove}
-        >
-          ×
-        </button>
+        {required ? null : (
+          <button
+            type="button"
+            className={styles.remove}
+            aria-label={`Remove ${annotation.term}`}
+            onClick={onRemove}
+          >
+            ×
+          </button>
+        )}
       </div>
 
       <div className={styles.valueRow}>

@@ -36,7 +36,7 @@ import {
   uniqueLocalName,
 } from './identifier';
 import { decodeLayout, decodePosition } from './layout';
-import { createEmptyOntology, createId } from './ontology';
+import { createEmptyOntology, createId, withVersionIri } from './ontology';
 import { isBlankNode } from './triples';
 import type { Triple, TripleObject } from './triples';
 import type { Annotation, Ontology, Position, PropertyUsage, Relation } from './types';
@@ -494,7 +494,8 @@ export function ontologyFromTriples(
   }
 
   return {
-    ontology: {
+    // A file without a version IRI is given the initial one as it opens.
+    ontology: withVersionIri({
       ...base,
       // Kept only when it differs, so a file that follows the convention stays free to follow
       // a later change of namespace.
@@ -504,7 +505,7 @@ export function ontologyFromTriples(
       relations,
       attributes,
       usages,
-    },
+    }),
     report,
   };
 }

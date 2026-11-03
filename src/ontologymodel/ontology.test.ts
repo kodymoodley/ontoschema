@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { initialVersionIri, withVersionIri } from './ontology';
 import { buildAutoOntology } from '../../tests/fixtures/autoOntology';
 import {
   createAnnotation,
@@ -150,5 +151,43 @@ describe('counting and collecting usages', () => {
     expect(
       relationUsagesTouchingClass(ontology, ids.car).every((u) => u.propertyId === ids.offeredBy),
     ).toBe(true);
+  });
+});
+
+describe('the version IRI every schema carries', () => {
+  const versionOf = (ontology: { annotations: { term: string; value: string }[] }) =>
+    ontology.annotations.filter((annotation) => annotation.term === 'owl:versionIRI');
+
+  it('starts a new project at 0.0.1, under the ontology IRI', () => {
+    const project = createProject('New');
+    expect(versionOf(project.ontology).map((annotation) => annotation.value)).toEqual([
+      'https://example.org/ontology/0.0.1',
+    ]);
+  });
+
+  it('builds it from an ontology IRI kept from a file, without its #', () => {
+    const ontology = {
+      ...createEmptyOntology('https://example.org/apco#'),
+      ontologyIri: 'https://example.org/apco#',
+    };
+    expect(initialVersionIri(ontology)).toBe('https://example.org/apco/0.0.1');
+  });
+
+  it('leaves a version IRI the schema already has alone', () => {
+    const ontology = {
+      ...createEmptyOntology(),
+      annotations: [createAnnotation('owl:versionIRI', 'https://example.org/ontology/2.0.0')],
+    };
+    expect(withVersionIri(ontology)).toBe(ontology);
+  });
+
+  it('replaces a blank one rather than keeping both', () => {
+    const ontology = {
+      ...createEmptyOntology(),
+      annotations: [createAnnotation('owl:versionIRI', '  ')],
+    };
+    expect(versionOf(withVersionIri(ontology)).map((annotation) => annotation.value)).toEqual([
+      'https://example.org/ontology/0.0.1',
+    ]);
   });
 });

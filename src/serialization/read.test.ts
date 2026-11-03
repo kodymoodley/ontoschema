@@ -219,3 +219,22 @@ describe("the ontology header's own IRIs, kept through a save", () => {
     expect(restored.ontologyIri).toBeUndefined();
   });
 });
+
+describe('a file opened without a version IRI', () => {
+  it('is given 0.0.1 as it opens, and keeps it through a save', async () => {
+    const turtle = `
+      @prefix owl: <http://www.w3.org/2002/07/owl#>.
+      <https://example.org/plain> a owl:Ontology.
+      <https://example.org/plain/Car> a owl:Class.
+    `;
+    const { ontology } = await readOntology(turtle, 'turtle');
+    const version = ontology.annotations.filter((a) => a.term === 'owl:versionIRI');
+    expect(version.map((a) => a.value)).toEqual(['https://example.org/plain/0.0.1']);
+
+    const { ontology: reopened } = await readOntology(
+      serialize(ontology, 'turtle', 'plain').content,
+      'turtle',
+    );
+    expect(reopened.annotations.filter((a) => a.term === 'owl:versionIRI')).toHaveLength(1);
+  });
+});

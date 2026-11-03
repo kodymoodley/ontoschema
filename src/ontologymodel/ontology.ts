@@ -7,7 +7,7 @@ import type {
   Project,
   PropertyUsage,
 } from './types';
-import { normalizeNamespaceIri } from './identifier';
+import { headerIri, normalizeNamespaceIri } from './identifier';
 
 export const DEFAULT_NAMESPACE_IRI = 'https://example.org/ontology/';
 export const DEFAULT_PREFIX = 'ex';
@@ -41,7 +41,50 @@ export function createEmptyOntology(
 
 export function createProject(name: string, ontology: Ontology = createEmptyOntology()): Project {
   const now = new Date().toISOString();
-  return { id: createId('project'), name, createdAt: now, updatedAt: now, ontology };
+  return {
+    id: createId('project'),
+    name,
+    createdAt: now,
+    updatedAt: now,
+    ontology: withVersionIri(ontology),
+  };
+}
+
+/* ------------------------------------------------------------------ version IRI */
+
+export const VERSION_IRI_TERM = 'owl:versionIRI';
+/** The version a schema starts at when nothing says otherwise. */
+export const INITIAL_VERSION = '0.0.1';
+
+/**
+ * The version IRI a schema starts with: its ontology IRI, without a trailing `#` or `/`, then
+ * `/0.0.1`. `https://example.org/vocab#` starts at `https://example.org/vocab/0.0.1`.
+ */
+export function initialVersionIri(ontology: Pick<Ontology, 'iri' | 'ontologyIri'>): string {
+  return `${headerIri(ontology).replace(/[/#]+$/, '')}/${INITIAL_VERSION}`;
+}
+
+/** Whether the ontology header states a non-empty `owl:versionIRI`. */
+export function hasVersionIri(ontology: Ontology): boolean {
+  return ontology.annotations.some(
+    (annotation) => annotation.term === VERSION_IRI_TERM && annotation.value.trim() !== '',
+  );
+}
+
+/**
+ * Every schema carries an `owl:versionIRI`: one made here, one opened from a file, and every
+ * file written. One without gets the initial version; one with keeps its own. A blank
+ * `owl:versionIRI` left in the header is replaced rather than kept beside the new one.
+ */
+export function withVersionIri(ontology: Ontology): Ontology {
+  if (hasVersionIri(ontology)) return ontology;
+  return {
+    ...ontology,
+    annotations: [
+      ...ontology.annotations.filter((annotation) => annotation.term !== VERSION_IRI_TERM),
+      createAnnotation(VERSION_IRI_TERM, initialVersionIri(ontology)),
+    ],
+  };
 }
 
 export function createAnnotation(term: string, value = '', language?: string): Annotation {

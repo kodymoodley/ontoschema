@@ -35,7 +35,7 @@ import {
   headerIri,
   uniqueLocalName,
 } from './identifier';
-import { indexOntology, classLocalNames, propertyLocalNames } from './ontology';
+import { indexOntology, classLocalNames, propertyLocalNames, withVersionIri } from './ontology';
 import { encodePosition } from './layout';
 import type { Annotation, Ontology, PropertyUsage } from './types';
 
@@ -174,6 +174,8 @@ export function ontologyToTriples(
   options: SerializationOptions = {},
 ): Triple[] {
   const { includeAxioms, includeShapes, includeLayout } = { ...DEFAULT_OPTIONS, ...options };
+  // No file leaves without a version IRI, whatever the editor was left holding.
+  ontology = withVersionIri(ontology);
   const namespace = normalizeNamespaceIri(ontology.iri);
   const subjectOf = (localName: string) => entityIri(namespace, localName);
   const index = indexOntology(ontology);

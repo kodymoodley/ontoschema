@@ -1,11 +1,18 @@
 import { DEFAULT_XSD_DATATYPE, normalizeLanguageTag } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
-import { createAnnotation, createId, classLocalNames, propertyLocalNames } from './ontology';
+import {
+  VERSION_IRI_TERM,
+  createAnnotation,
+  createId,
+  classLocalNames,
+  propertyLocalNames,
+} from './ontology';
 import {
   normalizeNamespaceIri,
   toClassLocalName,
   toPropertyLocalName,
   uniqueLocalName,
+  headerIri,
 } from './identifier';
 import { canSubclass, canSubproperty } from './taxonomy';
 import type {
@@ -458,12 +465,26 @@ export function removeAnnotation(
  * Changes the namespace. An ontology IRI kept from an opened file belonged to the old
  * namespace, so it is let go: the header follows the new namespace, as it would for a schema
  * made here. Writing the same namespace back keeps it.
+ *
+ * A version IRI that sat under the old ontology IRI moves with it, keeping its version:
+ * `https://example.org/ontology/0.0.1` becomes `https://example.org/cars/0.0.1`. That is what
+ * stops every new schema keeping the placeholder namespace in its version. One that points
+ * anywhere else was chosen on purpose, and is left alone.
  */
 export function setOntologyIri(ontology: Ontology, iri: string): Ontology {
   const namespace = normalizeNamespaceIri(iri);
   if (namespace === ontology.iri) return ontology;
   const next: Ontology = { ...ontology, iri: namespace };
   delete next.ontologyIri;
+
+  const versionBase = (of: Ontology) => `${headerIri(of).replace(/[/#]+$/, '')}/`;
+  const from = versionBase(ontology);
+  const to = versionBase(next);
+  next.annotations = ontology.annotations.map((annotation) =>
+    annotation.term === VERSION_IRI_TERM && annotation.value.startsWith(from)
+      ? { ...annotation, value: `${to}${annotation.value.slice(from.length)}` }
+      : annotation,
+  );
   return next;
 }
 

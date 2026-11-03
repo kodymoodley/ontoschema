@@ -549,3 +549,28 @@ describe('an ontology IRI kept from a file', () => {
     expect(headerIri(moved)).toBe('https://example.org/other');
   });
 });
+
+describe('the version IRI when the namespace moves', () => {
+  const version = (ontology: Ontology) =>
+    ontology.annotations.find((annotation) => annotation.term === 'owl:versionIRI')?.value;
+  const withVersion = (value: string): Ontology => ({
+    ...createEmptyOntology('https://example.org/ontology/'),
+    annotations: [{ id: 'v', term: 'owl:versionIRI', value }],
+  });
+
+  it('moves with it when it sat under the old ontology IRI, keeping its version', () => {
+    const moved = setOntologyIri(
+      withVersion('https://example.org/ontology/1.4.0'),
+      'https://example.org/cars#',
+    );
+    expect(version(moved)).toBe('https://example.org/cars/1.4.0');
+  });
+
+  it('stays where it is when it points somewhere else', () => {
+    const moved = setOntologyIri(
+      withVersion('https://w3id.org/releases/ontology-1.4.0'),
+      'https://example.org/cars#',
+    );
+    expect(version(moved)).toBe('https://w3id.org/releases/ontology-1.4.0');
+  });
+});

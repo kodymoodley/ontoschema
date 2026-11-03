@@ -764,7 +764,11 @@ describe('what the document says about itself', () => {
     };
 
     const restored = roundTrip(withTitle).ontology;
-    expect(restored.annotations.map((annotation) => annotation.value)).toEqual(['Cars']);
+    // With the initial version IRI every written file carries.
+    expect(restored.annotations.map((annotation) => annotation.value)).toEqual([
+      'Cars',
+      'https://example.org/auto/0.0.1',
+    ]);
   });
 });
 
