@@ -171,7 +171,7 @@ export function App() {
   };
 
   /*
-   * A file written anywhere but here has no `ontoschema:layout` annotation, so every class
+   * A file written anywhere but here has no `ontoschema:position` on its classes, so every class
    * arrives at the same coordinate and the canvas opens as a single illegible pile. Laying it
    * out is part of opening it.
    *

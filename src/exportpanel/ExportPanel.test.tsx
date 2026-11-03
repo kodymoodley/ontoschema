@@ -55,7 +55,7 @@ describe('saving a schema', () => {
     render(<ExportPanel purpose="save" />);
 
     expect(preview()).toContain('auto:Car a owl:Class');
-    expect(preview()).toContain('ontoschema:layout');
+    expect(preview()).toContain('ontoschema:position');
     expect(preview()).toContain('sh:NodeShape');
   });
 
@@ -93,7 +93,7 @@ describe('exporting', () => {
     expect(preview()).toContain('auto:Car_price');
     expect(preview()).not.toContain('auto:Car a owl:Class');
     // A layout means nothing to a validator.
-    expect(preview()).not.toContain('ontoschema:layout');
+    expect(preview()).not.toContain('ontoschema:position');
   });
 
   it('says these are renderings rather than documents', () => {

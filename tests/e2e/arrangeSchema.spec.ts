@@ -6,8 +6,8 @@ import { STORAGE_KEY } from '../../src/projectstore';
 /**
  * Laying the schema out when nobody has.
  *
- * Positions ride in a saved file as this app's own `ontoschema:layout` annotation. A file
- * written anywhere else does not have one, so every class used to arrive at the same
+ * Positions ride in a saved file as this app's own `ontoschema:position` on each class. A file
+ * written anywhere else does not have them, so every class used to arrive at the same
  * coordinate and the canvas opened as a single illegible pile — which is what this covers, in
  * a real browser, because the pile is a thing you can only see once boxes have been measured
  * and painted.
@@ -15,7 +15,7 @@ import { STORAGE_KEY } from '../../src/projectstore';
  * The same arrangement is on a button, for a canvas that has been dragged into a mess.
  */
 
-/** A schema written by hand: no layout annotation anywhere in it. */
+/** A schema written by hand: no positions anywhere in it. */
 const FOREIGN_TURTLE = `@prefix owl:  <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix ex:   <https://example.org/library#> .

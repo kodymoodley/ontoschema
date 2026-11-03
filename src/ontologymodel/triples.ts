@@ -2,7 +2,7 @@ import {
   OWL_CLASS,
   OWL_DATATYPE_PROPERTY,
   OWL_OBJECT_PROPERTY,
-  ONTOSCHEMA_LAYOUT,
+  ONTOSCHEMA_POSITION,
   OWL_ANNOTATION_PROPERTY,
   OWL_ONTOLOGY,
   OWL_UNION_OF,
@@ -36,7 +36,7 @@ import {
   uniqueLocalName,
 } from './identifier';
 import { indexOntology, classLocalNames, propertyLocalNames } from './ontology';
-import { encodeLayout } from './layout';
+import { encodePosition } from './layout';
 import type { Annotation, Ontology, PropertyUsage } from './types';
 
 /**
@@ -198,18 +198,20 @@ export function ontologyToTriples(
   triples.push({ subject: header, predicate: RDF_TYPE, object: iri(OWL_ONTOLOGY) });
   triples.push(...annotationTriples(header, ontology.annotations));
 
-  if (includeLayout) {
-    const layout = encodeLayout(ontology);
-    if (layout !== null) {
-      // Declared, so the document is still valid OWL rather than carrying a term from nowhere.
-      triples.push({
-        subject: ONTOSCHEMA_LAYOUT,
-        predicate: RDF_TYPE,
-        object: iri(OWL_ANNOTATION_PROPERTY),
-      });
-      triples.push({ subject: header, predicate: ONTOSCHEMA_LAYOUT, object: literal(layout) });
-    }
+  const writesPositions = includeLayout && ontology.classes.length > 0;
+  if (writesPositions) {
+    // Declared, so the document is still valid OWL rather than carrying a term from nowhere.
+    triples.push({
+      subject: ONTOSCHEMA_POSITION,
+      predicate: RDF_TYPE,
+      object: iri(OWL_ANNOTATION_PROPERTY),
+    });
   }
+  const positionOf = (subject: string, entity: Ontology['classes'][number]): Triple => ({
+    subject,
+    predicate: ONTOSCHEMA_POSITION,
+    object: literal(encodePosition(entity.position)),
+  });
 
   if (includeAxioms) {
     for (const entity of ontology.classes) {
@@ -223,6 +225,11 @@ export function ontologyToTriples(
           triples.push({ subject, predicate: RDFS_SUBCLASS_OF, object: iri(parent) });
         }
       }
+      /*
+       * Last in the class's own block, so the Turtle writer keeps it there: moving this class
+       * changes this line and no other, which is what lets git merge two people's moves.
+       */
+      if (writesPositions) triples.push(positionOf(subject, entity));
     }
 
     for (const property of ontology.relations) {
@@ -293,6 +300,12 @@ export function ontologyToTriples(
     }
 
     triples.push(...expressions);
+  } else if (writesPositions) {
+    // No class blocks to sit in, so each position stands on its own.
+    for (const entity of ontology.classes) {
+      const subject = classIri.get(entity.id);
+      if (subject) triples.push(positionOf(subject, entity));
+    }
   }
 
   if (includeShapes) {

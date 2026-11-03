@@ -1,6 +1,7 @@
 import {
   ANNOTATION_TERMS,
   ONTOSCHEMA_LAYOUT,
+  ONTOSCHEMA_POSITION,
   OWL_CLASS,
   OWL_DATATYPE_PROPERTY,
   OWL_OBJECT_PROPERTY,
@@ -33,7 +34,7 @@ import {
   toPropertyLocalName,
   uniqueLocalName,
 } from './identifier';
-import { decodeLayout } from './layout';
+import { decodeLayout, decodePosition } from './layout';
 import { createEmptyOntology, createId } from './ontology';
 import { isBlankNode } from './triples';
 import type { Triple, TripleObject } from './triples';
@@ -58,7 +59,8 @@ import type { Annotation, Ontology, Position, PropertyUsage, Relation } from './
  *    file opened and saved here comes back changed.
  *  - **Relations**, but only where both a domain and a range are known — either stated on the
  *    property or inherited from an ancestor.
- *  - **Positions**, from this app's own layout annotation.
+ *  - **Positions**, from this app's own `ontoschema:position` on each class, or from the single
+ *    `ontoschema:layout` annotation that files were saved with before that.
  *
  * Everything else goes: individuals, restrictions, property chains, and any class expression
  * other than the `owl:unionOf` that a reused property's domain is written as.
@@ -312,7 +314,17 @@ export function ontologyFromTriples(
   const stored = header
     ? index.objectsOf(header, ONTOSCHEMA_LAYOUT).find((term) => term.type === 'literal')
     : undefined;
-  const layout = stored ? decodeLayout(stored.value) : new Map<string, Position>();
+  const legacyLayout = stored ? decodeLayout(stored.value) : new Map<string, Position>();
+
+  /** A class's own position first, then the old ontology-wide form, then nowhere in particular. */
+  const positionOf = (iri: string): Position => {
+    const own = index
+      .objectsOf(iri, ONTOSCHEMA_POSITION)
+      .filter((term) => term.type === 'literal')
+      .map((term) => decodePosition(term.value))
+      .find((position) => position !== null);
+    return own ?? legacyLayout.get(iri) ?? { x: 0, y: 0 };
+  };
 
   /* ------------------------------------------------------------------- the model */
 
@@ -324,7 +336,7 @@ export function ontologyFromTriples(
       .filter((term) => term.type === 'iri' && classId.has(term.value))
       .map((term) => known(classId, term.value, 'a class id')),
     annotations: annotationsOn(iri),
-    position: layout.get(iri) ?? { x: 0, y: 0 },
+    position: positionOf(iri),
   }));
 
   const parentsOf = (iri: string) =>

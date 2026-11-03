@@ -13,10 +13,10 @@ export const NAMESPACES = {
   vann: 'http://purl.org/vocab/vann/',
   sh: 'http://www.w3.org/ns/shacl#',
   /*
-   * This app's own namespace, for the one term it has to invent: where the classes sit on the
-   * canvas. Resolvable, and pointing at the app that wrote the file, so anyone who meets the
-   * term in a document has somewhere to go. Nothing here is offered as an annotation the user
-   * can choose — that list is explicit, elsewhere — and nothing else will be added.
+   * This app's own namespace, for the one thing it has to invent a term for: where the classes
+   * sit on the canvas. Resolvable, and pointing at the app that wrote the file, so anyone who
+   * meets the term in a document has somewhere to go. Nothing here is offered as an annotation
+   * the user can choose — that list is explicit, elsewhere — and nothing else will be added.
    */
   ontoschema: 'https://kodymoodley.github.io/ontoschema-site/ns#',
 } as const;
@@ -38,11 +38,20 @@ export const OWL_UNION_OF = `${NAMESPACES.owl}unionOf`;
 export const OWL_ANNOTATION_PROPERTY = `${NAMESPACES.owl}AnnotationProperty`;
 
 /**
- * Where the classes sit on the canvas, as one annotation on the ontology.
+ * Where one class sits on the canvas, as an annotation on that class: `"40,120"`.
  *
- * One term rather than a position on each class, so a layout is a single line that a
- * triple-level diff can ignore by predicate, and so a document that has never been opened
- * here carries nothing at all.
+ * One per class rather than one for the whole ontology, because a saved schema lives in git.
+ * Each position lands in its own class's block of a Turtle file, so moving a class changes one
+ * line, and two colleagues who move different classes change lines git can merge.
+ */
+export const ONTOSCHEMA_POSITION = `${NAMESPACES.ontoschema}position`;
+
+/**
+ * Where the classes sat, as one annotation on the ontology: the form files were saved in before
+ * `ONTOSCHEMA_POSITION`. Still read, so those files open with their layout, and never written.
+ *
+ * It was one line for every class, so any move rewrote all of it, and two people moving
+ * different classes always produced a merge conflict on a line nobody could read.
  */
 export const ONTOSCHEMA_LAYOUT = `${NAMESPACES.ontoschema}layout`;
 
