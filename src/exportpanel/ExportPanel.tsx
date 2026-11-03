@@ -3,6 +3,7 @@ import { serialize } from '../serialization';
 import { isOntologyEmpty } from '../ontologymodel';
 import { useActiveProject, useOntology } from '../projectstore';
 import { Button, downloadFile } from '../designsystem';
+import { canLinkFiles, fileLinks, pickFileToSave, writableFormat } from '../filelink';
 import { filesFor } from './files';
 import type { WritableFile } from './files';
 import styles from './exportpanel.module.css';
@@ -44,14 +45,32 @@ export function ExportPanel({ purpose = 'export' }: ExportPanelProps) {
     ? serialize(ontology, previewed.format, baseName, previewed.options).content
     : '';
 
-  const write = (file: WritableFile) => {
+  /*
+   * Saving, where the browser allows it, asks where to put the file and links the schema to it,
+   * so every later edit is saved into that file too. Everything else downloads, as it always has.
+   */
+  const linking = purpose === 'save' && canLinkFiles();
+
+  const write = async (file: WritableFile) => {
     const written = serialize(
       ontology,
       file.format,
       `${baseName}${file.suffix ?? ''}`,
       file.options,
     );
-    downloadFile(written.filename, written.mimeType, written.content);
+    const format = writableFormat(written.filename);
+    if (!linking || !project || !format) {
+      downloadFile(written.filename, written.mimeType, written.content);
+      return;
+    }
+    const handle = await pickFileToSave(written.content, {
+      name: written.filename,
+      extension: file.extension,
+      mimeType: written.mimeType,
+    });
+    if (handle) {
+      await fileLinks.link(project.id, handle, { text: written.content, format, paused: false });
+    }
   };
 
   return (
@@ -64,9 +83,11 @@ export function ExportPanel({ purpose = 'export' }: ExportPanelProps) {
       ) : null}
 
       <p className={styles.purpose}>
-        {purpose === 'save'
-          ? 'A schema saved this way opens again here, and in any other RDF tool. Where the classes sit is saved with it.'
-          : 'These are renderings, not documents: this app writes them and does not read them back.'}
+        {purpose === 'export'
+          ? 'These are renderings, not documents: this app writes them and does not read them back.'
+          : linking
+            ? 'Choose where to save it, inside a git repository for instance, and every later edit is saved into that file too. It opens again here, and in any other RDF tool.'
+            : 'A schema saved this way opens again here, and in any other RDF tool. Where the classes sit is saved with it.'}
       </p>
 
       <div className={styles.formats}>
@@ -80,7 +101,7 @@ export function ExportPanel({ purpose = 'export' }: ExportPanelProps) {
               size="small"
               variant="primary"
               data-testid={`download-${file.key}`}
-              onClick={() => write(file)}
+              onClick={() => void write(file)}
             >
               .{file.extension}
             </Button>

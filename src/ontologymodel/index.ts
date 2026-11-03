@@ -94,7 +94,7 @@ export {
 
 export { ontologyFromTriples } from './fromTriples';
 export type { ImportReport, ImportResult } from './fromTriples';
-export { decodeLayout, encodeLayout } from './layout';
+export { decodeLayout, decodePosition, encodePosition } from './layout';
 export type { Layout } from './layout';
 export { ontologyToTriples, blank, blankLabel, iri, isBlankNode, literal } from './triples';
 export type { Triple, TripleObject, SerializationOptions } from './triples';

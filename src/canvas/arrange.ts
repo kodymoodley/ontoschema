@@ -7,8 +7,8 @@ import { CLASS_NODE_WIDTH, estimateClassHeight } from './layout';
  * A tidy arrangement of the schema canvas, computed from the graph rather than from where
  * things happen to have been dropped.
  *
- * Two situations need it. A `.ttl` written anywhere but here carries no `ontoschema:layout`
- * annotation, so every class arrives at the same coordinate and the canvas opens as one
+ * Two situations need it. A `.ttl` written anywhere but here carries no `ontoschema:position`
+ * on its classes, so every class arrives at the same coordinate and the canvas opens as one
  * illegible pile — see `unplaced` below. And an arrangement that has been dragged into a mess
  * needs a way back.
  *
@@ -59,7 +59,7 @@ interface Link {
  * Two classes sharing an exact coordinate is not something dragging can produce — nodes are
  * moved one at a time, to wherever the pointer was — and `nextFreePosition` keeps new classes
  * off each other. So an exact collision means the positions were never real, which is what an
- * import without a layout annotation leaves behind.
+ * import without positions leaves behind.
  *
  * Deliberately not "are they all at the origin": the same pile happens wherever the fallback
  * coordinate is, and a future change to that fallback should not quietly turn this off.

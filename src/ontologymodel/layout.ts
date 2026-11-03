@@ -1,42 +1,42 @@
-import { entityIri, normalizeNamespaceIri } from './identifier';
-import type { Ontology, Position } from './types';
+import type { Position } from './types';
 
 /**
- * Where the classes sit, encoded for the one annotation that carries them.
- *
- * Keyed by entity IRI rather than by the internal id, because internal ids never reach a
- * file and could not be matched against one that was written elsewhere. Renaming a class
- * therefore loses its position, which is the right trade: an IRI is what the document is
- * about, and a class whose position is unknown is placed the way a new one is.
+ * Where a class sits, written as the value of its `ontoschema:position` annotation: `"40,120"`.
  *
  * Coordinates are rounded to whole pixels. Dragging produces fractions no one can see, and
  * they would otherwise rewrite the line on every touch of the canvas.
  */
-
-/** A position keyed by the IRI it belongs to. */
-export type Layout = Map<string, Position>;
-
-export function encodeLayout(ontology: Ontology): string | null {
-  const namespace = normalizeNamespaceIri(ontology.iri);
-  const entries = ontology.classes
-    .map((entity) => [entityIri(namespace, entity.localName), entity.position] as const)
-    // Sorted, so that moving one class changes the numbers rather than the order.
-    .sort(([a], [b]) => a.localeCompare(b));
-  if (entries.length === 0) return null;
-
-  const table: Record<string, [number, number]> = {};
-  for (const [iri, position] of entries) {
-    table[iri] = [Math.round(position.x), Math.round(position.y)];
-  }
-  return JSON.stringify(table);
+export function encodePosition(position: Position): string {
+  return `${Math.round(position.x)},${Math.round(position.y)}`;
 }
 
+/** Two finite numbers either side of a comma, with optional spaces around each. */
+const POSITION = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/;
+
 /**
- * Reads the annotation back.
+ * Reads a position back, or `null` when the value is not one.
  *
- * Forgiving on purpose: this value may have come from a file another tool wrote, or edited
- * by hand, and a layout is the least important thing in the document. Anything unreadable
- * yields no positions rather than a failed import.
+ * Forgiving on purpose: a schema in git gets edited by hand and resolved through merge
+ * conflicts, and a position is the least important thing in the document. Anything unreadable
+ * leaves the class to be placed the way a new one is, rather than failing the import.
+ */
+export function decodePosition(value: string): Position | null {
+  const match = POSITION.exec(value);
+  if (!match) return null;
+  const x = Number(match[1]);
+  const y = Number(match[2]);
+  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+}
+
+/** Positions keyed by the IRI of the class they belong to. */
+export type Layout = Map<string, Position>;
+
+/**
+ * Reads the layout annotation files were saved with before each class carried its own position:
+ * one JSON object on the ontology, from class IRI to `[x, y]`. Only ever read, never written.
+ *
+ * As forgiving as `decodePosition`, for the same reason: anything unreadable yields no positions
+ * rather than a failed import.
  */
 export function decodeLayout(value: string): Layout {
   const layout: Layout = new Map();

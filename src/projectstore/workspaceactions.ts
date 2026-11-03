@@ -8,6 +8,7 @@ import {
   activateProject,
   removeProject,
   renameProject,
+  withProjectOntology,
   withRestoredOntology,
   UNTITLED,
 } from './workspace';
@@ -38,6 +39,15 @@ export interface WorkspaceActions {
   switchProject(id: string): void;
   renameProject(id: string, name: string): void;
   deleteProject(id: string): void;
+  /**
+   * Puts a project's schema back to what its file now says, after something else changed the
+   * file: `git pull`, `git checkout`, another editor.
+   *
+   * Not an edit, so it is not undoable. If the project is open its history is cleared as well,
+   * because undoing past a `git checkout` would put back a version the file no longer has, and
+   * the next autosave would write it over what git just checked out.
+   */
+  reloadProject(id: string, ontology: Ontology): void;
   /**
    * Opens a project file written before saving became RDF.
    *
@@ -130,6 +140,15 @@ export function createWorkspaceActions(
     },
     deleteProject(id) {
       openWorkspace(removeProject(get(), id));
+    },
+    reloadProject(id, ontology) {
+      set((state) => {
+        const next = withProjectOntology(state, id, ontology);
+        if (next === state) return state;
+        saveWorkspace(next, { immediate: true });
+        const open = state.activeProjectId === id;
+        return { ...state, ...next, ...(open ? freshSession : {}) };
+      });
     },
     importProject(fileContent) {
       const imported = projectFromFile(fileContent);

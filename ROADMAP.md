@@ -42,22 +42,20 @@ document left behind. The inspector is one scrolling panel that opens on selecti
 its metadata is an ordinary form with the vocabulary behind a switch, and both side panels fold
 away. The audit is done and every finding in [AUDIT.md](AUDIT.md) is closed.
 
-**The owner's November wishlist comes first** (todos 38–43). Each is specified in full in its
-theme section below. Saving to the file comes first, as the owner's most urgent item. After it,
-the smallest and most self-contained, and the item that has to be measured before it can be
-designed last:
+**The owner's November wishlist comes first** (todos 38–43). Its most urgent item has shipped:
+a schema opened from a git repository saves itself into its file, so editing ends in
+`git commit` with no download (todos 43 and 42; see the README's _Editing a schema file in
+place_). The rest is specified in full in its theme section below, smallest and most
+self-contained first, and the item that has to be measured before it can be designed last:
 
-1. **Save straight back to the file you opened, and tell Save from Export** (todos 43 and 42,
-   **M**) — one piece of work, because once Save writes to a file the two menu items stop
-   looking alike. Five decisions first, listed with the two items.
-2. **Snap a relation to the class under the pointer** (todo 39, **S**) — the one gesture every
+1. **Snap a relation to the class under the pointer** (todo 39, **S**) — the one gesture every
    relation starts with, and today it fails silently unless you let go within 20 pixels of a dot.
-3. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
+2. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
    meant, and reuse already exists; this offers it at the moment a name collides.
-4. **Hide and show relations** (todo 38, **M**) — an eye on each row of the entities panel's
+3. **Hide and show relations** (todo 38, **M**) — an eye on each row of the entities panel's
    Relation tab, appearing on hover, that hides every line drawn with that relation. On touch
    screens the eye appears on the selected row instead. Three decisions first, listed with it.
-5. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
+4. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
    tidy layout, fanned out left to right or top to bottom, and animates the classes there. A
    different arrangement on every press, none of them worse than _Tidy up_. The engine is chosen
    by benchmark, and this reverses the earlier decision to keep the layout button deterministic.
@@ -69,9 +67,9 @@ appears there again:
   dependency surface on the list and the only item that makes this tool depend on vocabularies it
   does not control. It wants a design note before any code; most of that note is already written,
   under [Resolving external vocabularies](#resolving-external-vocabularies).
-- **Harden the layout annotation** (todo 20) — owed work rather than wanted work. The positions
-  shipped with the happy path tested and little else, and the entry below lists exactly what is
-  untested so the debt stays legible. Parked at the back of the queue by the owner.
+- **Harden the old layout reader** (todo 20) — owed work rather than wanted work, and smaller
+  since each class carries its own position: what is left is the reader kept for files saved in
+  the old form, against hostile input. Parked at the back of the queue by the owner.
 - **Nine, three times over** (todo 9) — a project rather than an item, decided in principle: nine
   classes to a module, nine modules to a group, nine groups to a file, so 729 classes and the app
   refuses more. A design note comes first and it has five things to answer, listed under
@@ -228,16 +226,19 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Size |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S    |
-| **Harden the layout annotation** — _parked to the back of the queue._ The positions half of todo 17 shipped with tests that cover the happy path and five malformed strings, which is not the same as being robust. What is actually untested: **scale** — a few hundred classes put a single literal of tens of kilobytes on one line, and nothing checks what that does to the writers, to the file, or to the time it takes; **the decoder against real hostility** — `__proto__` and `constructor` as keys, coordinates that are `NaN`, `Infinity`, `1e308` or a string that parses as a number, an entry whose key is not an IRI at all, a value nested arbitrarily deep; **partial recovery** — a layout naming three classes that no longer exist and omitting two that do, which is the ordinary case after editing a file elsewhere and the one the decoder has never been asked about; **the round trip end to end**, which cannot be finished until the importer exists, so the decoder is dead code the suite exercises only in isolation. Also **not mutation-tested**: Stryker is pointed at `src/serialization/` alone, so `layout.ts` has no measured test strength at all, and the obvious mutants — dropping the rounding, dropping the sort, inverting a guard — would very likely survive. Widen the mutation scope to cover it and hold it to the same bar. _(todo 20)_          | S–M  |
+| **Open a cloned repository as a folder, and open `.ttl` files from the desktop** — what editing a file in place left for later. A folder opened once, the way vscode.dev opens one, would list every schema in the repository and see new ones arrive with a `git pull`. Installing the app would let double-clicking a `.ttl` open it here, through the File Handling API. Both are Chromium-only, like the linking they build on. _(todo 44)_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | M    |
+| **Harden the old layout reader** — _parked to the back of the queue._ Each class now carries its own `ontoschema:position`, so the scale worry is gone — there is no longer one literal of tens of kilobytes on one line — and the reader of a position is tested against malformed values, including a merge-conflict marker left in the file. The round trip is tested end to end, and `layout.ts` is inside Stryker's scope with the rest of `src/ontologymodel/`. What is still owed is the **old ontology-wide `ontoschema:layout` reader**, kept so earlier files open, against real hostility: `__proto__` and `constructor` as keys, coordinates that are `NaN`, `Infinity`, `1e308` or a string that parses as a number, an entry whose key is not an IRI at all, a value nested arbitrarily deep. _(todo 20)_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | S    |
 | **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. **The ranking is already built**: `src/search/` ranks the open schema for todo 29, and its BM25 half knows about documents with weighted fields rather than about classes, so this item brings a corpus to it rather than writing a second one. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. _Design settled: no proxy, and no fetch on the critical path — see [Resolving external vocabularies](#resolving-external-vocabularies) below._ **Imported terms are read-only**: an axiom or definition that came from PROV-O, PAV or DCAT cannot be edited or redefined here, or the schema quietly disagrees with the vocabulary it claims to import. Note the tension to settle first — SKOS appears on the todo list as something to import, and is excluded above as a modelling vocabulary. _(todo 10)_ | L    |
 
-> **Where the layout goes.** One declared `owl:AnnotationProperty` in this app's own namespace,
-> carrying every position, keyed by **IRI** — internal ids never reach the file, so they cannot be
-> the key. A class with no entry is placed the way a new one is. The cost is that any move
-> rewrites the whole line, so a textual diff of a saved `.ttl` says all of it changed; a
-> triple-level diff sees one annotation and can ignore it by predicate. Checked against a real OWL
-> parser: the term reads as an annotation property and the classes and unions are untouched. Its
-> testing is **owed, not done** — todo 20 above.
+> **Where the layout goes.** One `ontoschema:position` on each class, `"40,120"`, written as the
+> last line of that class's own block, and declared once as an `owl:AnnotationProperty` in this
+> app's own namespace. A class with no position is placed the way a new one is. Per class because
+> a saved schema lives in git: moving a class changes one line, and two people moving different
+> classes merge without a conflict, which a test checks with git's own three-way merge. Files
+> saved before this carry every position in one `ontoschema:layout` literal on the ontology; they
+> still open, and that form is never written again. Checked against a real OWL parser, when it was
+> one annotation: the term reads as an annotation property and the classes and unions are
+> untouched.
 >
 > **What "schema-level" means on import.** Classes and their `rdfs:subClassOf` hierarchy, with
 > annotations. Attributes, whatever their range — an `xsd` datatype is kept and anything else
@@ -267,82 +268,6 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 >
 > Nothing is blocked in the meantime. Named shapes stay addressable, so whichever way it goes, the
 > constraints attach to shapes that already exist.
-
-### Tell Save from Export (todo 42)
-
-**Size S, done with todo 43.** The file menu has **Save as…** and **Export…**, and they open the
-same dialog: a list of formats, a preview, and a download button on each. Only the list differs,
-and one sentence at the top. So they read as the same action twice, and the difference that
-matters is not visible from the menu: a saved file opens here again, and an exported one does not.
-
-**What it should do.** Once todo 43 gives **Save** its usual meaning, the menu explains itself:
-
-- **File › Save** (`Ctrl`/`Cmd`+`S`) writes the schema back to the file it came from.
-- **File › Save as…** writes it to a new `.ttl`, `.rdf` or `.owl` file, and Save writes there
-  from then on.
-- **File › Export for other tools…** writes the SHACL shapes on their own for a validator,
-  JSON-LD, or a Mermaid diagram for documentation. The dialog's title and each entry say which
-  tool the file is for, rather than only which format it is in.
-
-**Done when:** the menu reads as above, someone new can tell which item keeps their work without
-opening either, and the README's _Saving, and exporting_ section says the same thing.
-
-**To decide first:** the wording of the export item. The recommendation is **Export for other
-tools…**, because it says what the file is for, which is the question the person is asking.
-
-### Save straight back to the file you opened (todo 43)
-
-**Size M.** Opening a `.ttl` reads a copy of it into the browser. Every edit is kept, but in the
-browser's `localStorage`, not in the file. Getting the changes back into `schema.ttl` means
-**Save as…**, which downloads a new file, usually into Downloads and often as `schema (1).ttl`,
-and then moving it over the original by hand. The file in the repository goes stale, and it is
-easy to lose track of which copy is current.
-
-**What it should do.** Remember which file a schema was opened from, and write changes back to it.
-
-- **Opening** uses the browser's file picker that can grant write access, so the app keeps a
-  handle on the file rather than a one-off copy of its contents.
-- **Save** writes the schema back to that file, in the format it already has: a `.ttl` stays
-  Turtle, and an `.rdf` or `.owl` stays RDF/XML.
-- **The header** shows the file's name, and whether there are changes not yet written to it.
-- **`localStorage` stays** the working copy and the safety net, exactly as now, so closing the tab
-  still loses nothing.
-- **Only one module knows about file handles**, the way `projectstore/persistence.ts` is the only
-  one that knows about storage. That keeps a desktop shell, if one is ever built, a swap of two
-  small modules.
-
-**Browser support.** This is the File System Access API, available in desktop Chromium browsers
-such as Chrome and Edge. In Firefox and Safari, Save falls back to downloading a file, as Save as
-does today, and the menu says **Download** there rather than promising something it cannot do.
-
-**Two rules that keep it safe:**
-
-- **A foreign document is not overwritten silently.** Opening a file written elsewhere keeps what
-  this app models and drops the rest, such as individuals and restrictions, and the report says
-  so. Writing that file back would delete what was dropped. When the report was not empty, the
-  first Save asks first, names what will be lost, and offers Save as… as the default.
-- **A file changed on disk is not overwritten silently.** If the file was modified since it was
-  opened or last saved, by an editor or a `git pull`, Save warns before replacing it.
-
-**Done when:**
-
-- In Chrome and Edge: open a `.ttl`, edit, press `Ctrl`+`S`, and the change is in the file on
-  disk. Tested end to end with the browser's file picker stubbed, since automated browsers cannot
-  drive the real one.
-- In Firefox and Safari, Save downloads a file and is labelled accordingly.
-- Both safety rules are tested.
-- A project that was never opened from a file behaves exactly as it does now.
-
-**To decide first:**
-
-1. **Explicit Save, or autosave to the file?** The recommendation is explicit Save. The browser
-   copy already autosaves, and a file in a repository should change when its owner says so.
-2. **Is the link to the file remembered across a reload?** The handle can be kept, but the
-   browser asks for permission again after a reload, so reopening would cost one click.
-3. **One file per project.** A workspace holds several projects, so each project remembers its
-   own file, and switching project switches file.
-4. **What happens when the file has gone,** because it was moved, renamed or deleted: fall back to
-   Save as…, and say why.
 
 ### Resolving external vocabularies
 
@@ -729,11 +654,11 @@ change how the tool is delivered.
 
 What would genuinely justify a desktop build is filesystem and local-network access: `Ctrl`+`S`
 straight to `schema.ttl` rather than a downloads-folder dance, no `localStorage` quota, and
-reaching a GraphDB on the local network. The first is now on this roadmap without a desktop
-build: the File System Access API gives a persistent file handle in Chromium browsers, with the
-existing download path as the fallback elsewhere. See
-[Save straight back to the file you opened](#save-straight-back-to-the-file-you-opened-todo-43).
-The other two are not on the roadmap.
+reaching a GraphDB on the local network. The first now works without a desktop build, in Chrome
+and Edge: the File System Access API gives a persistent file handle, and a schema saves itself
+into the file it came from (see the README's _Editing a schema file in place_). Firefox and
+Safari have declined that API, so for them only a desktop shell would bring it. The other two are
+not on the roadmap.
 
 Against it: the touch and mobile work becomes dead weight; code signing, auto-update and a
 cross-platform build matrix are real ongoing costs for a deliberately lightweight tool; and "open
@@ -841,18 +766,17 @@ constraint authoring belongs in this tool at all. See the note under
 Filed into the sections above, each entry tagged with its number so the two can be matched. The
 list as originally written is in the git history; ask and it comes back.
 
-| #   | Now lives in           | As                                                                  | Size |
-| --- | ---------------------- | ------------------------------------------------------------------- | ---- |
-| 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project | L    |
-| 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29       | L    |
-| 20  | Export and interop     | Harden the layout annotation — parked to the back of the queue      | S–M  |
-| 38  | Canvas and readability | Hide and show relations, from the entities panel                    | M    |
-| 39  | Canvas and readability | Snap a relation to the class under the pointer                      | S    |
-| 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                     | L    |
-| 41  | Editing workflow       | Reuse a term instead of minting `name2`                             | S–M  |
-| 42  | Export and interop     | Tell Save from Export — done with 43                                | S    |
-| 43  | Export and interop     | Save straight back to the file you opened                           | M    |
+| #   | Now lives in           | As                                                                       | Size |
+| --- | ---------------------- | ------------------------------------------------------------------------ | ---- |
+| 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project      | L    |
+| 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29            | L    |
+| 20  | Export and interop     | Harden the old layout reader — parked to the back of the queue           | S    |
+| 38  | Canvas and readability | Hide and show relations, from the entities panel                         | M    |
+| 39  | Canvas and readability | Snap a relation to the class under the pointer                           | S    |
+| 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                          | L    |
+| 41  | Editing workflow       | Reuse a term instead of minting `name2`                                  | S–M  |
+| 44  | Export and interop     | Open a cloned repository as a folder; open `.ttl` files from the desktop | M    |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43 — kept as numbers so a commit message naming one can still be resolved.
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.

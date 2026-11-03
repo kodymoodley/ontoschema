@@ -23,7 +23,7 @@ function Header() {
 const openMenu = (user: ReturnType<typeof userEvent.setup>) =>
   user.click(screen.getByTestId('file-menu'));
 
-const dialog = () => screen.queryByRole('dialog', { name: 'Export' });
+const dialog = () => screen.queryByRole('dialog', { name: 'Export for other tools' });
 
 describe('export from the file menu', () => {
   it('is one of the file actions rather than a panel of its own', async () => {

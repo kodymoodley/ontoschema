@@ -127,3 +127,22 @@
 .reportList li + li {
   margin-top: var(--space-1);
 }
+
+/* Where the open schema's work is kept, beside its name in the header. */
+.saveStatus {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.saveStatusText {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.saveStatusAlert {
+  color: var(--warning);
+}

@@ -1,11 +1,10 @@
-import type { Workspace } from './workspace';
-
 /**
- * Batches workspace writes.
+ * Batches writes of a value that changes faster than it is worth writing: the workspace to
+ * `localStorage`, and a linked schema to its file.
  *
  * Persisting means serialising every project, which is expensive enough at real sizes to be
  * felt: a seven-character rename used to write 1.4MB across seven separate passes, and cost
- * four dropped frames per keystroke. Only ever one workspace is pending — a later save
+ * four dropped frames per keystroke. Only ever one value is pending — a later save
  * supersedes an earlier one rather than queueing behind it — so a burst of edits costs a
  * single write of the final state.
  *
@@ -19,19 +18,19 @@ export const SAVE_DELAY_MS = 500;
 /** However fast the edits keep coming, never leave work unwritten for longer than this. */
 export const SAVE_MAX_DELAY_MS = 2_000;
 
-export interface SaveQueue {
-  /** Records a workspace as the one to write, and schedules the write. */
-  save(workspace: Workspace): void;
+export interface SaveQueue<T> {
+  /** Records a value as the one to write, and schedules the write. */
+  save(value: T): void;
   /** Writes whatever is outstanding, now. Does nothing if nothing is pending. */
   flush(): void;
 }
 
-export function createSaveQueue(
-  write: (workspace: Workspace) => void,
+export function createSaveQueue<T>(
+  write: (value: T) => void,
   delayMs: number = SAVE_DELAY_MS,
   maxDelayMs: number = SAVE_MAX_DELAY_MS,
-): SaveQueue {
-  let pending: Workspace | null = null;
+): SaveQueue<T> {
+  let pending: T | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let pendingSince = 0;
 
@@ -42,16 +41,16 @@ export function createSaveQueue(
     }
     if (pending === null) return;
 
-    const workspace = pending;
-    // Cleared before writing, so a write that throws does not leave the same workspace
+    const value = pending;
+    // Cleared before writing, so a write that throws does not leave the same value
     // pending and re-throwing on every later flush.
     pending = null;
-    write(workspace);
+    write(value);
   }
 
-  function save(workspace: Workspace): void {
+  function save(value: T): void {
     if (pending === null) pendingSince = Date.now();
-    pending = workspace;
+    pending = value;
 
     if (Date.now() - pendingSince >= maxDelayMs) {
       flush();

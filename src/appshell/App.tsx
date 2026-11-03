@@ -10,7 +10,8 @@ import {
   usePaletteCreate,
 } from '../canvas';
 import { HierarchyTree } from '../taxonomytree';
-import { ProjectNameField, ProjectSwitcher } from '../projectswitcher';
+import { ProjectNameField, ProjectSwitcher, SaveStatus } from '../projectswitcher';
+import { fileLinks, startFileLinks } from '../filelink';
 import { ConnectionPicker, RelationMarkers } from '../relationeditor';
 import {
   useActiveProjectId,
@@ -171,7 +172,7 @@ export function App() {
   };
 
   /*
-   * A file written anywhere but here has no `ontoschema:layout` annotation, so every class
+   * A file written anywhere but here has no `ontoschema:position` on its classes, so every class
    * arrives at the same coordinate and the canvas opens as a single illegible pile. Laying it
    * out is part of opening it.
    *
@@ -190,6 +191,9 @@ export function App() {
     // Not remembered: an undo that puts every class back in one pile is not a state anyone
     // asked to return to, and it would sit between the file opening and the first real edit.
     placeClassesById(arrangeSchema(ontology), { remember: false });
+    // Nor written: arranging is part of opening the file, so a linked file stays as it was until
+    // somebody edits the schema.
+    void fileLinks.rebase(activeProjectId);
   }, [activeProjectId, ontology, placeClassesById]);
 
   /*
@@ -235,10 +239,20 @@ export function App() {
     children: (close: () => void) => <EntitySearch onChoose={close} />,
   });
 
+  // Follows the files schemas are linked to, from before a reload as much as from now.
+  useEffect(() => startFileLinks(), []);
+
   useGlobalShortcuts({
     undo,
     redo,
     deleteSelection,
+    save: () => {
+      if (activeProjectId && fileLinks.isLinked(activeProjectId)) {
+        void fileLinks.saveNow(activeProjectId);
+      } else {
+        saving.setOpen(true);
+      }
+    },
     find: () => finding.setOpen(true),
     frame: toggleBothPanels,
     arrange: view === 'schema' ? arrange : null,
@@ -296,6 +310,7 @@ export function App() {
         */}
         <div className={styles.headerTitle}>
           <ProjectNameField />
+          <SaveStatus />
           {metadata.action}
         </div>
 
@@ -594,12 +609,13 @@ export function isDialogOpen(): boolean {
 function useGlobalShortcuts(actions: {
   undo: () => void;
   redo: () => void;
+  save: () => void;
   deleteSelection: () => void;
   find: () => void;
   frame: () => void;
   arrange: (() => void) | null;
 }) {
-  const { undo, redo, deleteSelection, find, frame, arrange } = actions;
+  const { undo, redo, save, deleteSelection, find, frame, arrange } = actions;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -615,6 +631,16 @@ function useGlobalShortcuts(actions: {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         find();
+        return;
+      }
+      /*
+       * Ctrl+S saves, wherever you are, as it does in every editor. A linked schema saves itself
+       * anyway, so this writes at once; an unlinked one gets the Save as dialog rather than the
+       * browser's own "save page", which would save the app instead of the schema.
+       */
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        save();
         return;
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
@@ -666,5 +692,5 @@ function useGlobalShortcuts(actions: {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteSelection, find, frame, arrange]);
+  }, [undo, redo, save, deleteSelection, find, frame, arrange]);
 }

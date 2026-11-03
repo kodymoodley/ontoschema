@@ -105,7 +105,7 @@ describe('createSaveQueue', () => {
   it('keeps two queues independent', () => {
     const otherWrites: Workspace[] = [];
     const first = createSaveQueue(write, 500, 2_000);
-    const second = createSaveQueue((value) => otherWrites.push(value), 500, 2_000);
+    const second = createSaveQueue<Workspace>((value) => otherWrites.push(value), 500, 2_000);
 
     first.save(workspace('a'));
     second.save(workspace('b'));

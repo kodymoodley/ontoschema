@@ -1,5 +1,9 @@
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ONTOSCHEMA_LAYOUT } from '../annotationvocabulary';
+import { ONTOSCHEMA_POSITION, RDF_TYPE } from '../annotationvocabulary';
 import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/autoOntology';
 import {
   canonicalize,
@@ -16,6 +20,7 @@ import {
   ontologyToTriples,
   renameClass,
   deleteClass,
+  moveClass,
 } from '../ontologymodel';
 import { SERIALIZATION_FORMATS, sanitizeFilename, serialize } from './index';
 import { serializeJsonLd } from './jsonld';
@@ -306,10 +311,14 @@ describe('SHACL shapes travel inside the same documents', () => {
     expect(quads.some((quad) => quad.predicate.value === 'http://purl.org/dc/terms/title')).toBe(
       true,
     );
-    // The layout is a third layer, so what is left describes the ontology and that one term.
-    expect(new Set(quads.map((quad) => quad.subject.value))).toEqual(
-      new Set(['https://example.org/auto', ONTOSCHEMA_LAYOUT]),
+    // The layout is a third layer, so what is left is the header and one position per class.
+    const beyondHeader = quads.filter((quad) => quad.subject.value !== 'https://example.org/auto');
+    expect(new Set(beyondHeader.map((quad) => quad.predicate.value))).toEqual(
+      new Set([ONTOSCHEMA_POSITION, RDF_TYPE]),
     );
+    expect(
+      beyondHeader.filter((quad) => quad.predicate.value === ONTOSCHEMA_POSITION),
+    ).toHaveLength(reused.classes.length);
   });
 
   it('writes nothing but the header once the layout is switched off too', () => {
@@ -317,7 +326,64 @@ describe('SHACL shapes travel inside the same documents', () => {
       serializeTurtle(reused, { includeAxioms: false, includeShapes: false, includeLayout: false }),
     );
     expect(quads.every((quad) => quad.subject.value === 'https://example.org/auto')).toBe(true);
-    expect(quads.some((quad) => quad.predicate.value === ONTOSCHEMA_LAYOUT)).toBe(false);
+    expect(quads.some((quad) => quad.predicate.value === ONTOSCHEMA_POSITION)).toBe(false);
+  });
+});
+
+/*
+ * A saved schema is meant to live in a git repository, edited by several people. Two things
+ * decide whether that works: a change has to show up as a small diff, and two people's changes
+ * to different classes have to merge without a conflict.
+ */
+describe('a saved schema in git', () => {
+  const [first, second] = auto.classes;
+  if (!first || !second) throw new Error('the fixture needs two classes');
+  const nudge = (ontology: typeof auto, id: string) => {
+    const entity = ontology.classes.find((candidate) => candidate.id === id);
+    if (!entity) throw new Error(`no class ${id}`);
+    return moveClass(ontology, id, { x: entity.position.x + 40, y: entity.position.y });
+  };
+  const changedLines = (before: string, after: string) => {
+    const old = before.split('\n');
+    return after.split('\n').flatMap((line, i) => (line === old[i] ? [] : [i]));
+  };
+
+  it('writes the same file every time for the same schema', () => {
+    expect(serializeTurtle(auto)).toBe(serializeTurtle(auto));
+  });
+
+  it('changes exactly one line when a class moves', () => {
+    const before = serializeTurtle(auto);
+    const after = serializeTurtle(nudge(auto, first.id));
+    expect(after.split('\n')).toHaveLength(before.split('\n').length);
+    expect(changedLines(before, after)).toHaveLength(1);
+  });
+
+  /*
+   * The real thing rather than a rule about line distances: git's own three-way merge, on two
+   * classes written next to each other, which is the closest two moves can ever be.
+   */
+  it('merges two people moving neighbouring classes without a conflict', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'ontoschema-merge-'));
+    try {
+      const write = (name: string, content: string) => {
+        writeFileSync(join(directory, name), content);
+        return join(directory, name);
+      };
+      const base = write('base.ttl', serializeTurtle(auto));
+      const ours = write('ours.ttl', serializeTurtle(nudge(auto, first.id)));
+      const theirs = write('theirs.ttl', serializeTurtle(nudge(auto, second.id)));
+
+      const merge = spawnSync('git', ['merge-file', '-p', ours, base, theirs], {
+        encoding: 'utf8',
+      });
+
+      // Exit status is the number of conflicts.
+      expect(merge.status).toBe(0);
+      expect(merge.stdout).toBe(serializeTurtle(nudge(nudge(auto, first.id), second.id)));
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
 

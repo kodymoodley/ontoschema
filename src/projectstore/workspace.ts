@@ -62,6 +62,27 @@ export function withRestoredOntology(workspace: Workspace, ontology: Ontology): 
   };
 }
 
+/**
+ * Replaces a named project's ontology, open or not, and stamps it as touched.
+ *
+ * For a schema read back from its file after something else changed it, such as `git pull`.
+ * Addressed by id rather than as "the open project", because a file can change underneath a
+ * project nobody is looking at.
+ */
+export function withProjectOntology(
+  workspace: Workspace,
+  id: string,
+  ontology: Ontology,
+): Workspace {
+  if (!workspace.projects.some((project) => project.id === id)) return workspace;
+  return {
+    ...workspace,
+    projects: workspace.projects.map((project) =>
+      project.id === id ? { ...project, ontology, updatedAt: new Date().toISOString() } : project,
+    ),
+  };
+}
+
 /** Adds a project and opens it. */
 export function addProject(workspace: Workspace, project: Project): Workspace {
   return { projects: [...workspace.projects, project], activeProjectId: project.id };
