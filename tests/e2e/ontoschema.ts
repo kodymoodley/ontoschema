@@ -374,19 +374,58 @@ export async function openSave(page: Page) {
  */
 const SAVED = new Set(['ttl', 'rdf', 'owl']);
 
-/** Clicks a download button and returns the file's contents. */
+/** Writes a file from the save or export dialog and returns its contents. */
 export async function downloadExport(page: Page, key: string): Promise<string> {
   if (SAVED.has(key)) await openSave(page);
   else await openExport(page);
 
+  const content =
+    SAVED.has(key) && (await savesIntoChosenFile(page))
+      ? await saveIntoFile(page, key)
+      : await downloaded(page, key);
+  // The dialog covers the canvas, so leaving it open would break whatever the test does next.
+  await page.getByRole('button', { name: 'Close' }).click();
+  return content;
+}
+
+async function downloaded(page: Page, key: string): Promise<string> {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByTestId(`download-${key}`).click(),
   ]);
-  const content = await readDownload(download);
-  // The dialog covers the canvas, so leaving it open would break whatever the test does next.
-  await page.getByRole('button', { name: 'Close' }).click();
-  return content;
+  return readDownload(download);
+}
+
+/** Whether Save as asks where to put the file, rather than downloading it: Chromium only. */
+const savesIntoChosenFile = (page: Page) =>
+  page.evaluate(() => typeof window.showOpenFilePicker === 'function');
+
+/**
+ * Where Save as asks where to put the file, the picker is answered with a fresh file in the
+ * origin-private file system, and the file is read back from there. An automated browser cannot
+ * drive the native picker; everything after it is the real thing.
+ */
+async function saveIntoFile(page: Page, key: string): Promise<string> {
+  const name = await page.evaluate(() => {
+    const target = `saved-${crypto.randomUUID()}`;
+    (window as unknown as Record<string, unknown>).showSaveFilePicker = async () =>
+      (await navigator.storage.getDirectory()).getFileHandle(target, { create: true });
+    return target;
+  });
+  const read = () =>
+    page.evaluate(async (name) => {
+      const folder = await navigator.storage.getDirectory();
+      try {
+        return await (await (await folder.getFileHandle(name)).getFile()).text();
+      } catch {
+        return '';
+      }
+    }, name);
+
+  await page.getByTestId(`download-${key}`).click();
+  // The browser writes to the side and swaps the file in whole, so non-empty means finished.
+  await expect.poll(read).not.toBe('');
+  return read();
 }
 
 /**
