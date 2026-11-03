@@ -9,6 +9,7 @@ import {
   removeProject,
   renameProject,
   withOntology,
+  withProjectOntology,
   withRestoredOntology,
 } from './workspace';
 import type { Workspace } from './workspace';
@@ -78,6 +79,27 @@ describe('withOntology', () => {
     const { workspace, first } = twoProjects();
     const restored = withRestoredOntology(workspace, createEmptyOntology());
     expect(restored.projects.find((p) => p.id === first)?.updatedAt).toBe(LONG_AGO);
+  });
+});
+
+describe('withProjectOntology', () => {
+  it('replaces the named project, open or not, and marks it touched', () => {
+    const { workspace, first, second } = twoProjects();
+    const fromDisk = addClass(createEmptyOntology(), { localName: 'Car' }).ontology;
+
+    const next = withProjectOntology(workspace, second, fromDisk);
+
+    expect(next.projects.find((p) => p.id === second)?.ontology).toBe(fromDisk);
+    expect(next.projects.find((p) => p.id === second)?.updatedAt).not.toBe(LONG_AGO);
+    expect(next.projects.find((p) => p.id === first)?.ontology).toBe(
+      workspace.projects[0]?.ontology,
+    );
+    expect(next.activeProjectId).toBe(workspace.activeProjectId);
+  });
+
+  it('leaves the workspace alone for a project that does not exist', () => {
+    const { workspace } = twoProjects();
+    expect(withProjectOntology(workspace, 'gone', createEmptyOntology())).toBe(workspace);
   });
 });
 

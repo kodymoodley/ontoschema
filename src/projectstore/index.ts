@@ -21,6 +21,8 @@ export {
 } from './persistence';
 export type { Workspace } from './workspace';
 export { DRAG_MIME, encodeDragPayload, decodeDragPayload } from './dragpayload';
+export { createSaveQueue } from './savequeue';
+export type { SaveQueue } from './savequeue';
 export type { DragPayload } from './dragpayload';
 
 /**
