@@ -202,6 +202,23 @@ describe('linking a schema to its file', () => {
   });
 });
 
+describe('saving at once', () => {
+  /*
+   * The autosave pause is a minute here, so the file can only have changed if saving now wrote
+   * the pending edit instead of waiting for it.
+   */
+  it('writes a pending edit without waiting for the autosave pause', async () => {
+    const { links, id, projects } = setUp({ delayMs: 60_000 });
+    const file = memoryFile('insurance.ttl', 'Car\n');
+    await links.link(id, file.handle, { text: 'Car\n', format: 'turtle', paused: false });
+
+    projects.edit(id, withClasses('Car', 'Policy'));
+    await links.saveNow(id);
+
+    expect(file.contents()).toBe('Car\nPolicy\n');
+  });
+});
+
 describe('changes that are part of opening a file', () => {
   /*
    * A file with no positions is laid out as it opens. That is part of opening it, not an edit,

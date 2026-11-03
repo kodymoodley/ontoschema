@@ -126,15 +126,24 @@ test.describe('a schema linked to its file', () => {
     await expect.poll(() => readOnDisk(page, name)).toContain('NewClass2 a owl:Class');
   });
 
-  test('writes at once on Ctrl+S', async ({ page }) => {
+  /*
+   * That Ctrl+S writes without waiting for the autosave pause is a matter of timing, and timing
+   * is tested where it can be exact: in the engine's tests. What only a browser shows is that the
+   * key saves into the file rather than the browser saving the page.
+   */
+  test('saves into the file on Ctrl+S, not the page', async ({ page }) => {
     await openFleet(page);
     await dragFromPalette(page, 'class', { x: 420, y: 160 });
+    let pageDownloaded = false;
+    page.on('download', () => {
+      pageDownloaded = true;
+    });
 
     await page.keyboard.press('ControlOrMeta+s');
 
-    await expect
-      .poll(() => readOnDisk(page, 'fleet.ttl'), { timeout: 400 })
-      .toContain('fleet:NewClass a owl:Class');
+    await expect.poll(() => readOnDisk(page, 'fleet.ttl')).toContain('fleet:NewClass a owl:Class');
+    expect(pageDownloaded).toBe(false);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 });
 
