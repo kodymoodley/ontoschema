@@ -85,6 +85,11 @@ const BUDGETS = {
  * note and an example, which is what makes them worth reading and what makes them large. In the
  * eager bundle that was eighteen kilobytes gzipped charged to everyone who opens the app,
  * almost none of whom ever look at an example.
+ *
+ * `filelinking.js` is the engine that keeps a schema and its file in step, with the IndexedDB
+ * store and the file pickers, behind the dynamic import in `filelink/index.ts`. It loads the first
+ * time a file is opened or saved, or at startup in a browser that has linked one before, so
+ * someone who never links a file never downloads it.
  */
 const LAZY_BUDGETS = {
   /**
@@ -94,6 +99,7 @@ const LAZY_BUDGETS = {
    */
   'rdfxml.js': 48,
   'examplelibrary.js': 32,
+  'filelinking.js': 6, // 4.1 when it was split out
 };
 
 /** `index-DgDSQNvl.js` and `index.js` are the same chunk; compare on the stable part. */

@@ -133,7 +133,7 @@ afterEach(() => {
   links = null;
 });
 
-function setUp(options: { storage?: LinkStorage; ontology?: Ontology } = {}) {
+function setUp(options: { storage?: LinkStorage; ontology?: Ontology; delayMs?: number } = {}) {
   const project = {
     ...createProject('Insurance'),
     ontology: options.ontology ?? withClasses('Car'),
@@ -148,8 +148,8 @@ function setUp(options: { storage?: LinkStorage; ontology?: Ontology } = {}) {
     write,
     read,
     // Every edit flushes at once, so a test can await the write rather than a clock.
-    delayMs: 0,
-    maxDelayMs: 0,
+    delayMs: options.delayMs ?? 0,
+    maxDelayMs: options.delayMs ?? 0,
   });
   return { links, id: project.id, projects, watcher, storage };
 }
@@ -199,6 +199,38 @@ describe('linking a schema to its file', () => {
 
     expect(file.writes()).toBe(0);
     expect(file.contents()).toBe('  Car  ');
+  });
+});
+
+describe('changes that are part of opening a file', () => {
+  /*
+   * A file with no positions is laid out as it opens. That is part of opening it, not an edit,
+   * so it must not rewrite the file: the delay is as long as the app's, so the layout and the
+   * rebase both land before the write would have gone out.
+   */
+  it('does not write a layout made while opening', async () => {
+    const { links, id, projects } = setUp({ delayMs: 60_000 });
+    const file = memoryFile('fleet.ttl', 'Car\n');
+    await links.link(id, file.handle, { text: 'Car\n', format: 'turtle', paused: false });
+
+    projects.edit(id, withClasses('Car', 'Arranged'));
+    await links.rebase(id);
+    await links.saveNow(id);
+
+    expect(file.writes()).toBe(0);
+  });
+
+  it('writes the next real edit, layout and all', async () => {
+    const { links, id, projects } = setUp({ delayMs: 60_000 });
+    const file = memoryFile('fleet.ttl', 'Car\n');
+    await links.link(id, file.handle, { text: 'Car\n', format: 'turtle', paused: false });
+    projects.edit(id, withClasses('Car', 'Arranged'));
+    await links.rebase(id);
+
+    projects.edit(id, withClasses('Car', 'Arranged', 'Policy'));
+    await links.saveNow(id);
+
+    expect(file.contents()).toBe('Car\nArranged\nPolicy\n');
   });
 });
 

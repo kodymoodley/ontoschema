@@ -39,6 +39,8 @@ export interface FileLinkDeps {
   read: (text: string, format: DocumentFormat) => Promise<Ontology>;
   delayMs?: number;
   maxDelayMs?: number;
+  /** Where statuses are published. Passed in when something must read them before this loads. */
+  statuses?: StoreApi<Record<string, LinkStatus>>;
 }
 
 interface Link extends StoredLink {
@@ -51,7 +53,7 @@ interface Link extends StoredLink {
 export type FileLinks = ReturnType<typeof createFileLinks>;
 
 export function createFileLinks(deps: FileLinkDeps) {
-  const statuses = createStore<Record<string, LinkStatus>>(() => ({}));
+  const statuses = deps.statuses ?? createStore<Record<string, LinkStatus>>(() => ({}));
   const links = new Map<string, Link>();
   let restoring: Promise<void> | null = null;
 
@@ -273,6 +275,19 @@ export function createFileLinks(deps: FileLinkDeps) {
         await settle(projectId, link);
       });
     },
+
+    /**
+     * Takes the schema as it is now to agree with the file, without writing. For a change that is
+     * part of opening the file rather than an edit: laying out a file that arrived with no
+     * positions. Positions reach the file with the first real edit, not merely by opening it.
+     */
+    rebase: (projectId: string) =>
+      run(projectId, async (link) => {
+        const ontology = ontologyOf(projectId);
+        if (!ontology) return;
+        link.baseline = deps.write(ontology, link.format);
+        await store(projectId, link);
+      }),
 
     /** Settles a conflict by writing the schema over the file. */
     keepMine: (projectId: string) => run(projectId, (link) => settle(projectId, link, 'mine')),

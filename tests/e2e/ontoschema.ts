@@ -358,7 +358,7 @@ export async function closeMetadata(page: Page) {
 /** Opens the export dialog from the file menu. Leaves it open. */
 export async function openExport(page: Page) {
   await chooseProjectAction(page, 'open-export');
-  await page.getByRole('dialog', { name: 'Export' }).waitFor();
+  await page.getByRole('dialog', { name: 'Export for other tools' }).waitFor();
 }
 
 /** Opens the save dialog from the file menu. Leaves it open. */

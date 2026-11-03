@@ -13,6 +13,8 @@ import {
   Modal,
   TextInput,
 } from '../designsystem';
+import { canLinkFiles, fileLinks, pickFileToOpen, writableFormat } from '../filelink';
+import type { LinkedFileHandle } from '../filelink';
 import { formatForFilename, readOntology } from '../serialization';
 import { projectNameFromFilename, summariseImport, worthReporting } from './importSummary';
 import type { ImportSummary } from './importSummary';
@@ -85,6 +87,8 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
   const [pendingRestore, setPendingRestore] = useState<string | null>(null);
   /* What the last opened document left behind, shown once and dismissed. */
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+  /* The file that was linked but is not being saved into, because it would lose what was left out. */
+  const [pausedFile, setPausedFile] = useState<string | null>(null);
   const backupInput = useRef<HTMLInputElement>(null);
 
   const create = () => {
@@ -110,7 +114,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
    * something the file already says. A backup is the exception, because restoring one is
    * destructive; opening either of these is not.
    */
-  const openFile = async (file: File) => {
+  const openFile = async (file: File, handle: LinkedFileHandle | null = null) => {
     const format = formatForFilename(file.name);
     const content = await file.text();
 
@@ -122,13 +126,46 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
 
     try {
       const { ontology, report } = await readOntology(content, format);
-      openAsNewProject(projectNameFromFilename(file.name), ontology);
+      const projectId = openAsNewProject(projectNameFromFilename(file.name), ontology);
       const summary = summariseImport(ontology, report);
-      if (worthReporting(summary)) setImportSummary(summary);
+      const reporting = worthReporting(summary);
+
+      /*
+       * Linked, so edits save themselves into the file. A file that lost something on the way in
+       * is linked but held back: saving into it would delete what was left out, and that is the
+       * person's call, made with the report in front of them.
+       */
+      const writable = handle ? writableFormat(file.name) : undefined;
+      if (handle && writable) {
+        void fileLinks.link(projectId, handle, {
+          text: content,
+          format: writable,
+          paused: reporting,
+        });
+      }
+      setPausedFile(handle && writable && reporting ? file.name : null);
+      if (reporting) setImportSummary(summary);
     } catch {
       setImportError(
         `${file.name} could not be read as ${format === 'turtle' ? 'Turtle' : 'RDF/XML'}.`,
       );
+    }
+  };
+
+  /**
+   * Where the browser can hand back a handle on the file, Open uses that picker, so the schema
+   * can be linked to the file and saved into it. Elsewhere the ordinary file input does the job.
+   */
+  const pickAndOpen = async () => {
+    if (!canLinkFiles()) {
+      fileInput.current?.click();
+      return;
+    }
+    try {
+      const picked = await pickFileToOpen();
+      if (picked) await openFile(picked.file, picked.handle);
+    } catch {
+      setImportError('That file could not be opened.');
     }
   };
 
@@ -183,7 +220,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         >
           New from example…
         </Button>
-        <Button size="small" variant="subtle" onClick={() => fileInput.current?.click()}>
+        <Button size="small" variant="subtle" onClick={() => void pickAndOpen()}>
           Open…
         </Button>
 
@@ -423,10 +460,18 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
             </ul>
           </>
         ) : null}
-        <p className={styles.confirmText}>
-          Saving from here writes what OntoSchema kept, not the file you opened. Keep the original
-          if you need everything in it.
-        </p>
+        {pausedFile ? (
+          <p className={styles.confirmText}>
+            Because saving would remove what was left out, OntoSchema is{' '}
+            <strong>not saving into {pausedFile}</strong>. Choose beside the schema&apos;s name:
+            save into it anyway, or keep the work in this browser and use Save as… for a new file.
+          </p>
+        ) : (
+          <p className={styles.confirmText}>
+            Saving from here writes what OntoSchema kept, not the file you opened. Keep the original
+            if you need everything in it.
+          </p>
+        )}
       </Modal>
 
       <Modal
