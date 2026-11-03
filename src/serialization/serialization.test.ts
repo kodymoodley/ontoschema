@@ -206,9 +206,13 @@ describe('empty ontology', () => {
     const jsonld = await parseJsonLd(serializeJsonLd(empty));
 
     for (const quads of [turtle, rdfxml, jsonld]) {
-      expect(quads).toHaveLength(1);
-      expect(quads[0]?.subject.value).toBe('https://example.org/blank');
-      expect(quads[0]?.object.value).toBe('http://www.w3.org/2002/07/owl#Ontology');
+      // The header, and the version IRI no file is written without.
+      expect(quads).toHaveLength(2);
+      expect(quads.every((quad) => quad.subject.value === 'https://example.org/blank')).toBe(true);
+      expect(quads.map((quad) => quad.object.value).sort()).toEqual([
+        'http://www.w3.org/2002/07/owl#Ontology',
+        'https://example.org/blank/0.0.1',
+      ]);
     }
   });
 });

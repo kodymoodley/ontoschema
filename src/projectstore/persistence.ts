@@ -1,4 +1,4 @@
-import { createEmptyOntology, createId, createProject } from '../ontologymodel';
+import { createEmptyOntology, createId, createProject, withVersionIri } from '../ontologymodel';
 import type { Annotation, Ontology, Project, PropertyUsage } from '../ontologymodel';
 import { isXsdDatatype } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
@@ -111,7 +111,9 @@ export function reviveWorkspace(value: unknown): Workspace | null {
 
 export function reviveProject(value: unknown): Project | null {
   if (!isRecord(value)) return null;
-  const ontology = reviveOntology(value.ontology);
+  const revived = reviveOntology(value.ontology);
+  // Projects saved before every schema carried a version IRI are given one as they open.
+  const ontology = revived && withVersionIri(revived);
   if (!ontology) return null;
   const now = new Date().toISOString();
   return {
@@ -147,6 +149,7 @@ function reviveOntology(value: unknown): Ontology | null {
   );
   return {
     ...base,
+    ...(typeof value.ontologyIri === 'string' ? { ontologyIri: value.ontologyIri } : {}),
     annotations: reviveAnnotations(value.annotations),
     classes: records(value.classes)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')

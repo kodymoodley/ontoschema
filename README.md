@@ -96,6 +96,13 @@ measured rather than assumed.
 Where the classes sit rides along as a single annotation on the ontology, keyed by IRI. One line a
 triple-level diff can ignore by predicate, and nothing at all in a document never opened here.
 
+Every saved file carries an **`owl:versionIRI`**. A new schema starts at its ontology IRI plus
+`/0.0.1` (`https://example.org/cars` starts at `https://example.org/cars/0.0.1`), a file opened
+without one is given the same, and nothing is saved or exported without it. It can be edited in
+the schema's annotations but not removed. Changing the namespace carries a version IRI that sat
+under the old one across, keeping its version number. The ontology IRI itself is kept as the
+opened file stated it, so a header such as `https://example.org/vocab#` comes back unchanged.
+
 ### What the shapes say
 
 One `sh:NodeShape` per class with usages, and one named `sh:PropertyShape` per (class, property).

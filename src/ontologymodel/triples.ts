@@ -32,10 +32,10 @@ import {
   ABSOLUTE_IRI_VALUE,
   entityIri,
   normalizeNamespaceIri,
-  ontologyIri,
+  headerIri,
   uniqueLocalName,
 } from './identifier';
-import { indexOntology, classLocalNames, propertyLocalNames } from './ontology';
+import { indexOntology, classLocalNames, propertyLocalNames, withVersionIri } from './ontology';
 import { encodePosition } from './layout';
 import type { Annotation, Ontology, PropertyUsage } from './types';
 
@@ -174,6 +174,8 @@ export function ontologyToTriples(
   options: SerializationOptions = {},
 ): Triple[] {
   const { includeAxioms, includeShapes, includeLayout } = { ...DEFAULT_OPTIONS, ...options };
+  // No file leaves without a version IRI, whatever the editor was left holding.
+  ontology = withVersionIri(ontology);
   const namespace = normalizeNamespaceIri(ontology.iri);
   const subjectOf = (localName: string) => entityIri(namespace, localName);
   const index = indexOntology(ontology);
@@ -194,7 +196,7 @@ export function ontologyToTriples(
   const expressions: Triple[] = [];
   const mintBlank = blankAllocator();
 
-  const header = ontologyIri(namespace);
+  const header = headerIri(ontology);
   triples.push({ subject: header, predicate: RDF_TYPE, object: iri(OWL_ONTOLOGY) });
   triples.push(...annotationTriples(header, ontology.annotations));
 

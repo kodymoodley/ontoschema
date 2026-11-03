@@ -76,6 +76,12 @@ export interface PropertyUsage {
 export interface Ontology {
   /** Namespace IRI; entity IRIs are this concatenated with the local name. */
   iri: string;
+  /**
+   * The ontology's own IRI, kept from an opened file when it is not the one the namespace
+   * implies (see `ontologyIri`). Absent means "derive it from `iri`", which is the case for
+   * every schema made here and for most files.
+   */
+  ontologyIri?: string;
   prefix: string;
   annotations: Annotation[];
   classes: OntologyClass[];

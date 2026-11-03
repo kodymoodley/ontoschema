@@ -152,6 +152,25 @@ describe('AnnotationEditor', () => {
     expect(annotationsOf(id)).toHaveLength(0);
   });
 
+  it("shows the schema's version IRI, which can be edited but not removed", async () => {
+    const user = userEvent.setup();
+    store().newProject('Versioned');
+    render(<AnnotationEditor target={{ kind: 'ontology', id: '' }} fields={SCHEMA_FIELDS} />);
+
+    const row = rowFor('owl:versionIRI');
+    expect(row).not.toBeNull();
+    if (!row) return;
+    expect(within(row).queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument();
+    expect(within(row).getByLabelText('Annotation term')).toBeDisabled();
+
+    const value = within(row).getByLabelText('owl:versionIRI value');
+    await user.clear(value);
+    await user.type(value, 'https://example.org/ontology/0.0.2');
+    expect(
+      ontology().annotations.find((annotation) => annotation.term === 'owl:versionIRI')?.value,
+    ).toBe('https://example.org/ontology/0.0.2');
+  });
+
   it('offers only ontology-appropriate terms for the ontology header', () => {
     render(<AnnotationEditor target={{ kind: 'ontology', id: '' }} fields={SCHEMA_FIELDS} />);
     const picker = screen.getByLabelText('Annotation term to add');
