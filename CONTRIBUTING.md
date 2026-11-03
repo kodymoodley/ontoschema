@@ -21,15 +21,16 @@ to ignore. Run it locally before anything that touches the canvas, the store or 
 
 `.oxlintrc.json` encodes the module boundaries. `npm run lint` fails if you break them.
 
-| Layer                   | May import                                | May **not** import              |
-| ----------------------- | ----------------------------------------- | ------------------------------- |
-| `annotationvocabulary/` | nothing from `src/`                       | everything else                 |
-| `ontologymodel/`        | `annotationvocabulary/`                   | React, the store, any UI module |
-| `serialization/`        | `ontologymodel/`, `annotationvocabulary/` | React, the store, any UI module |
-| `designsystem/`         | nothing from `src/`                       | every other `src/` module       |
-| `projectstore/`         | `ontologymodel/`, `annotationvocabulary/` | any UI module                   |
-| UI modules              | the layers above                          | **each other**, and `appshell/` |
-| `appshell/`             | anything                                  | —                               |
+| Layer                   | May import                                          | May **not** import                          |
+| ----------------------- | --------------------------------------------------- | ------------------------------------------- |
+| `annotationvocabulary/` | nothing from `src/`                                 | everything else                             |
+| `ontologymodel/`        | `annotationvocabulary/`                             | React, the store, any UI module             |
+| `serialization/`        | `ontologymodel/`, `annotationvocabulary/`           | React, the store, any UI module             |
+| `designsystem/`         | nothing from `src/`                                 | every other `src/` module                   |
+| `projectstore/`         | `ontologymodel/`, `annotationvocabulary/`           | any UI module                               |
+| `filelink/`             | `projectstore/`, `serialization/`, `ontologymodel/` | any UI module, `appshell/`, `designsystem/` |
+| UI modules              | the layers above                                    | **each other**, and `appshell/`             |
+| `appshell/`             | anything                                            | —                                           |
 
 If two UI modules need to agree on something, it belongs in `projectstore/` (see
 `dragpayload.ts` and `pendingConnection` for the two existing examples), or the composition

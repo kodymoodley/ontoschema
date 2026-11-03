@@ -44,8 +44,36 @@ Two different promises, so two different menu items.
 the OWL/RDFS axioms, the SHACL shapes and where the classes sit on the canvas. There is no private
 project format any more — a schema leaves here in a form every other RDF tool understands.
 
-**File › Export…** writes a rendering this app will not read back: the SHACL shapes on their own
-for a validator, JSON-LD, and a Mermaid class diagram.
+**File › Export for other tools…** writes a rendering this app will not read back: the SHACL shapes
+on their own for a validator, JSON-LD, and a Mermaid class diagram.
+
+### Editing a schema file in place
+
+In Chrome and Edge on the desktop, a schema can be linked to its file, and every edit is saved into
+it. A schema kept in a git repository is edited and committed with no download in between:
+
+1. Clone the repository.
+2. **File › Open…** its `.ttl`, `.rdf` or `.owl` file.
+3. Edit. Each change is saved into the file about half a second after you stop, and `Ctrl`/`Cmd`+`S`
+   saves at once. The header says where the work is: "Saved to insurance.ttl".
+4. `git add`, `git commit`, `git push`.
+
+**File › Save as…** links the schema to the file it writes in the same way.
+
+- **The file changes only when the schema does.** Opening a file and closing it again leaves
+  `git status` clean, and an edit changes only the lines it is about. Each class's position is on
+  a line of its own, so two people moving different classes merge without a conflict.
+- **The app follows git.** When something else changes the file, such as `git pull`,
+  `git checkout` or another editor, the schema is read back from it. If there were edits here not
+  yet saved, the header asks which to keep.
+- **A file this app cannot represent in full is not saved into until you agree.** Individuals and
+  restrictions, for instance, are left out when such a file opens, and saving into it would remove
+  them from the file.
+- **The link survives a reload.** With Chrome's "Allow on every visit" nothing needs confirming;
+  otherwise the header offers to reconnect.
+
+Firefox and Safari have declined the File System Access API this rests on. There the work is kept
+in the browser, as the header says, and Save as… downloads a file.
 
 ### What a saved file says
 
@@ -182,7 +210,7 @@ First-time Playwright setup: `npm run test:e2e:install`. `lint:fix`, `test:watch
 
 ## Libraries and what each one is for
 
-Runtime dependencies are kept to five. Everything else is a dev tool.
+Runtime dependencies are kept to seven. Everything else is a dev tool.
 
 ### Runtime
 
@@ -193,6 +221,8 @@ Runtime dependencies are kept to five. Everything else is a dev tool.
 | `zustand`                    | The app-state container in `projectstore/`. Holds the project list, the active ontology, the current selection, and the undo/redo stack, and notifies React on change.                                                          |
 | `n3`                         | Writes Turtle in `serialization/turtle.ts` — prefix folding, literal forms and escaping. Also used as the Turtle **parser** in the test suites.                                                                                 |
 | `@dagrejs/dagre`             | Lays out each taxonomy module in `canvas/layout.ts`. Used rather than a simple tree walk because a class may have two superclasses inside one module, making it a DAG that dagre ranks and centres correctly.                   |
+| `browser-fs-access`          | The file pickers in `filelink/` that hand back a handle on the file, so a schema can be saved into the file it came from. From Google Chrome Labs, and what Excalidraw uses.                                                    |
+| `idb-keyval`                 | Keeps those file handles in IndexedDB, so a linked file stays linked across a reload.                                                                                                                                           |
 
 **No CSS framework.** Styling is plain CSS Modules (built into Vite, zero dependencies) over a
 design-token layer in `designsystem/tokens.css`, with a system font stack so nothing is fetched from
@@ -266,6 +296,16 @@ src/
                                                    the property pool and the canvas.
                             store.ts               Composition only.
 
+  filelink/               A schema linked to its file on disk, kept in step as it is edited.
+                          The only module that knows files on disk exist.
+                            reconcile.ts   PURE. Write, read back, or ask, decided from the
+                                           schema and the file as they are and as they
+                                           last agreed.
+                            engine.ts      Autosave into the file, following it on disk,
+                                           permissions, and links kept across reloads.
+                            index.ts       What every visit loads: the statuses and the
+                                           hook. The engine loads on first use.
+
   designsystem/           Leaf UI primitives and design tokens. Imports nothing from src/.
 
   canvas/                 React Flow surfaces. Derives the graph from the ontology, handles
@@ -290,16 +330,17 @@ src/
 
 These are **enforced by oxlint**, not just documented. `npm run lint` fails on a violation.
 
-| Layer                   | May import                                                                                    | May **not** import                                   |
-| ----------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `annotationvocabulary/` | nothing from `src/`                                                                           | everything else                                      |
-| `ontologymodel/`        | `annotationvocabulary/`                                                                       | React, React Flow, zustand, the store, any UI module |
-| `serialization/`        | `ontologymodel/`, `annotationvocabulary/`                                                     | React, the store, any UI module                      |
-| `examplelibrary/`       | `ontologymodel/`, `annotationvocabulary/`                                                     | React, the store, any UI module                      |
-| `designsystem/`         | nothing from `src/`                                                                           | every other `src/` module                            |
-| `projectstore/`         | `ontologymodel/`, `annotationvocabulary/`                                                     | any UI module                                        |
-| UI modules              | `ontologymodel/`, `projectstore/`, `designsystem/`, `annotationvocabulary/`, `serialization/` | **each other**, and `appshell/`                      |
-| `appshell/`             | anything                                                                                      | —                                                    |
+| Layer                   | May import                                                                                                 | May **not** import                                   |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `annotationvocabulary/` | nothing from `src/`                                                                                        | everything else                                      |
+| `ontologymodel/`        | `annotationvocabulary/`                                                                                    | React, React Flow, zustand, the store, any UI module |
+| `serialization/`        | `ontologymodel/`, `annotationvocabulary/`                                                                  | React, the store, any UI module                      |
+| `examplelibrary/`       | `ontologymodel/`, `annotationvocabulary/`                                                                  | React, the store, any UI module                      |
+| `designsystem/`         | nothing from `src/`                                                                                        | every other `src/` module                            |
+| `projectstore/`         | `ontologymodel/`, `annotationvocabulary/`                                                                  | any UI module                                        |
+| `filelink/`             | `projectstore/`, `serialization/`, `ontologymodel/`, `annotationvocabulary/`                               | any UI module, `appshell/`, `designsystem/`          |
+| UI modules              | `ontologymodel/`, `projectstore/`, `filelink/`, `designsystem/`, `annotationvocabulary/`, `serialization/` | **each other**, and `appshell/`                      |
+| `appshell/`             | anything                                                                                                   | —                                                    |
 
 `tests/integration/lintBoundaries.test.ts` checks that every one of these rules still bites: it
 writes imports that cross each boundary and fails if any of them goes unreported.

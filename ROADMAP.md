@@ -42,23 +42,20 @@ document left behind. The inspector is one scrolling panel that opens on selecti
 its metadata is an ordinary form with the vocabulary behind a switch, and both side panels fold
 away. The audit is done and every finding in [AUDIT.md](AUDIT.md) is closed.
 
-**The owner's November wishlist comes first** (todos 38–43). Each is specified in full in its
-theme section below. Saving to the file comes first, as the owner's most urgent item. After it,
-the smallest and most self-contained, and the item that has to be measured before it can be
-designed last:
+**The owner's November wishlist comes first** (todos 38–43). Its most urgent item has shipped:
+a schema opened from a git repository saves itself into its file, so editing ends in
+`git commit` with no download (todos 43 and 42; see the README's _Editing a schema file in
+place_). The rest is specified in full in its theme section below, smallest and most
+self-contained first, and the item that has to be measured before it can be designed last:
 
-1. **Edit a schema file in place, with autosave, and tell Save from Export** (todos 43 and 42,
-   **L**) — clone a repository, open its `.ttl` here, edit, and the file on disk keeps up, ready
-   for `git commit`. One piece of work with telling Save from Export, because once the file
-   saves itself the two menu items stop looking alike.
-2. **Snap a relation to the class under the pointer** (todo 39, **S**) — the one gesture every
+1. **Snap a relation to the class under the pointer** (todo 39, **S**) — the one gesture every
    relation starts with, and today it fails silently unless you let go within 20 pixels of a dot.
-3. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
+2. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
    meant, and reuse already exists; this offers it at the moment a name collides.
-4. **Hide and show relations** (todo 38, **M**) — an eye on each row of the entities panel's
+3. **Hide and show relations** (todo 38, **M**) — an eye on each row of the entities panel's
    Relation tab, appearing on hover, that hides every line drawn with that relation. On touch
    screens the eye appears on the selected row instead. Three decisions first, listed with it.
-5. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
+4. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
    tidy layout, fanned out left to right or top to bottom, and animates the classes there. A
    different arrangement on every press, none of them worse than _Tidy up_. The engine is chosen
    by benchmark, and this reverses the earlier decision to keep the layout button deterministic.
@@ -229,6 +226,7 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Size |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S    |
+| **Open a cloned repository as a folder, and open `.ttl` files from the desktop** — what editing a file in place left for later. A folder opened once, the way vscode.dev opens one, would list every schema in the repository and see new ones arrive with a `git pull`. Installing the app would let double-clicking a `.ttl` open it here, through the File Handling API. Both are Chromium-only, like the linking they build on. _(todo 44)_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | M    |
 | **Harden the old layout reader** — _parked to the back of the queue._ Each class now carries its own `ontoschema:position`, so the scale worry is gone — there is no longer one literal of tens of kilobytes on one line — and the reader of a position is tested against malformed values, including a merge-conflict marker left in the file. The round trip is tested end to end, and `layout.ts` is inside Stryker's scope with the rest of `src/ontologymodel/`. What is still owed is the **old ontology-wide `ontoschema:layout` reader**, kept so earlier files open, against real hostility: `__proto__` and `constructor` as keys, coordinates that are `NaN`, `Infinity`, `1e308` or a string that parses as a number, an entry whose key is not an IRI at all, a value nested arbitrarily deep. _(todo 20)_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | S    |
 | **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. **The ranking is already built**: `src/search/` ranks the open schema for todo 29, and its BM25 half knows about documents with weighted fields rather than about classes, so this item brings a corpus to it rather than writing a second one. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. _Design settled: no proxy, and no fetch on the critical path — see [Resolving external vocabularies](#resolving-external-vocabularies) below._ **Imported terms are read-only**: an axiom or definition that came from PROV-O, PAV or DCAT cannot be edited or redefined here, or the schema quietly disagrees with the vocabulary it claims to import. Note the tension to settle first — SKOS appears on the todo list as something to import, and is excluded above as a modelling vocabulary. _(todo 10)_ | L    |
 
@@ -270,126 +268,6 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 >
 > Nothing is blocked in the meantime. Named shapes stay addressable, so whichever way it goes, the
 > constraints attach to shapes that already exist.
-
-### Tell Save from Export (todo 42)
-
-**Size S, done with todo 43.** The file menu has **Save as…** and **Export…**, and they open the
-same dialog: a list of formats, a preview, and a download button on each. Only the list differs,
-and one sentence at the top. So they read as the same action twice, and the difference that
-matters is not visible from the menu: a saved file opens here again, and an exported one does not.
-
-**What it should do.** Once todo 43 makes a schema save itself to its file, the menu explains
-itself:
-
-- **No Save item is needed** for a schema linked to a file, because it saves on its own. The
-  header says so, and `Ctrl`/`Cmd`+`S` writes at once for anyone who presses it from habit.
-- **File › Save as…** writes the schema to a new `.ttl`, `.rdf` or `.owl` file and links it
-  there, so it saves itself to that file from then on.
-- **File › Export for other tools…** writes the SHACL shapes on their own for a validator,
-  JSON-LD, or a Mermaid diagram for documentation. The dialog's title and each entry say which
-  tool the file is for, rather than only which format it is in.
-
-**Done when:** the menu reads as above, someone new can tell which item keeps their work without
-opening either, and the README's _Saving, and exporting_ section says the same thing.
-
-**Wording:** **Export for other tools…**, because it says what the file is for, which is the
-question the person is asking.
-
-### Edit a schema file in place, with autosave (todo 43)
-
-**Size L.** The workflow this serves: clone a repository, open `schemas/insurance.ttl` in
-OntoSchema, edit it, then `git add`, `git commit` and `git push`. No download, no copying files
-into the repository by hand, and colleagues doing the same on their own clones.
-
-Today, opening a `.ttl` reads a copy of it into the browser. Every edit is kept, but in the
-browser's `localStorage`, not in the file. Getting the changes back means **Save as…**, which
-downloads a new file, usually into Downloads and often as `insurance (1).ttl`, and then moving it
-over the original by hand. The file in the repository goes stale, and it is easy to lose track of
-which copy is current.
-
-**What it should do.** Link a schema to the file it came from, and keep that file up to date.
-
-- **Opening links the file.** File › Open… uses the browser's file picker that hands the app a
-  handle on the file, so it can write back to it later, not just read it once.
-- **Edits save themselves to the file**, about half a second after editing pauses, through the
-  same batching the browser copy already uses, and at once when the tab is hidden or closed.
-  `Ctrl`/`Cmd`+`S` writes immediately. Each write is atomic, because the browser writes a
-  temporary file and swaps it in, so git never sees a half-written file.
-- **The header says where the work is.** "Saved to insurance.ttl", "Saving…", or why it could not
-  save, beside the project's name.
-- **The link survives a reload.** The handle is kept in IndexedDB. With Chrome's "Allow on every
-  visit" permission, reopening needs no prompt at all; otherwise it costs one click.
-- **The app follows git.** When the file changes on disk, through `git pull`, `git checkout`,
-  `git stash` or another editor, the app reloads it. Chrome's `FileSystemObserver` reports the
-  change as it happens; where that is missing, the file is checked whenever the tab regains focus.
-- **`localStorage` stays the working copy** and the safety net, exactly as now.
-- **One file per project.** Each project remembers its own file, and switching project switches
-  file.
-- **Only one module knows about file handles**, the way `projectstore/persistence.ts` is the only
-  one that knows about storage. A desktop shell, if one is ever built, swaps that module.
-
-**Output that works with git.** These rules decide whether a diff is reviewable and whether two
-colleagues' edits merge:
-
-- **The same schema always gives the same file.** Measured: true today, byte for byte.
-- **Nothing is written until something changes.** Opening a file and closing it again leaves it
-  untouched, so `git status` stays clean.
-- **A small edit gives a small diff.** Measured: adding an attribute to the insurance example
-  changes 2 of its 889 lines.
-- **One class's position per line.** Done first, because it changes the file format. Every
-  position used to sit in one literal on one line, 857 characters long in the insurance example,
-  so moving any class rewrote that line, and two colleagues who each moved a different class
-  always got a merge conflict on a line nobody could read. Each class now carries its own
-  `ontoschema:position` in its own block, files in the old form keep opening, and a test runs
-  git's three-way merge on two neighbouring moves.
-- **LF line endings and a final newline**, whatever the operating system.
-
-**Three rules that keep it safe:**
-
-- **A foreign document is not overwritten silently.** Opening a file written elsewhere keeps what
-  this app models and drops the rest, such as individuals and restrictions, and the report says
-  so. Saving into that file would delete what was dropped, so autosave does not start until the
-  person agrees, with the report in front of them and **Save as a new file** as the default.
-- **Two changes at once are not settled silently.** If the file changes on disk while edits are
-  still waiting to be written, the app asks: keep these edits and write over the file, or take
-  the file and drop them. Real merging is git's job, not this app's.
-- **A file that has gone stops the autosave.** If it was moved, renamed or deleted, the header
-  says so and offers Save as….
-
-**Browser support.** The File System Access API is in desktop Chrome and Edge. Firefox and Safari
-have declined to implement it, so there the app works exactly as it does now: the browser copy
-saves itself, and saving a file downloads it. The header says the work is kept in this browser,
-rather than implying a file is up to date. For a colleague on Firefox or Safari the git workflow
-is not available. Only a desktop shell would bring it to them; see
-[Staying a web app](#staying-a-web-app).
-
-**Libraries, rather than reinventing them.** There is no single library for this; the platform
-itself is the new part. `browser-fs-access` from Google Chrome Labs, which Excalidraw uses, opens
-and saves files with a fallback for browsers without the API. `idb-keyval` keeps the file handle
-in IndexedDB. `FileSystemObserver` is native. The startup bundle stands at 206.0 of its 210 kB,
-so whatever does not fit there loads when a file is first linked.
-
-**Later, not now:** opening a whole cloned repository as a folder and choosing among its schema
-files, the way vscode.dev does, and installing the app so that double-clicking a `.ttl` opens it
-here.
-
-**Done when:**
-
-- In Chrome and Edge: open a `.ttl`, edit, and within a second the file on disk has the change,
-  and `git diff` shows only that change.
-- Opening a file and closing it without editing leaves it byte for byte the same.
-- After a reload the file is still linked, at the cost of one click at most.
-- Checking out another version of the file shows it in the app, within a second where the
-  observer exists and on returning to the tab where it does not.
-- Two branches that each move a different class merge without a conflict.
-- All three safety rules are tested.
-- Firefox and Safari behave as now, and the header says the work is kept in the browser.
-- End-to-end tests drive it with the browser's file pickers stubbed, since automated browsers
-  cannot drive the real ones.
-
-**Decided.** Autosave to the file, by the owner on 2026-11-02, for the git workflow above. Taken
-as recommended: the link survives a reload, one file per project, and a missing file stops the
-autosave and offers Save as….
 
 ### Resolving external vocabularies
 
@@ -776,11 +654,11 @@ change how the tool is delivered.
 
 What would genuinely justify a desktop build is filesystem and local-network access: `Ctrl`+`S`
 straight to `schema.ttl` rather than a downloads-folder dance, no `localStorage` quota, and
-reaching a GraphDB on the local network. The first is now on this roadmap without a desktop
-build: the File System Access API gives a persistent file handle in Chromium browsers, with the
-existing download path as the fallback elsewhere. See
-[Edit a schema file in place, with autosave](#edit-a-schema-file-in-place-with-autosave-todo-43).
-The other two are not on the roadmap.
+reaching a GraphDB on the local network. The first now works without a desktop build, in Chrome
+and Edge: the File System Access API gives a persistent file handle, and a schema saves itself
+into the file it came from (see the README's _Editing a schema file in place_). Firefox and
+Safari have declined that API, so for them only a desktop shell would bring it. The other two are
+not on the roadmap.
 
 Against it: the touch and mobile work becomes dead weight; code signing, auto-update and a
 cross-platform build matrix are real ongoing costs for a deliberately lightweight tool; and "open
@@ -888,18 +766,17 @@ constraint authoring belongs in this tool at all. See the note under
 Filed into the sections above, each entry tagged with its number so the two can be matched. The
 list as originally written is in the git history; ask and it comes back.
 
-| #   | Now lives in           | As                                                                  | Size |
-| --- | ---------------------- | ------------------------------------------------------------------- | ---- |
-| 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project | L    |
-| 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29       | L    |
-| 20  | Export and interop     | Harden the old layout reader — parked to the back of the queue      | S    |
-| 38  | Canvas and readability | Hide and show relations, from the entities panel                    | M    |
-| 39  | Canvas and readability | Snap a relation to the class under the pointer                      | S    |
-| 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                     | L    |
-| 41  | Editing workflow       | Reuse a term instead of minting `name2`                             | S–M  |
-| 42  | Export and interop     | Tell Save from Export — done with 43                                | S    |
-| 43  | Export and interop     | Edit a schema file in place, with autosave, for git                 | L    |
+| #   | Now lives in           | As                                                                       | Size |
+| --- | ---------------------- | ------------------------------------------------------------------------ | ---- |
+| 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project      | L    |
+| 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29            | L    |
+| 20  | Export and interop     | Harden the old layout reader — parked to the back of the queue           | S    |
+| 38  | Canvas and readability | Hide and show relations, from the entities panel                         | M    |
+| 39  | Canvas and readability | Snap a relation to the class under the pointer                           | S    |
+| 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                          | L    |
+| 41  | Editing workflow       | Reuse a term instead of minting `name2`                                  | S–M  |
+| 44  | Export and interop     | Open a cloned repository as a folder; open `.ttl` files from the desktop | M    |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43 — kept as numbers so a commit message naming one can still be resolved.
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
