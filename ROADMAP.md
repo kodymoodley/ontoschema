@@ -70,9 +70,9 @@ appears there again:
   dependency surface on the list and the only item that makes this tool depend on vocabularies it
   does not control. It wants a design note before any code; most of that note is already written,
   under [Resolving external vocabularies](#resolving-external-vocabularies).
-- **Harden the layout annotation** (todo 20) — owed work rather than wanted work. The positions
-  shipped with the happy path tested and little else, and the entry below lists exactly what is
-  untested so the debt stays legible. Parked at the back of the queue by the owner.
+- **Harden the old layout reader** (todo 20) — owed work rather than wanted work, and smaller
+  since each class carries its own position: what is left is the reader kept for files saved in
+  the old form, against hostile input. Parked at the back of the queue by the owner.
 - **Nine, three times over** (todo 9) — a project rather than an item, decided in principle: nine
   classes to a module, nine modules to a group, nine groups to a file, so 729 classes and the app
   refuses more. A design note comes first and it has five things to answer, listed under
@@ -229,16 +229,18 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Size |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S    |
-| **Harden the layout annotation** — _parked to the back of the queue._ The positions half of todo 17 shipped with tests that cover the happy path and five malformed strings, which is not the same as being robust. What is actually untested: **scale** — a few hundred classes put a single literal of tens of kilobytes on one line, and nothing checks what that does to the writers, to the file, or to the time it takes; **the decoder against real hostility** — `__proto__` and `constructor` as keys, coordinates that are `NaN`, `Infinity`, `1e308` or a string that parses as a number, an entry whose key is not an IRI at all, a value nested arbitrarily deep; **partial recovery** — a layout naming three classes that no longer exist and omitting two that do, which is the ordinary case after editing a file elsewhere and the one the decoder has never been asked about; **the round trip end to end**, which cannot be finished until the importer exists, so the decoder is dead code the suite exercises only in isolation. Also **not mutation-tested**: Stryker is pointed at `src/serialization/` alone, so `layout.ts` has no measured test strength at all, and the obvious mutants — dropping the rounding, dropping the sort, inverting a guard — would very likely survive. Widen the mutation scope to cover it and hold it to the same bar. _(todo 20)_          | S–M  |
+| **Harden the old layout reader** — _parked to the back of the queue._ Each class now carries its own `ontoschema:position`, so the scale worry is gone — there is no longer one literal of tens of kilobytes on one line — and the reader of a position is tested against malformed values, including a merge-conflict marker left in the file. The round trip is tested end to end, and `layout.ts` is inside Stryker's scope with the rest of `src/ontologymodel/`. What is still owed is the **old ontology-wide `ontoschema:layout` reader**, kept so earlier files open, against real hostility: `__proto__` and `constructor` as keys, coordinates that are `NaN`, `Infinity`, `1e308` or a string that parses as a number, an entry whose key is not an IRI at all, a value nested arbitrarily deep. _(todo 20)_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | S    |
 | **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. **The ranking is already built**: `src/search/` ranks the open schema for todo 29, and its BM25 half knows about documents with weighted fields rather than about classes, so this item brings a corpus to it rather than writing a second one. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. _Design settled: no proxy, and no fetch on the critical path — see [Resolving external vocabularies](#resolving-external-vocabularies) below._ **Imported terms are read-only**: an axiom or definition that came from PROV-O, PAV or DCAT cannot be edited or redefined here, or the schema quietly disagrees with the vocabulary it claims to import. Note the tension to settle first — SKOS appears on the todo list as something to import, and is excluded above as a modelling vocabulary. _(todo 10)_ | L    |
 
-> **Where the layout goes.** One declared `owl:AnnotationProperty` in this app's own namespace,
-> carrying every position, keyed by **IRI** — internal ids never reach the file, so they cannot be
-> the key. A class with no entry is placed the way a new one is. The cost is that any move
-> rewrites the whole line, so a textual diff of a saved `.ttl` says all of it changed; a
-> triple-level diff sees one annotation and can ignore it by predicate. Checked against a real OWL
-> parser: the term reads as an annotation property and the classes and unions are untouched. Its
-> testing is **owed, not done** — todo 20 above.
+> **Where the layout goes.** One `ontoschema:position` on each class, `"40,120"`, written as the
+> last line of that class's own block, and declared once as an `owl:AnnotationProperty` in this
+> app's own namespace. A class with no position is placed the way a new one is. Per class because
+> a saved schema lives in git: moving a class changes one line, and two people moving different
+> classes merge without a conflict, which a test checks with git's own three-way merge. Files
+> saved before this carry every position in one `ontoschema:layout` literal on the ontology; they
+> still open, and that form is never written again. Checked against a real OWL parser, when it was
+> one annotation: the term reads as an annotation property and the classes and unions are
+> untouched.
 >
 > **What "schema-level" means on import.** Classes and their `rdfs:subClassOf` hierarchy, with
 > annotations. Attributes, whatever their range — an `xsd` datatype is kept and anything else
@@ -334,12 +336,12 @@ colleagues' edits merge:
   untouched, so `git status` stays clean.
 - **A small edit gives a small diff.** Measured: adding an attribute to the insurance example
   changes 2 of its 889 lines.
-- **One class's position per line.** This is not true today, and it has to be. Every position
-  sits in one literal on one line, 857 characters long in the insurance example, so moving any
-  class rewrites that line. Two colleagues who each move a different class always get a merge
-  conflict, on a line nobody can read. Each class's position moves onto that class's own lines;
-  files in the old form keep opening. This is also most of todo 20, _Harden the layout
-  annotation_.
+- **One class's position per line.** Done first, because it changes the file format. Every
+  position used to sit in one literal on one line, 857 characters long in the insurance example,
+  so moving any class rewrote that line, and two colleagues who each moved a different class
+  always got a merge conflict on a line nobody could read. Each class now carries its own
+  `ontoschema:position` in its own block, files in the old form keep opening, and a test runs
+  git's three-way merge on two neighbouring moves.
 - **LF line endings and a final newline**, whatever the operating system.
 
 **Three rules that keep it safe:**
@@ -890,7 +892,7 @@ list as originally written is in the git history; ask and it comes back.
 | --- | ---------------------- | ------------------------------------------------------------------- | ---- |
 | 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project | L    |
 | 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29       | L    |
-| 20  | Export and interop     | Harden the layout annotation — parked to the back of the queue      | S–M  |
+| 20  | Export and interop     | Harden the old layout reader — parked to the back of the queue      | S    |
 | 38  | Canvas and readability | Hide and show relations, from the entities panel                    | M    |
 | 39  | Canvas and readability | Snap a relation to the class under the pointer                      | S    |
 | 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                     | L    |
