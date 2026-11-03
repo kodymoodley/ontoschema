@@ -32,6 +32,8 @@
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",
     "@xyflow/react": "^12.11.3",
+    "browser-fs-access": "^0.38.0",
+    "idb-keyval": "^6.3.0",
     "n3": "^2.13.12",
     "rdfxml-streaming-parser": "^3.0.0",
     "react": "^19.3.1",

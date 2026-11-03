@@ -212,6 +212,8 @@
                   "**/entitysearch/**",
                   "**/projectstore",
                   "**/projectstore/**",
+                  "**/filelink",
+                  "**/filelink/**",
                   "**/designsystem",
                   "**/designsystem/**",
                   "**/appshell",
@@ -268,6 +270,8 @@
                   "**/entitysearch/**",
                   "**/projectstore",
                   "**/projectstore/**",
+                  "**/filelink",
+                  "**/filelink/**",
                   "**/designsystem",
                   "**/designsystem/**",
                   "**/appshell",
@@ -323,6 +327,8 @@
                   "**/entitysearch/**",
                   "**/projectstore",
                   "**/projectstore/**",
+                  "**/filelink",
+                  "**/filelink/**",
                   "**/designsystem",
                   "**/designsystem/**",
                   "**/appshell",
@@ -378,6 +384,8 @@
                   "**/entitysearch/**",
                   "**/projectstore",
                   "**/projectstore/**",
+                  "**/filelink",
+                  "**/filelink/**",
                   "**/designsystem",
                   "**/designsystem/**",
                   "**/appshell",
@@ -420,6 +428,8 @@
                   "**/entitysearch/**",
                   "**/projectstore",
                   "**/projectstore/**",
+                  "**/filelink",
+                  "**/filelink/**",
                   "**/appshell",
                   "**/appshell/**",
                   "**/ontologymodel",
@@ -773,6 +783,47 @@
               {
                 "group": ["**/appshell", "**/appshell/**"],
                 "message": "Composition flows downward: a UI module must not import appshell/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    // Between the store and the UI: it may use the store, the serializer and the model.
+    {
+      "files": ["src/filelink/**/*.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/canvas",
+                  "**/canvas/**",
+                  "**/classeditor",
+                  "**/classeditor/**",
+                  "**/relationeditor",
+                  "**/relationeditor/**",
+                  "**/taxonomytree",
+                  "**/taxonomytree/**",
+                  "**/annotationpanel",
+                  "**/annotationpanel/**",
+                  "**/ontologymetadata",
+                  "**/ontologymetadata/**",
+                  "**/exportpanel",
+                  "**/exportpanel/**",
+                  "**/projectswitcher",
+                  "**/projectswitcher/**",
+                  "**/entitysearch",
+                  "**/entitysearch/**",
+                  "**/appshell",
+                  "**/appshell/**",
+                  "**/designsystem",
+                  "**/designsystem/**"
+                ],
+                "message": "filelink/ keeps schemas and their files in step. It serves the UI and may not import it: no UI module, appshell/ or designsystem/."
               }
             ]
           }

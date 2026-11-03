@@ -87,6 +87,17 @@ const FORBIDDEN: Forbidden[] = [
     imports: '../serialization',
     message: 'designsystem/ is a leaf: it must not import other src/ modules.',
   },
+  {
+    file: 'src/filelink/probe.ts',
+    imports: '../projectswitcher',
+    message:
+      'filelink/ keeps schemas and their files in step. It serves the UI and may not import it: no UI module, appshell/ or designsystem/.',
+  },
+  {
+    file: 'src/serialization/to-filelink.ts',
+    imports: '../filelink',
+    message: 'Serialization depends on the domain model only, never on UI or app state.',
+  },
   // Every UI module against every sibling, both through the sibling's index and past it.
   ...UI_MODULES.flatMap((self) =>
     UI_MODULES.filter((other) => other !== self).flatMap((other) => [
@@ -109,6 +120,9 @@ const ALLOWED: Probe[] = [
   { file: 'src/ontologymodel/allowed.ts', imports: '../annotationvocabulary' },
   { file: 'src/serialization/allowed.ts', imports: '../ontologymodel' },
   { file: 'src/canvas/allowed.ts', imports: '../projectstore' },
+  { file: 'src/filelink/allowed-store.ts', imports: '../projectstore' },
+  { file: 'src/filelink/allowed-serializer.ts', imports: '../serialization' },
+  { file: 'src/projectswitcher/allowed-filelink.ts', imports: '../filelink' },
   { file: 'src/canvas/allowed-react.tsx', imports: '@xyflow/react' },
   { file: 'src/appshell/allowed.tsx', imports: '../canvas' },
   // Tests reach across boundaries on purpose, to build the state they check.
