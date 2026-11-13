@@ -36,6 +36,7 @@ export function createEmptyOntology(
     relations: [],
     attributes: [],
     usages: [],
+    unmodelled: [],
   };
 }
 

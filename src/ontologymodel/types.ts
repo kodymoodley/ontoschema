@@ -1,4 +1,5 @@
 import type { XsdDatatype } from '../annotationvocabulary';
+import type { Triple } from './triples';
 
 /** Canvas coordinates. Layout is part of the saved document, not of the RDF output. */
 export interface Position {
@@ -82,6 +83,11 @@ export interface Ontology {
   relations: Relation[];
   attributes: Attribute[];
   usages: PropertyUsage[];
+  /**
+   * What an opened document said that the model does not hold, written back on save. Nothing
+   * that edits the model touches it — see `unmodelled.ts`.
+   */
+  unmodelled: Triple[];
 }
 
 export interface Project {

@@ -1,5 +1,5 @@
 import { createEmptyOntology, createId, createProject } from '../ontologymodel';
-import type { Annotation, Ontology, Project, PropertyUsage } from '../ontologymodel';
+import type { Annotation, Ontology, Project, PropertyUsage, Triple } from '../ontologymodel';
 import { isXsdDatatype } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import { createSaveQueue } from './savequeue';
@@ -175,7 +175,28 @@ function reviveOntology(value: unknown): Ontology | null {
         annotations: reviveAnnotations(entity.annotations),
       })),
     usages: reviveUsages(value),
+    unmodelled: records(value.unmodelled).flatMap((entry) => {
+      const triple = reviveTriple(entry);
+      return triple ? [triple] : [];
+    }),
   };
+}
+
+/** One kept statement, or nothing when the stored entry is not a whole one. */
+function reviveTriple(value: Record<string, unknown>): Triple | null {
+  const { subject, predicate, object } = value;
+  if (typeof subject !== 'string' || typeof predicate !== 'string' || !isRecord(object)) {
+    return null;
+  }
+  if (typeof object.value !== 'string') return null;
+  if (object.type === 'iri' || object.type === 'blank') {
+    return { subject, predicate, object: { type: object.type, value: object.value } };
+  }
+  if (object.type !== 'literal') return null;
+  const literal: Triple['object'] = { type: 'literal', value: object.value };
+  if (typeof object.language === 'string') literal.language = object.language;
+  else if (typeof object.datatype === 'string') literal.datatype = object.datatype;
+  return { subject, predicate, object: literal };
 }
 
 /**

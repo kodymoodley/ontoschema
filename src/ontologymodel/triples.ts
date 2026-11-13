@@ -37,6 +37,8 @@ import {
 } from './identifier';
 import { indexOntology, classLocalNames, propertyLocalNames } from './ontology';
 import { encodePosition } from './layout';
+import { restore } from './unmodelled';
+import type { Ref } from './unmodelled';
 import type { Annotation, Ontology, PropertyUsage } from './types';
 
 /**
@@ -308,6 +310,7 @@ export function ontologyToTriples(
     }
   }
 
+  const shapeNames: ShapeNames = { node: new Map(), property: new Map() };
   if (includeShapes) {
     triples.push(
       ...shapeTriples(ontology, {
@@ -316,11 +319,35 @@ export function ontologyToTriples(
         attributeIds: new Set(ontology.attributes.map((e) => e.id)),
         namespace,
         mintName,
+        names: shapeNames,
       }),
     );
   }
 
-  return dedupe(triples);
+  /*
+   * What the document said beyond the model, under today's names. A class whose only shape was
+   * in the file it came from still gets one: it is named here, the first time it is needed.
+   */
+  const resolve = (ref: Ref): string | undefined => {
+    if (ref.kind === 'ontology') return header;
+    if (ref.kind === 'entity') return classIri.get(ref.id) ?? propertyIri(ref.id);
+    if (!includeShapes) return undefined;
+    if (ref.kind === 'propertyShape') {
+      return shapeNames.property.get(propertyShapeKey(ref.classId, ref.propertyId));
+    }
+    const named = shapeNames.node.get(ref.classId);
+    if (named) return named;
+    const target = ontology.classes.find((entity) => entity.id === ref.classId);
+    if (!target) return undefined;
+    const minted = mintName(`${target.localName}Shape`);
+    shapeNames.node.set(ref.classId, minted);
+    return minted;
+  };
+  triples.push(
+    ...restore(ontology.unmodelled, resolve, { axioms: includeAxioms, shapes: includeShapes }),
+  );
+
+  return groupBySubject(dedupe(triples));
 }
 
 /**
@@ -381,12 +408,22 @@ function classExpression(
   return blank(union);
 }
 
+/** The shapes the writer named, filled in as it names them, for kept triples to refer to. */
+interface ShapeNames {
+  node: Map<string, string>;
+  /** Keyed by `propertyShapeKey`. */
+  property: Map<string, string>;
+}
+
+const propertyShapeKey = (classId: string, propertyId: string) => `${classId} ${propertyId}`;
+
 interface ShapeContext {
   classIri: Map<string, string>;
   propertyIri: (id: string) => string | undefined;
   attributeIds: Set<string>;
   namespace: string;
   mintName: NameAllocator;
+  names: ShapeNames;
 }
 
 /**
@@ -420,6 +457,7 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
     if (byProperty.size === 0) continue;
 
     const nodeShape = shapeIri(`${entity.localName}Shape`);
+    context.names.node.set(entity.id, nodeShape);
     triples.push({ subject: nodeShape, predicate: RDF_TYPE, object: iri(SH_NODE_SHAPE) });
     triples.push({ subject: nodeShape, predicate: SH_TARGET_CLASS, object: iri(classSubject) });
 
@@ -438,6 +476,7 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
       if (!property) continue;
 
       const propertyShape = shapeIri(`${entity.localName}_${property.localName}`);
+      context.names.property.set(propertyShapeKey(entity.id, propertyId), propertyShape);
       triples.push({ subject: nodeShape, predicate: SH_PROPERTY, object: iri(propertyShape) });
       propertyShapeTriples.push(
         { subject: propertyShape, predicate: RDF_TYPE, object: iri(SH_PROPERTY_SHAPE) },
@@ -531,6 +570,23 @@ function rdfList(members: readonly string[], nextCell: () => string, sink: Tripl
 
 /** An IRI or a blank node, told apart by the `_:` a blank label always carries. */
 const term = (value: string): TripleObject => (isBlankNode(value) ? blank(value) : iri(value));
+
+/**
+ * Each subject's statements together, in the order subjects first appear.
+ *
+ * The writer emits them that way already; the kept triples come last and would otherwise form a
+ * second block for a class they mention, which a Turtle writer prints as a second `ex:Car …`
+ * paragraph far from the first.
+ */
+function groupBySubject(triples: readonly Triple[]): Triple[] {
+  const grouped = new Map<string, Triple[]>();
+  for (const triple of triples) {
+    const existing = grouped.get(triple.subject);
+    if (existing) existing.push(triple);
+    else grouped.set(triple.subject, [triple]);
+  }
+  return [...grouped.values()].flat();
+}
 
 /** Two identical assertions are one fact; duplicates would only bloat the output. */
 function dedupe(triples: readonly Triple[]): Triple[] {

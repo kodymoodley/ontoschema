@@ -56,6 +56,65 @@ describe('a document this version wrote', () => {
     expect(restored?.ontology.relations.map((entity) => entity.localName)).toEqual(['offeredBy']);
     expect(restored?.ontology.attributes.map((entity) => entity.localName)).toEqual(['make']);
   });
+
+  it('comes back with what the file it was opened from said beyond the schema', () => {
+    const kept = [
+      {
+        subject: 'urn:ontoschema:entity:c1',
+        predicate: 'http://www.w3.org/2002/07/owl#deprecated',
+        object: {
+          type: 'literal' as const,
+          value: 'true',
+          datatype: 'http://www.w3.org/2001/XMLSchema#boolean',
+        },
+      },
+      {
+        subject: '_:k1',
+        predicate: 'http://www.w3.org/2000/01/rdf-schema#label',
+        object: { type: 'literal' as const, value: 'Wagen', language: 'de' },
+      },
+      {
+        subject: 'https://example.org/acme',
+        predicate: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+        object: { type: 'iri' as const, value: 'urn:ontoschema:entity:c1' },
+      },
+    ];
+    const project = projectWithBoth();
+
+    const restored = projectFromFile(
+      projectToFile({ ...project, ontology: { ...project.ontology, unmodelled: kept } }),
+    );
+
+    expect(restored?.ontology.unmodelled).toEqual(kept);
+  });
+
+  it('leaves out a kept statement that is not a whole one, and keeps the rest', () => {
+    const project = projectWithBoth();
+    const whole = { subject: 'urn:a', predicate: 'urn:p', object: { type: 'iri', value: 'urn:b' } };
+
+    const restored = reviveProject({
+      ...project,
+      ontology: {
+        ...project.ontology,
+        unmodelled: [
+          whole,
+          { subject: 'urn:a', predicate: 'urn:p' },
+          { subject: 'urn:a', predicate: 'urn:p', object: { type: 'variable', value: 'x' } },
+          'not a statement',
+        ],
+      },
+    });
+
+    expect(restored?.ontology.unmodelled).toEqual([whole]);
+  });
+
+  it('opens with nothing kept when it was saved before anything was', () => {
+    const { unmodelled: _, ...before } = projectWithBoth().ontology;
+
+    expect(reviveProject({ ...projectWithBoth(), ontology: before })?.ontology.unmodelled).toEqual(
+      [],
+    );
+  });
 });
 
 describe('a document written before relations and attributes were renamed', () => {
