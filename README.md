@@ -7,7 +7,8 @@ relations between them, build subclass hierarchies in a Protégé-style tree, an
 RDFS, OWL, Dublin Core, SKOS and PROV-O terms (with language tags), and download the result as Turtle,
 RDF/XML (`.rdf` or `.owl`) or JSON-LD — as OWL/RDFS axioms, as SHACL shapes, or both. It runs entirely
 in the browser with no backend, and keeps your projects in local storage. Scope is deliberately TBox
-only: no individuals, no restrictions, no reasoning.
+only: no individuals, no restrictions, no reasoning. A file that has them keeps them, though: see
+[Opening a file](#opening-a-file).
 
 ## The idea that shapes the whole design: a usage
 
@@ -66,9 +67,10 @@ it. A schema kept in a git repository is edited and committed with no download i
 - **The app follows git.** When something else changes the file, such as `git pull`,
   `git checkout` or another editor, the schema is read back from it. If there were edits here not
   yet saved, the header asks which to keep.
-- **A file this app cannot represent in full is not saved into until you agree.** Individuals and
-  restrictions, for instance, are left out when such a file opens, and saving into it would remove
-  them from the file.
+- **What the canvas does not show stays in the file.** Individuals, restrictions and the rest of
+  what this app does not model are written back as they were, so editing a colleague's file costs
+  it nothing. Only a file that arrives changed, with an attribute type this app does not offer, is
+  not saved into until you agree.
 - **The link survives a reload.** With Chrome's "Allow on every visit" nothing needs confirming;
   otherwise the header offers to reconnect.
 
@@ -111,9 +113,14 @@ to be told to ignore the other.
 ## Opening a file
 
 `.ttl`, `.rdf` and `.owl` open here, and so do project files saved before saving became RDF. This
-app models a narrow slice of OWL, so a document written elsewhere keeps what fits and leaves the
-rest — individuals, restrictions, property chains — rather than refusing to open. It says what it
-left behind, and what it **changed**: a datatype it does not offer arrives as `xsd:string`.
+app models a narrow slice of OWL, so a document written elsewhere says more than the canvas shows:
+individuals, restrictions, property chains, disjointness, SHACL cardinalities, and terms from other
+vocabularies. That part is kept as written and saved back unchanged. It follows a class that is
+renamed, and goes with one that is deleted. The app says how much of it there is, and what it
+**changed**: a datatype it does not offer arrives as `xsd:string`.
+
+Saving lays a file out afresh, so its comments, statement order and prefix names are not kept. A
+shape the app reads is written under the name it gives shapes, with its constraints on it.
 
 **File › Back up everything** is the exception to all of this: the whole workspace, every project,
 exactly as it stands, in a private format nothing else reads. A Turtle document is one ontology; a
@@ -427,8 +434,8 @@ It is not part of CI, because it needs a Python toolchain the rest of the projec
 
 ## Deliberately out of scope
 
-Individuals and ABox data; OWL restrictions, unions, intersections, cardinalities and property
-chains; reasoning; importing existing ontologies; server-side persistence; authentication;
-collaboration. The architecture leaves room for these — the domain model and serialization layer are
+Editing individuals and ABox data; OWL restrictions, unions, intersections, cardinalities and
+property chains; reasoning; importing existing ontologies; server-side persistence; authentication;
+collaboration. A file that contains any of these keeps them when it is edited here. The architecture leaves room for these — the domain model and serialization layer are
 pure and UI-free, and `projectstore/persistence.ts` is the only file that knows storage exists — but
 none of them are implemented.

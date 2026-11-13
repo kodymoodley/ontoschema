@@ -245,9 +245,11 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > becomes `xsd:string`, so the attribute arrives with its name and its class rather than being
 > dropped over a detail this tool does not model. That is the one import rule that **rewrites**
 > rather than discards, so a foreign ontology opened and saved here comes back changed, and the
-> report says so. Relations, but only where both ends are known: a subproperty qualifies if it has
-> both itself or inherits them from an ancestor. The ontology IRI and prefix if stated. Everything
-> else is dropped — individuals, restrictions, property chains — and the report counts what went.
+> report says so. Relations all go into the pool, and are drawn where both ends are known: a
+> subproperty has them itself or inherits them from an ancestor. The ontology IRI and prefix if
+> stated. Only terms in the document's own namespace are modelled. Everything else — individuals,
+> restrictions, property chains, terms from other vocabularies — is kept as written and saved back
+> unchanged, referring to modelled terms by id so that it follows a rename. The report counts it.
 >
 > **One project per file, and the answer to it: a workspace backup.** A Turtle document is one
 > ontology, so saving as RDF is per project by construction. _Back up everything_ and _Restore a
