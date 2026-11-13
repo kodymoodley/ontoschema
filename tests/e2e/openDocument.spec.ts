@@ -76,7 +76,7 @@ test('reports what the canvas does not show, and opens the file anyway', async (
 
   const report = page.getByRole('dialog', { name: 'What OntoSchema opened' });
   await expect(report).toBeVisible();
-  await expect(report).toContainText('2 statements the canvas does not show');
+  await expect(report).toContainText('1 statement the canvas does not show');
   await expect(report).toContainText('1 attribute had a type OntoSchema does not offer');
   await expect(report).toContainText('apart from that change');
 

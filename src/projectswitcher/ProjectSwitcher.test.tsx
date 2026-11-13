@@ -280,7 +280,7 @@ describe('opening an RDF document', () => {
     );
 
     const report = screen.getByRole('dialog', { name: REPORT });
-    expect(report).toHaveTextContent(/2 statements the canvas does not show/);
+    expect(report).toHaveTextContent(/1 statement the canvas does not show/);
     expect(report).toHaveTextContent(/1 attribute had a type OntoSchema does not offer/);
     // The schema is already open behind it: this reports, it does not ask.
     expect(ontology().classes).toHaveLength(2);

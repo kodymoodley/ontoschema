@@ -63,8 +63,8 @@ import { ONTOLOGY_REF, entityRef, nodeShapeRef, propertyShapeRef, setAside } fro
  *    value back exactly as it reads.
  *  - **Attributes** whatever their range: an `xsd` type is kept, anything else becomes
  *    `xsd:string`. This is the one rule that *rewrites* rather than keeps, so it is reported.
- *  - **Relations**, but only where both a domain and a range are known — either stated on the
- *    property or inherited from an ancestor, or drawn by a shape.
+ *  - **Relations**, drawn where both a domain and a range are known — stated on the property,
+ *    inherited from an ancestor, or drawn by a shape — and in the pool, unused, otherwise.
  *  - **Positions**, from this app's own `ontoschema:position` on each class, or from the single
  *    `ontoschema:layout` annotation that files were saved with before that.
  *
@@ -502,12 +502,10 @@ export function ontologyFromTriples(
   };
 
   /*
-   * A relation is kept when both its ends are known. Then the parents of anything kept are
-   * kept too, however little they say for themselves: `worksFor` is a kind of `relatedTo`, and
-   * importing the child while dropping the parent would leave the hierarchy flatter than the
-   * document states it. A parent brought in this way has no usages — it sits in the pool,
-   * exactly as an unused relation does in the editor. A relation that is not kept stays in the
-   * document as written.
+   * Every relation goes into the pool, and is drawn where both its ends are known. One with an
+   * end missing sits in the pool unused, exactly as an unused relation does in the editor, and
+   * the end it does state is kept as written. Leaving it out of the pool would hide a term the
+   * document defines, and an unused relation this app saved would not come back at all.
    */
   const placeable = new Set(
     relationIris.filter((iri) => {
@@ -516,29 +514,17 @@ export function ontologyFromTriples(
       return domains.length > 0 && ranges.length > 0;
     }),
   );
-  const kept = new Set(placeable);
-  for (let added = true; added;) {
-    added = false;
-    for (const iri of [...kept]) {
-      for (const parent of parentsOf(iri)) {
-        if (!relationIris.includes(parent) || kept.has(parent)) continue;
-        kept.add(parent);
-        added = true;
-      }
-    }
-  }
 
   const usages: PropertyUsage[] = [];
   const relations: Relation[] = [];
 
   for (const iri of relationIris) {
-    if (!kept.has(iri)) continue;
     const id = known(propertyId, iri, 'a property id');
     take(iri, id, OWL_OBJECT_PROPERTY);
     relations.push({
       id,
       localName: known(named, iri, 'a local name'),
-      superPropertyIds: takeParents(iri, (parent) => kept.has(parent)),
+      superPropertyIds: takeParents(iri, (parent) => relationIris.includes(parent)),
       annotations: annotationsOn(iri),
     });
     if (!placeable.has(iri)) continue;
@@ -605,7 +591,7 @@ export function ontologyFromTriples(
    * property in use nowhere are kept, since the writer would have nothing to say for them.
    */
   const inUse = new Set(usages.map((usage) => usage.propertyId));
-  for (const iri of [...relationIris.filter((r) => kept.has(r)), ...attributeIris]) {
+  for (const iri of [...relationIris, ...attributeIris]) {
     if (!inUse.has(known(propertyId, iri, 'a property id'))) continue;
     use(endOf(iri, RDFS_DOMAIN).said);
     use(endOf(iri, RDFS_RANGE).said);

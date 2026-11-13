@@ -104,45 +104,30 @@ describe('the round trip', () => {
     const { ontology } = buildAutoOntology();
     const restored = roundTrip(ontology).ontology;
 
-    // `hasPart` is the one exception, and it has a test of its own below.
-    expect(summarise(restored)).toEqual({
-      ...summarise(ontology),
-      relations: summarise(ontology).relations.filter((name) => name !== 'hasPart'),
-    });
+    expect(summarise(restored)).toEqual(summarise(ontology));
   });
 
   /*
-   * A relation in the pool that is never used has no domain and no range to write, so nothing
-   * in the document distinguishes it from a foreign property too vague to import — and the
-   * rule is to leave those out. The consequence is worth stating plainly: a schema saved with
-   * an unused relation comes back without it.
-   *
-   * Note the asymmetry. An unused *attribute* survives, because an attribute carries its own
-   * `rdfs:range` whether or not any class uses it, so there is always something to declare.
+   * A relation in the pool that is never used has no domain and no range to write, only its
+   * declaration. That is enough: it comes back to the pool, unused, as it was left. It used to be
+   * lost, which an unused attribute never was, since an attribute carries its own range.
    */
-  it('loses a relation that no class uses, which an unused attribute survives', () => {
+  it('keeps a relation that no class uses in the pool', () => {
     const { ontology } = buildAutoOntology();
+    const hasPart = (model: Ontology) => model.relations.find((r) => r.localName === 'hasPart');
+
     const restored = roundTrip(ontology).ontology;
 
-    expect(summarise(ontology).relations).toContain('hasPart');
-    expect(summarise(restored).relations).not.toContain('hasPart');
-    expect(
-      ontology.usages.some(
-        (usage) =>
-          usage.propertyId === ontology.relations.find((r) => r.localName === 'hasPart')?.id,
-      ),
-    ).toBe(false);
+    expect(hasPart(restored)).toBeDefined();
+    expect(restored.usages.some((usage) => usage.propertyId === hasPart(restored)?.id)).toBe(false);
   });
 
-  it('sets aside nothing from a document this app wrote but the relation it cannot place', () => {
+  it('sets aside nothing from a document this app wrote', () => {
     const { ontology } = buildAutoOntology();
     const { ontology: restored, report } = saveAndOpen(ontology);
 
     expect(report).toEqual({ datatypesRewritten: 0 });
-    // `hasPart` is in the fixture but used nowhere, so it has no ends to place it by.
-    expect(new Set(restored.unmodelled.map((triple) => triple.subject))).toEqual(
-      new Set([`${AUTO}hasPart`]),
-    );
+    expect(restored.unmodelled).toEqual([]);
   });
 
   /*
@@ -439,7 +424,7 @@ describe('a foreign document', () => {
     expect(summarise(ontology).usages.sort()).toEqual(['Car -keptAt-> Yard', 'Van -keptAt-> Yard']);
   });
 
-  /* Half a relation cannot be drawn, so it stays in the file and off the canvas. */
+  /* Half a relation cannot be drawn, so it sits in the pool and off the canvas. */
   it('does not place a relation that states a domain and no range', () => {
     const { ontology } = ontologyFromTriples([
       { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
@@ -447,11 +432,15 @@ describe('a foreign document', () => {
       { subject: `${A}keptAt`, predicate: RDFS_DOMAIN, object: iri(`${A}Car`) },
     ]);
 
-    expect(ontology.relations.map((entity) => entity.localName)).toEqual([]);
+    // In the pool, unused, with the one end it states kept as written.
+    expect(ontology.relations.map((entity) => entity.localName)).toEqual(['keptAt']);
     expect(ontology.usages).toEqual([]);
-    expect(ontology.unmodelled.map((triple) => triple.subject)).toEqual([
-      `${A}keptAt`,
-      `${A}keptAt`,
+    expect(ontology.unmodelled).toEqual([
+      {
+        subject: entityRef(ontology.relations[0]!.id),
+        predicate: RDFS_DOMAIN,
+        object: iri(entityRef(ontology.classes[0]!.id)),
+      },
     ]);
   });
 });
@@ -546,15 +535,16 @@ describe('what a document may contain that this app does not model', () => {
     expect(ontology.usages).toHaveLength(1);
   });
 
-  it('keeps a relation with only one end in the file, off the canvas', () => {
+  it('puts a relation with only one end in the pool, off the canvas', () => {
     const { ontology } = ontologyFromTriples([
       aClass('Car'),
       typed(`${AUTO}drives`, `${OWL}ObjectProperty`),
       { subject: `${AUTO}drives`, predicate: `${RDFS}domain`, object: iri(`${AUTO}Car`) },
     ]);
 
-    expect(ontology.relations).toHaveLength(0);
-    expect(ontology.unmodelled).toHaveLength(2);
+    expect(ontology.relations.map((entity) => entity.localName)).toEqual(['drives']);
+    expect(ontology.usages).toEqual([]);
+    expect(ontology.unmodelled).toHaveLength(1);
   });
 });
 
@@ -715,7 +705,7 @@ describe('property hierarchies', () => {
 
   /*
    * A document can say two properties are each other's parent. The climb has to stop rather
-   * than walk the ring for ever, and neither property has ends, so neither is placed.
+   * than walk the ring for ever, and neither property has ends, so neither is drawn.
    */
   it('terminates on a subproperty ring instead of climbing for ever', () => {
     const { ontology } = ontologyFromTriples([
@@ -726,15 +716,15 @@ describe('property hierarchies', () => {
       { subject: `${AUTO}b`, predicate: `${RDFS}subPropertyOf`, object: iri(`${AUTO}a`) },
     ]);
 
-    expect(ontology.relations).toHaveLength(0);
-    expect(ontology.unmodelled).toHaveLength(4);
+    expect(ontology.relations).toHaveLength(2);
+    expect(ontology.usages).toEqual([]);
   });
 
   /*
-   * The parent is kept because the child was, even though the parent states nothing that would
-   * place it on its own. Dropping it would import a hierarchy flatter than the document states.
+   * The parent is in the pool, under its child, even though it states nothing that would place
+   * it. Dropping it would import a hierarchy flatter than the document states.
    */
-  it('keeps a parent that only a kept child gives a reason to import', () => {
+  it('keeps a parent that states nothing of its own, in the pool and in the hierarchy', () => {
     const { ontology } = ontologyFromTriples([
       ...base,
       typed(`${AUTO}vague`, `${OWL}ObjectProperty`),
@@ -751,12 +741,12 @@ describe('property hierarchies', () => {
     expect(ontology.usages.filter((usage) => usage.propertyId === vague?.id)).toHaveLength(0);
   });
 
-  it('leaves out a subproperty whose ancestors have no ends either', () => {
+  it('does not draw a subproperty whose ancestors have no ends either', () => {
     const orphaned = base.filter((triple) => triple.predicate !== `${RDFS}range`);
     const { ontology } = ontologyFromTriples(orphaned);
 
-    expect(ontology.relations).toHaveLength(0);
-    expect(ontology.unmodelled.filter((triple) => triple.predicate === RDF_TYPE)).toHaveLength(2);
+    expect(ontology.relations).toHaveLength(2);
+    expect(ontology.usages).toEqual([]);
   });
 });
 
@@ -976,7 +966,7 @@ describe('what the model takes, and what is kept as written', () => {
 
     expect(ontology.usages).toEqual([]);
     expect(ontology.unmodelled.map((triple) => triple.predicate)).toEqual(
-      triples.slice(1).map((triple) => triple.predicate),
+      triples.slice(2).map((triple) => triple.predicate),
     );
   });
 

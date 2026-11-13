@@ -113,10 +113,7 @@ describe('the shapes a document may arrive in', () => {
 
     expect(names(restored)).toEqual(names(ontology));
     // The shapes are the writer's own, so it writes them again: none is kept beside the model.
-    // `hasPart` is used nowhere, so there is nothing to place it by, and it is kept as written.
-    expect(restored.unmodelled.map((triple) => triple.subject)).toEqual([
-      'https://example.org/auto/hasPart',
-    ]);
+    expect(restored.unmodelled).toEqual([]);
     expect(restored.classes.some((entity) => entity.localName.includes('Shape'))).toBe(false);
   });
 
