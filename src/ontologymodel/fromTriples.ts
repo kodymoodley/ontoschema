@@ -17,19 +17,23 @@ import {
   RDF_TYPE,
   SH_CLASS,
   SH_DATATYPE,
+  SH_NAME,
   SH_NODE_SHAPE,
   SH_OR,
   SH_PATH,
   SH_PROPERTY,
+  SH_PROPERTY_SHAPE,
   SH_TARGET_CLASS,
   annotationTermIri,
   isXsdDatatype,
+  xsdDatatypeIri,
 } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import {
   localNameOf,
   namespaceOf,
   normalizeNamespaceIri,
+  ontologyIri,
   sanitizeLocalName,
   toClassLocalName,
   toPropertyLocalName,
@@ -37,44 +41,40 @@ import {
 } from './identifier';
 import { decodeLayout, decodePosition } from './layout';
 import { createEmptyOntology, createId } from './ontology';
-import { isBlankNode } from './triples';
+import { annotationTriple, isBlankNode } from './triples';
 import type { Triple, TripleObject } from './triples';
 import type { Annotation, Ontology, Position, PropertyUsage, Relation } from './types';
+import { ONTOLOGY_REF, entityRef, nodeShapeRef, propertyShapeRef, setAside } from './unmodelled';
 
 /**
  * Reading a document back into the model — the inverse of `ontologyToTriples`, and the half
- * that has to decide what to *ignore*.
+ * that has to decide what the model *holds*.
  *
  * This tool models a deliberately narrow slice of OWL, so a document written anywhere else
- * will contain things it has no home for. Those are dropped rather than refused: a file that
- * will not open teaches nobody anything, whereas one that opens with its classes and their
- * hierarchy intact is useful even when a restriction was left behind. What is dropped is
- * counted, so the app can say so rather than leaving it to be discovered.
+ * will contain things it has no home for. Those are kept, as written, beside the model rather
+ * than in it (see `unmodelled.ts`): they are not on the canvas, and saving writes them back.
+ * A file opened here and saved again says what it said, plus whatever was edited.
  *
- * The rules, decided rather than inferred:
+ * What the model takes, decided rather than inferred — and only from the document's own
+ * namespace, since a term from FOAF moved into this one would be a different term:
  *
  *  - **Classes** and their `rdfs:subClassOf` hierarchy, where both ends are named classes.
- *  - **All annotations** from the vocabulary this app knows.
+ *  - **Annotations** from the vocabulary this app knows, where the writer would write the
+ *    value back exactly as it reads.
  *  - **Attributes** whatever their range: an `xsd` type is kept, anything else becomes
- *    `xsd:string`. This is the one rule that *rewrites* rather than discards, so a foreign
- *    file opened and saved here comes back changed.
+ *    `xsd:string`. This is the one rule that *rewrites* rather than keeps, so it is reported.
  *  - **Relations**, but only where both a domain and a range are known — either stated on the
- *    property or inherited from an ancestor.
+ *    property or inherited from an ancestor, or drawn by a shape.
  *  - **Positions**, from this app's own `ontoschema:position` on each class, or from the single
  *    `ontoschema:layout` annotation that files were saved with before that.
  *
- * Everything else goes: individuals, restrictions, property chains, and any class expression
- * other than the `owl:unionOf` that a reused property's domain is written as.
+ * A statement is taken into the model only where the writer will say it again from the model;
+ * every other statement is kept. That one rule is what keeps the two from disagreeing: a kept
+ * statement can never contradict an edit, because nothing the model can change is kept.
  */
 
-/** What a document contained that the model has no home for. */
+/** What arrived, but not as written. */
 export interface ImportReport {
-  /** Subjects typed as something other than a class or a property — individuals, mostly. */
-  individuals: number;
-  /** Anonymous class expressions that are not a reused property's union domain or range. */
-  classExpressions: number;
-  /** Relations named in the document but left out for want of a domain or a range. */
-  relationsWithoutBothEnds: number;
   /** Attributes whose range was not an `xsd` type and now says `xsd:string`. */
   datatypesRewritten: number;
 }
@@ -86,6 +86,7 @@ export interface ImportResult {
 
 /** Indexed triples, which every step below reads and none of them rebuilds. */
 interface Index {
+  statementsOf: (subject: string, predicate: string) => Triple[];
   objectsOf: (subject: string, predicate: string) => TripleObject[];
   subjectsTyped: (type: string) => string[];
   triplesOf: (subject: string) => Triple[];
@@ -107,18 +108,34 @@ function indexTriples(triples: readonly Triple[]): Index {
     }
   }
 
+  const statementsOf = (subject: string, predicate: string) =>
+    (bySubject.get(subject) ?? []).filter((triple) => triple.predicate === predicate);
+
   return {
+    statementsOf,
     objectsOf: (subject, predicate) =>
-      (bySubject.get(subject) ?? [])
-        .filter((triple) => triple.predicate === predicate)
-        .map((triple) => triple.object),
+      statementsOf(subject, predicate).map((triple) => triple.object),
     subjectsTyped: (type) => byType.get(type) ?? [],
     triplesOf: (subject) => bySubject.get(subject) ?? [],
   };
 }
 
+/** One property shape, as far as it says which classes a property joins. */
+interface ShapeReading {
+  nodeShape: string;
+  /** An IRI, or a `_:label` for a shape written inline. */
+  propertyShape: string;
+  /** The class the node shape targets. */
+  target: string;
+  path: string;
+  /** The classes it points at: several for an `sh:or`, `null` alone for a datatype. */
+  objects: (string | null)[];
+  /** The statements naming those classes or that datatype, which the writer says again. */
+  said: Triple[];
+}
+
 /**
- * The pairings a document's SHACL shapes state, keyed by the property they are about.
+ * The pairings a document's SHACL shapes state.
  *
  * The axioms cannot carry this. `rdfs:domain`/`rdfs:range` name both ends of a relation but not
  * which end went with which, so a relation drawn between two distinct pairs reads back as all
@@ -126,56 +143,65 @@ function indexTriples(triples: readonly Triple[]): Index {
  * says exactly what was drawn: this class, this property, that class.
  *
  * Read whenever they are present, from our own saved files and from anyone else's. A document
- * without shapes falls back to the ends, which is all it has.
+ * without shapes falls back to the ends, which is all it has. A shape naming anything the model
+ * does not hold is not read at all: it stays in the document as written, whole, rather than
+ * being drawn as part of what it says.
  */
-function pairingsFromShapes(
-  index: Index,
-): Map<string, { subject: string; object: string | null }[]> {
-  const found = new Map<string, { subject: string; object: string | null }[]>();
-
-  const add = (path: string, subject: string, object: string | null) => {
-    const existing = found.get(path);
-    if (existing) existing.push({ subject, object });
-    else found.set(path, [{ subject, object }]);
-  };
+function shapeReadings(index: Index, modelled: (iri: string) => boolean): ShapeReading[] {
+  const readings: ShapeReading[] = [];
 
   /** The members of an `sh:or`, which is an RDF list of shapes each naming one class. */
-  const alternatives = (head: TripleObject): string[] => {
+  const alternatives = (head: TripleObject) => {
     const classes: string[] = [];
+    const said: Triple[] = [];
     let cell: TripleObject | undefined = head;
     const seen = new Set<string>();
     while (cell && cell.value !== RDF_NIL && !seen.has(cell.value)) {
       seen.add(cell.value);
-      const member = index.objectsOf(cell.value, RDF_FIRST)[0];
-      if (member) {
-        const target = index.objectsOf(member.value, SH_CLASS)[0];
-        if (target?.type === 'iri') classes.push(target.value);
+      const [first] = index.statementsOf(cell.value, RDF_FIRST);
+      const [rest] = index.statementsOf(cell.value, RDF_REST);
+      if (first) {
+        said.push(first);
+        const [target] = index.statementsOf(first.object.value, SH_CLASS);
+        if (target?.object.type === 'iri') {
+          classes.push(target.object.value);
+          said.push(target);
+        }
       }
-      cell = index.objectsOf(cell.value, RDF_REST)[0];
+      if (rest) said.push(rest);
+      cell = rest?.object;
     }
-    return classes;
+    return { classes, said };
   };
 
   for (const nodeShape of index.subjectsTyped(SH_NODE_SHAPE)) {
     const target = index.objectsOf(nodeShape, SH_TARGET_CLASS)[0];
-    if (target?.type !== 'iri') continue;
+    if (target?.type !== 'iri' || !modelled(target.value)) continue;
 
-    for (const propertyShape of index.objectsOf(nodeShape, SH_PROPERTY)) {
-      const path = index.objectsOf(propertyShape.value, SH_PATH)[0];
-      if (path?.type !== 'iri') continue;
+    for (const { value: propertyShape } of index.objectsOf(nodeShape, SH_PROPERTY)) {
+      const path = index.objectsOf(propertyShape, SH_PATH)[0];
+      if (path?.type !== 'iri' || !modelled(path.value)) continue;
 
-      const single = index.objectsOf(propertyShape.value, SH_CLASS)[0];
-      const list = index.objectsOf(propertyShape.value, SH_OR)[0];
-      const datatype = index.objectsOf(propertyShape.value, SH_DATATYPE)[0];
+      const [single] = index.statementsOf(propertyShape, SH_CLASS);
+      const [list] = index.statementsOf(propertyShape, SH_OR);
+      const [datatype] = index.statementsOf(propertyShape, SH_DATATYPE);
+      const reading = { nodeShape, propertyShape, target: target.value, path: path.value };
 
-      if (single?.type === 'iri') add(path.value, target.value, single.value);
-      else if (list) for (const member of alternatives(list)) add(path.value, target.value, member);
-      // A datatype shape is an attribute on this class: one end, and no second one to name.
-      else if (datatype) add(path.value, target.value, null);
+      if (single?.object.type === 'iri') {
+        readings.push({ ...reading, objects: [single.object.value], said: [single] });
+      } else if (list) {
+        const { classes, said } = alternatives(list.object);
+        readings.push({ ...reading, objects: classes, said: [list, ...said] });
+      } else if (datatype) {
+        // A datatype shape is an attribute on this class: one end, and no second one to name.
+        readings.push({ ...reading, objects: [null], said: [datatype] });
+      }
     }
   }
 
-  return found;
+  return readings.filter((reading) =>
+    reading.objects.every((object) => object === null || modelled(object)),
+  );
 }
 
 /**
@@ -193,31 +219,50 @@ function known<T>(map: Map<string, T>, key: string, what: string): T {
   return value;
 }
 
+/** Whether two objects are the same RDF term. */
+function sameTerm(a: TripleObject, b: TripleObject): boolean {
+  const extras = (term: TripleObject) =>
+    term.type === 'literal' ? `${term.language ?? ''}|${term.datatype ?? ''}` : '';
+  return a.type === b.type && a.value === b.value && extras(a) === extras(b);
+}
+
 export function ontologyFromTriples(
   triples: readonly Triple[],
   prefixes: Readonly<Record<string, string>> = {},
 ): ImportResult {
   const index = indexTriples(triples);
-  const report: ImportReport = {
-    individuals: 0,
-    classExpressions: 0,
-    relationsWithoutBothEnds: 0,
-    datatypesRewritten: 0,
-  };
+  const report: ImportReport = { datatypesRewritten: 0 };
 
   /*
-   * Named classes only. A union domain is a blank node typed `owl:Class`, so taking every
+   * What the model took, and what it now names. Everything not taken is kept as written, with
+   * the terms the model names replaced by references to them.
+   */
+  const used = new Set<Triple>();
+  const use = (statements: readonly (Triple | undefined)[]) => {
+    for (const statement of statements) if (statement) used.add(statement);
+  };
+  const anchors = new Map<string, string>();
+
+  /*
+   * Named terms only. A union domain is a blank node typed `owl:Class`, so taking every
    * `owl:Class` subject would turn each union into a class of its own, called nothing.
    */
-  const classIris = index.subjectsTyped(OWL_CLASS).filter((iri) => !isBlankNode(iri));
-  const relationIris = index.subjectsTyped(OWL_OBJECT_PROPERTY).filter((iri) => !isBlankNode(iri));
-  const attributeIris = index
-    .subjectsTyped(OWL_DATATYPE_PROPERTY)
-    .filter((iri) => !isBlankNode(iri));
-
-  const header = index.subjectsTyped(OWL_ONTOLOGY).find((iri) => !isBlankNode(iri));
-  const namespace = chooseNamespace([...classIris, ...relationIris, ...attributeIris], header);
+  const declared = (type: string) => index.subjectsTyped(type).filter((iri) => !isBlankNode(iri));
+  const header = declared(OWL_ONTOLOGY)[0];
+  const namespace = chooseNamespace(
+    [...declared(OWL_CLASS), ...declared(OWL_OBJECT_PROPERTY), ...declared(OWL_DATATYPE_PROPERTY)],
+    header,
+  );
   const base = createEmptyOntology(namespace, choosePrefix(namespace, prefixes));
+
+  /*
+   * The model's names are a namespace and a local name, so a term from elsewhere cannot be in it
+   * without becoming a different term. It stays in the document as it was written instead.
+   */
+  const ours = (iri: string) => namespaceOf(iri) === namespace;
+  const classIris = declared(OWL_CLASS).filter(ours);
+  const relationIris = declared(OWL_OBJECT_PROPERTY).filter(ours);
+  const attributeIris = declared(OWL_DATATYPE_PROPERTY).filter(ours);
 
   /* ------------------------------------------------------------------- names and ids */
 
@@ -252,47 +297,62 @@ export function ontologyFromTriples(
     named.set(iri, nameFor(iri, false));
   }
 
-  /* ------------------------------------------------------------------- what was ignored */
-
-  const modelled = new Set([OWL_CLASS, OWL_OBJECT_PROPERTY, OWL_DATATYPE_PROPERTY, OWL_ONTOLOGY]);
-  const counted = new Set<string>();
-  for (const triple of triples) {
-    if (triple.predicate !== RDF_TYPE || triple.object.type !== 'iri') continue;
-    if (counted.has(triple.subject) || modelled.has(triple.object.value)) continue;
-    // Declaring an annotation property is bookkeeping, not something a document is about.
-    if (triple.object.value.endsWith('AnnotationProperty')) continue;
-    counted.add(triple.subject);
-    if (isBlankNode(triple.subject)) report.classExpressions += 1;
-    else report.individuals += 1;
-  }
+  /** Takes a term into the model: its declaration is the writer's now, and so is its name. */
+  const take = (iri: string, id: string, type: string) => {
+    anchors.set(iri, entityRef(id));
+    use(index.statementsOf(iri, RDF_TYPE).filter((triple) => triple.object.value === type));
+  };
 
   /* ------------------------------------------------------------------- class expressions */
 
   /**
-   * The classes a domain or a range names: one when it is a class, several when it is the
-   * union a reused property is written with, none when it is anything else.
+   * The classes a domain or a range names: one when it is a class, several when it is the union
+   * a reused property is written with, none when it is anything else. `said` is the statement
+   * and the union it points at, when every class named is modelled and the writer can therefore
+   * say the same again; otherwise it is empty and they are kept as written.
    */
-  const classesNamedBy = (term: TripleObject | undefined): string[] => {
-    if (!term) return [];
-    if (term.type === 'iri') return classId.has(term.value) ? [term.value] : [];
-    if (term.type !== 'blank') return [];
-
-    const [head] = index.objectsOf(term.value, OWL_UNION_OF);
-    if (!head) return [];
-
-    const members: string[] = [];
-    let cell: TripleObject | undefined = head;
-    while (cell && cell.type === 'blank') {
-      const [first] = index.objectsOf(cell.value, RDF_FIRST);
-      if (first?.type === 'iri' && classId.has(first.value)) members.push(first.value);
-      [cell] = index.objectsOf(cell.value, RDF_REST);
+  const endOf = (iri: string, predicate: string): { classes: string[]; said: Triple[] } => {
+    const [statement] = index.statementsOf(iri, predicate);
+    const term = statement?.object;
+    if (!statement || !term) return { classes: [], said: [] };
+    if (term.type === 'iri') {
+      return classId.has(term.value)
+        ? { classes: [term.value], said: [statement] }
+        : { classes: [], said: [] };
     }
-    return members;
+    if (term.type !== 'blank') return { classes: [], said: [] };
+
+    const [union] = index.statementsOf(term.value, OWL_UNION_OF);
+    if (!union) return { classes: [], said: [] };
+
+    const classes: string[] = [];
+    const said = [
+      statement,
+      union,
+      ...index.statementsOf(term.value, RDF_TYPE).filter((t) => t.object.value === OWL_CLASS),
+    ];
+    let complete = true;
+    let cell: TripleObject | undefined = union.object;
+    const seen = new Set<string>();
+    while (cell && cell.type === 'blank' && !seen.has(cell.value)) {
+      seen.add(cell.value);
+      const [first] = index.statementsOf(cell.value, RDF_FIRST);
+      const [rest] = index.statementsOf(cell.value, RDF_REST);
+      if (first?.object.type === 'iri' && classId.has(first.object.value)) {
+        classes.push(first.object.value);
+      } else {
+        complete = false;
+      }
+      said.push(...[first, rest].filter((t): t is Triple => t !== undefined));
+      cell = rest?.object;
+    }
+    if (cell?.value !== RDF_NIL) complete = false;
+    return { classes, said: complete ? said : [] };
   };
 
   const endsOf = (iri: string) => ({
-    domains: classesNamedBy(index.objectsOf(iri, RDFS_DOMAIN)[0]),
-    ranges: classesNamedBy(index.objectsOf(iri, RDFS_RANGE)[0]),
+    domains: endOf(iri, RDFS_DOMAIN).classes,
+    ranges: endOf(iri, RDFS_RANGE).classes,
   });
 
   /* ------------------------------------------------------------------- annotations */
@@ -303,51 +363,69 @@ export function ontologyFromTriples(
     if (iri) curieByIri.set(iri, term.curie);
   }
 
+  /*
+   * Only what the writer would write back exactly. A typed value it would write as plain text,
+   * or a language tag on a term that takes none, is kept as written instead of being changed.
+   */
   const annotationsOn = (subject: string): Annotation[] =>
-    index
-      .triplesOf(subject)
-      .filter((triple) => curieByIri.has(triple.predicate))
-      .map((triple) => {
-        const annotation: Annotation = {
-          id: createId('ann'),
-          term: known(curieByIri, triple.predicate, 'an annotation term'),
-          value: triple.object.value,
-        };
-        if (triple.object.type === 'literal' && triple.object.language) {
-          annotation.language = triple.object.language;
-        }
-        return annotation;
-      });
+    index.triplesOf(subject).flatMap((triple) => {
+      const term = curieByIri.get(triple.predicate);
+      if (!term) return [];
+      const annotation: Annotation = { id: createId('ann'), term, value: triple.object.value };
+      if (triple.object.type === 'literal' && triple.object.language) {
+        annotation.language = triple.object.language;
+      }
+      const written = annotationTriple(subject, annotation);
+      if (!written || !sameTerm(written.object, triple.object)) return [];
+      use([triple]);
+      return [annotation];
+    });
 
   /* ------------------------------------------------------------------- layout */
 
-  const stored = header
-    ? index.objectsOf(header, ONTOSCHEMA_LAYOUT).find((term) => term.type === 'literal')
-    : undefined;
-  const legacyLayout = stored ? decodeLayout(stored.value) : new Map<string, Position>();
+  // This app's own bookkeeping, which the writer states again whenever it applies.
+  use(index.statementsOf(ONTOSCHEMA_POSITION, RDF_TYPE));
+  use(index.statementsOf(ONTOSCHEMA_LAYOUT, RDF_TYPE));
+
+  const [stored] = header
+    ? index.statementsOf(header, ONTOSCHEMA_LAYOUT).filter((t) => t.object.type === 'literal')
+    : [];
+  use([stored]);
+  const legacyLayout = stored ? decodeLayout(stored.object.value) : new Map<string, Position>();
 
   /** A class's own position first, then the old ontology-wide form, then nowhere in particular. */
   const positionOf = (iri: string): Position => {
-    const own = index
-      .objectsOf(iri, ONTOSCHEMA_POSITION)
-      .filter((term) => term.type === 'literal')
-      .map((term) => decodePosition(term.value))
+    const statements = index.statementsOf(iri, ONTOSCHEMA_POSITION);
+    use(statements);
+    const own = statements
+      .filter((triple) => triple.object.type === 'literal')
+      .map((triple) => decodePosition(triple.object.value))
       .find((position) => position !== null);
     return own ?? legacyLayout.get(iri) ?? { x: 0, y: 0 };
   };
 
   /* ------------------------------------------------------------------- the model */
 
-  const classes = classIris.map((iri) => ({
-    id: known(classId, iri, 'a class id'),
-    localName: known(named, iri, 'a local name'),
-    superClassIds: index
-      .objectsOf(iri, RDFS_SUBCLASS_OF)
-      .filter((term) => term.type === 'iri' && classId.has(term.value))
-      .map((term) => known(classId, term.value, 'a class id')),
-    annotations: annotationsOn(iri),
-    position: positionOf(iri),
-  }));
+  if (header) {
+    anchors.set(header, ONTOLOGY_REF);
+    use(index.statementsOf(header, RDF_TYPE).filter((t) => t.object.value === OWL_ONTOLOGY));
+  }
+
+  const classes = classIris.map((iri) => {
+    const id = known(classId, iri, 'a class id');
+    take(iri, id, OWL_CLASS);
+    const parents = index
+      .statementsOf(iri, RDFS_SUBCLASS_OF)
+      .filter((triple) => triple.object.type === 'iri' && classId.has(triple.object.value));
+    use(parents);
+    return {
+      id,
+      localName: known(named, iri, 'a local name'),
+      superClassIds: parents.map((triple) => known(classId, triple.object.value, 'a class id')),
+      annotations: annotationsOn(iri),
+      position: positionOf(iri),
+    };
+  });
 
   const parentsOf = (iri: string) =>
     index
@@ -355,21 +433,40 @@ export function ontologyFromTriples(
       .filter((term) => term.type === 'iri' && propertyId.has(term.value))
       .map((term) => term.value);
 
-  const attributes = attributeIris.map((iri) => ({
-    id: known(propertyId, iri, 'a property id'),
-    localName: known(named, iri, 'a local name'),
-    range: datatypeOf(index.objectsOf(iri, RDFS_RANGE)[0], report),
-    superPropertyIds: parentsOf(iri)
-      .filter((parent) => attributeIris.includes(parent))
-      .map((parent) => known(propertyId, parent, 'a property id')),
-    annotations: annotationsOn(iri),
-  }));
+  /** The parents a property keeps, of those among `among`, with the statements saying so. */
+  const takeParents = (iri: string, among: (parent: string) => boolean) => {
+    const statements = index
+      .statementsOf(iri, RDFS_SUBPROPERTY_OF)
+      .filter((triple) => triple.object.type === 'iri' && among(triple.object.value));
+    use(statements);
+    return statements.map((triple) => known(propertyId, triple.object.value, 'a property id'));
+  };
+
+  const attributes = attributeIris.map((iri) => {
+    const id = known(propertyId, iri, 'a property id');
+    take(iri, id, OWL_DATATYPE_PROPERTY);
+    const [range] = index.statementsOf(iri, RDFS_RANGE);
+    use([range]);
+    return {
+      id,
+      localName: known(named, iri, 'a local name'),
+      range: datatypeOf(range?.object, report),
+      superPropertyIds: takeParents(iri, (parent) => attributeIris.includes(parent)),
+      annotations: annotationsOn(iri),
+    };
+  });
 
   /*
    * What the shapes say, which is more than the axioms can. Consulted first for any property
    * they mention; the ends are the fallback for a document that has none.
    */
-  const shapePairs = pairingsFromShapes(index);
+  const readings = shapeReadings(index, (iri) => classId.has(iri) || propertyId.has(iri));
+  const shapePairs = new Map<string, { subject: string; object: string | null }[]>();
+  for (const reading of readings) {
+    const pairs = shapePairs.get(reading.path) ?? [];
+    for (const object of reading.objects) pairs.push({ subject: reading.target, object });
+    shapePairs.set(reading.path, pairs);
+  }
 
   /*
    * A property with an end missing borrows it from the nearest ancestor that states one:
@@ -409,7 +506,8 @@ export function ontologyFromTriples(
    * kept too, however little they say for themselves: `worksFor` is a kind of `relatedTo`, and
    * importing the child while dropping the parent would leave the hierarchy flatter than the
    * document states it. A parent brought in this way has no usages — it sits in the pool,
-   * exactly as an unused relation does in the editor.
+   * exactly as an unused relation does in the editor. A relation that is not kept stays in the
+   * document as written.
    */
   const placeable = new Set(
     relationIris.filter((iri) => {
@@ -429,19 +527,18 @@ export function ontologyFromTriples(
       }
     }
   }
-  report.relationsWithoutBothEnds = relationIris.filter((iri) => !kept.has(iri)).length;
 
   const usages: PropertyUsage[] = [];
   const relations: Relation[] = [];
 
   for (const iri of relationIris) {
     if (!kept.has(iri)) continue;
+    const id = known(propertyId, iri, 'a property id');
+    take(iri, id, OWL_OBJECT_PROPERTY);
     relations.push({
-      id: known(propertyId, iri, 'a property id'),
+      id,
       localName: known(named, iri, 'a local name'),
-      superPropertyIds: parentsOf(iri)
-        .filter((parent) => kept.has(parent))
-        .map((parent) => known(propertyId, parent, 'a property id')),
+      superPropertyIds: takeParents(iri, (parent) => kept.has(parent)),
       annotations: annotationsOn(iri),
     });
     if (!placeable.has(iri)) continue;
@@ -459,7 +556,7 @@ export function ontologyFromTriples(
         if (subject && object) {
           usages.push({
             id: createId('use'),
-            propertyId: known(propertyId, iri, 'a property id'),
+            propertyId: id,
             subjectClassId: subject,
             objectClassId: object,
           });
@@ -478,7 +575,7 @@ export function ontologyFromTriples(
       for (const range of ranges) {
         usages.push({
           id: createId('use'),
-          propertyId: known(propertyId, iri, 'a property id'),
+          propertyId: id,
           subjectClassId: known(classId, domain, 'a class id'),
           objectClassId: known(classId, range, 'a class id'),
         });
@@ -502,6 +599,55 @@ export function ontologyFromTriples(
     }
   }
 
+  /*
+   * The ends of a property in use are the writer's now: it states them from the usages, and a
+   * domain kept as written beside them would go stale the moment a usage changed. The ends of a
+   * property in use nowhere are kept, since the writer would have nothing to say for them.
+   */
+  const inUse = new Set(usages.map((usage) => usage.propertyId));
+  for (const iri of [...relationIris.filter((r) => kept.has(r)), ...attributeIris]) {
+    if (!inUse.has(known(propertyId, iri, 'a property id'))) continue;
+    use(endOf(iri, RDFS_DOMAIN).said);
+    use(endOf(iri, RDFS_RANGE).said);
+  }
+
+  /*
+   * A shape that was read is the writer's too, under the name it gives it. What the writer does
+   * not say — a cardinality, a message — is kept and attached to that shape by reference, so
+   * it goes when the class stops using the property.
+   */
+  for (const reading of readings) {
+    const target = known(classId, reading.target, 'a class id');
+    const path = known(propertyId, reading.path, 'a property id');
+    if (!inUse.has(path)) continue;
+    if (!anchors.has(reading.nodeShape)) anchors.set(reading.nodeShape, nodeShapeRef(target));
+    anchors.set(reading.propertyShape, propertyShapeRef(target, path));
+    use(reading.said);
+    use(
+      [
+        ...index.statementsOf(reading.nodeShape, RDF_TYPE),
+        ...index.statementsOf(reading.nodeShape, SH_TARGET_CLASS),
+        ...index.statementsOf(reading.nodeShape, SH_PROPERTY),
+        ...index.statementsOf(reading.propertyShape, RDF_TYPE),
+        ...index.statementsOf(reading.propertyShape, SH_PATH),
+      ].filter((triple) =>
+        [
+          SH_NODE_SHAPE,
+          SH_PROPERTY_SHAPE,
+          reading.target,
+          reading.propertyShape,
+          reading.path,
+        ].includes(triple.object.value),
+      ),
+    );
+    const name = known(named, reading.path, 'a local name');
+    use(
+      index
+        .statementsOf(reading.propertyShape, SH_NAME)
+        .filter((triple) => sameTerm(triple.object, { type: 'literal', value: name })),
+    );
+  }
+
   return {
     ontology: {
       ...base,
@@ -510,17 +656,20 @@ export function ontologyFromTriples(
       relations,
       attributes,
       usages,
+      unmodelled: setAside(triples, used, anchors),
     },
     report,
   };
 }
 
 /**
- * The namespace the document is about: the one most of its terms live in.
+ * The namespace the document is about.
  *
- * Taken from the terms rather than from the ontology IRI, because the header is written
- * without its trailing separator and nothing in the document says whether that was a `#` or a
- * `/`. The terms carry it, and a document whose terms disagree is answered by the majority.
+ * The one its header names, when some of its terms live there: an ontology that declares a few
+ * terms of its own and many borrowed from FOAF is still about its own. Otherwise the one most of
+ * its terms live in. Taken from the terms rather than from the header alone, because the header
+ * is written without its trailing separator and nothing in the document says whether that was a
+ * `#` or a `/`. The terms carry it.
  */
 function chooseNamespace(
   termIris: readonly string[],
@@ -531,6 +680,8 @@ function chooseNamespace(
     const namespace = namespaceOf(iri);
     counts.set(namespace, (counts.get(namespace) ?? 0) + 1);
   }
+  const own = header ? [...counts.keys()].find((ns) => ontologyIri(ns) === header) : undefined;
+  if (own) return own;
   const [commonest] = [...counts.entries()].sort(([, a], [, b]) => b - a)[0] ?? [];
   if (commonest) return commonest;
   return header ? normalizeNamespaceIri(header) : undefined;
@@ -549,7 +700,7 @@ function choosePrefix(
 function datatypeOf(range: TripleObject | undefined, report: ImportReport): XsdDatatype {
   if (range?.type === 'iri') {
     const local = localNameOf(range.value);
-    if (isXsdDatatype(local)) return local;
+    if (isXsdDatatype(local) && xsdDatatypeIri(local) === range.value) return local;
   }
   if (range !== undefined) report.datatypesRewritten += 1;
   return 'string';

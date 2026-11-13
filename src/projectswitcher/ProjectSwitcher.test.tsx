@@ -233,6 +233,8 @@ describe('opening an RDF document', () => {
     car:hasWheel a owl:ObjectProperty; rdfs:domain car:Car; rdfs:range car:Wheel.
   `;
 
+  const REPORT = 'What OntoSchema opened';
+
   it('opens the schema as a new project, named after the file', async () => {
     const user = userEvent.setup();
     render(<ProjectSwitcher />);
@@ -251,19 +253,20 @@ describe('opening an RDF document', () => {
     expect(ontology().relations.map((entity) => entity.localName)).toEqual(['hasWheel']);
   });
 
-  it('says nothing when the whole file fitted', async () => {
+  it('says nothing when the canvas shows the whole file', async () => {
     const user = userEvent.setup();
     render(<ProjectSwitcher />);
     await open(user, 'clean.ttl', TURTLE);
 
-    expect(screen.queryByRole('dialog', { name: /left behind/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: REPORT })).not.toBeInTheDocument();
   });
 
   /*
-   * The point of the report. Once a file can be opened and saved in the same format, silence
-   * means a colleague's ontology can be rewritten without anyone noticing.
+   * The point of the report. What the canvas does not show is still in the file, and someone
+   * editing a colleague's schema should know it is there; what arrived changed would otherwise be
+   * written into that schema without anyone noticing.
    */
-  it('reports what it left out, and what it changed rather than left out', async () => {
+  it('reports what the canvas does not show, and what it changed', async () => {
     const user = userEvent.setup();
     render(<ProjectSwitcher />);
 
@@ -276,24 +279,23 @@ describe('opening an RDF document', () => {
        car:vague a owl:ObjectProperty.`,
     );
 
-    const report = screen.getByRole('dialog', { name: /left behind/ });
-    expect(report).toHaveTextContent('1 individual');
-    expect(report).toHaveTextContent(/1 relation that did not say/);
+    const report = screen.getByRole('dialog', { name: REPORT });
+    expect(report).toHaveTextContent(/2 statements the canvas does not show/);
     expect(report).toHaveTextContent(/1 attribute had a type OntoSchema does not offer/);
     // The schema is already open behind it: this reports, it does not ask.
     expect(ontology().classes).toHaveLength(2);
   });
 
-  it('warns that saving writes what was kept, not the file that was opened', async () => {
+  it('says that saving writes back what the canvas does not show', async () => {
     const user = userEvent.setup();
     render(<ProjectSwitcher />);
     await open(user, 'foreign.ttl', `${TURTLE}\ncar:myCar a car:Car.`);
 
-    expect(screen.getByRole('dialog', { name: /left behind/ })).toHaveTextContent(
-      /Saving from here writes what OntoSchema kept/,
+    expect(screen.getByRole('dialog', { name: REPORT })).toHaveTextContent(
+      /everything it says is written back/,
     );
     await user.click(screen.getByTestId('import-report-ok'));
-    expect(screen.queryByRole('dialog', { name: /left behind/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: REPORT })).not.toBeInTheDocument();
   });
 
   it('says so, and opens nothing, when the file is not the syntax its name claims', async () => {

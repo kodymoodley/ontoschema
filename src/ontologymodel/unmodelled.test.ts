@@ -180,16 +180,16 @@ describe('constraints on the shapes the writer generates', () => {
     expect(triples.some((triple) => triple.predicate === `${SH}minCount`)).toBe(false);
   });
 
-  it('keep a node shape for a class that no longer has a property to draw', () => {
-    const { ontology } = fleet((id) => [
-      say(nodeShapeRef(id.truck), RDF_TYPE, iri(`${SH}NodeShape`)),
-      say(nodeShapeRef(id.truck), `${SH}targetClass`, iri(entityRef(id.truck))),
-      say(nodeShapeRef(id.truck), `${SH}closed`, literal('true', { datatype: `${XSD}boolean` })),
+  it('go with the node shape once the class has no property left to draw', () => {
+    const { ontology, ids } = fleet((id) => [
+      say(nodeShapeRef(id.car), `${SH}closed`, literal('true', { datatype: `${XSD}boolean` })),
     ]);
 
-    const triples = ontologyToTriples(ontology);
-    expect(objectsOf(triples, `${FLEET}TruckShape`, `${SH}targetClass`)).toEqual([`${FLEET}Truck`]);
-    expect(has(triples, `${FLEET}TruckShape`, `${SH}closed`, { value: 'true' })).toBe(true);
+    expect(
+      has(ontologyToTriples(ontology), `${FLEET}CarShape`, `${SH}closed`, { value: 'true' }),
+    ).toBe(true);
+    const triples = ontologyToTriples(detachUsage(ontology, ids.usage));
+    expect(triples.some((triple) => triple.predicate === `${SH}closed`)).toBe(false);
   });
 });
 

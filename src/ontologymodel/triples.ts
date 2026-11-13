@@ -120,7 +120,7 @@ const DEFAULT_OPTIONS: Required<SerializationOptions> = {
  * is one; `date` produces an xsd:date literal; `text` may carry a language tag.
  * Blank values are skipped by the caller.
  */
-function annotationTriple(subject: string, annotation: Annotation): Triple | null {
+export function annotationTriple(subject: string, annotation: Annotation): Triple | null {
   const predicate = annotationTermIri(annotation.term);
   if (!predicate) return null;
 
@@ -325,23 +325,14 @@ export function ontologyToTriples(
   }
 
   /*
-   * What the document said beyond the model, under today's names. A class whose only shape was
-   * in the file it came from still gets one: it is named here, the first time it is needed.
+   * What the document said beyond the model, under today's names. A constraint on a shape this
+   * writer no longer generates goes with the shape.
    */
   const resolve = (ref: Ref): string | undefined => {
     if (ref.kind === 'ontology') return header;
     if (ref.kind === 'entity') return classIri.get(ref.id) ?? propertyIri(ref.id);
-    if (!includeShapes) return undefined;
-    if (ref.kind === 'propertyShape') {
-      return shapeNames.property.get(propertyShapeKey(ref.classId, ref.propertyId));
-    }
-    const named = shapeNames.node.get(ref.classId);
-    if (named) return named;
-    const target = ontology.classes.find((entity) => entity.id === ref.classId);
-    if (!target) return undefined;
-    const minted = mintName(`${target.localName}Shape`);
-    shapeNames.node.set(ref.classId, minted);
-    return minted;
+    if (ref.kind === 'nodeShape') return shapeNames.node.get(ref.classId);
+    return shapeNames.property.get(propertyShapeKey(ref.classId, ref.propertyId));
   };
   triples.push(
     ...restore(ontology.unmodelled, resolve, { axioms: includeAxioms, shapes: includeShapes }),
