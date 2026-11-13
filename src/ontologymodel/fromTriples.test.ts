@@ -784,6 +784,18 @@ describe('a document from nowhere in particular', () => {
     expect(only?.localName).not.toContain(' ');
   });
 
+  /* Renamed to suit this app's conventions, each would be a different term from the one written. */
+  it('keeps a legal local name exactly as written', () => {
+    const { ontology } = ontologyFromTriples([
+      aClass('my_class'),
+      aClass('vehicle'),
+      typed(`${AUTO}Weight`, `${OWL}DatatypeProperty`),
+    ]);
+
+    expect(ontology.classes.map((entity) => entity.localName)).toEqual(['my_class', 'vehicle']);
+    expect(ontology.attributes.map((entity) => entity.localName)).toEqual(['Weight']);
+  });
+
   it('keeps two terms apart when their local names collide across namespaces', () => {
     const { ontology } = ontologyFromTriples([
       aClass('Car'),

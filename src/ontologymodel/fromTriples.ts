@@ -30,6 +30,7 @@ import {
   localNameOf,
   namespaceOf,
   normalizeNamespaceIri,
+  sanitizeLocalName,
   toClassLocalName,
   toPropertyLocalName,
   uniqueLocalName,
@@ -221,10 +222,19 @@ export function ontologyFromTriples(
   /* ------------------------------------------------------------------- names and ids */
 
   const taken = new Set<string>();
+  /*
+   * The name as written whenever it is a legal one here. The naming conventions are for names
+   * typed into this app; applied to a document, they turned `my_class` into `MyClass` and so
+   * moved the term to an IRI that no other file refers to.
+   */
   const nameFor = (iri: string, asClass: boolean) => {
-    const raw = asClass
-      ? toClassLocalName(localNameOf(iri))
-      : toPropertyLocalName(localNameOf(iri));
+    const written = localNameOf(iri);
+    const raw =
+      written && sanitizeLocalName(written) === written
+        ? written
+        : asClass
+          ? toClassLocalName(written)
+          : toPropertyLocalName(written);
     const unique = uniqueLocalName(raw || (asClass ? 'Class' : 'property'), taken);
     taken.add(unique);
     return unique;
