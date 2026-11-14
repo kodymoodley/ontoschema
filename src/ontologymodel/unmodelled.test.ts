@@ -193,6 +193,36 @@ describe('constraints on the shapes the writer generates', () => {
   });
 });
 
+describe('the names of the shapes the writer generates', () => {
+  it('are the ones the document gave them, through a rename of the class', () => {
+    const { ontology, ids } = fleet(() => []);
+    const named = {
+      ...ontology,
+      shapeIris: {
+        [nodeShapeRef(ids.car)]: 'https://example.org/rules#CarRules',
+        [propertyShapeRef(ids.car, ids.ownedBy)]: `${FLEET}CarOwner`,
+      },
+    };
+
+    const triples = ontologyToTriples(renameClass(named, ids.car, 'Automobile'));
+
+    expect(objectsOf(triples, 'https://example.org/rules#CarRules', `${SH}property`)).toEqual([
+      `${FLEET}CarOwner`,
+    ]);
+    expect(triples.some((triple) => triple.subject === `${FLEET}AutomobileShape`)).toBe(false);
+  });
+
+  it('are the writer’s own otherwise, and follow the class', () => {
+    const { ontology, ids } = fleet(() => []);
+
+    const triples = ontologyToTriples(renameClass(ontology, ids.car, 'Automobile'));
+
+    expect(objectsOf(triples, `${FLEET}AutomobileShape`, `${SH}targetClass`)).toEqual([
+      `${FLEET}Automobile`,
+    ]);
+  });
+});
+
 describe('which layer a kept statement is written with', () => {
   const { ontology } = fleet((id) => [
     say(`${FLEET}acme`, RDF_TYPE, iri(entityRef(id.company))),

@@ -31,6 +31,7 @@ import {
 } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import {
+  entityIri,
   localNameOf,
   namespaceOf,
   normalizeNamespaceIri,
@@ -78,6 +79,11 @@ import { ONTOLOGY_REF, entityRef, nodeShapeRef, propertyShapeRef, setAside } fro
 export interface ImportReport {
   /** Attributes whose range was not an `xsd` type and now says `xsd:string`. */
   datatypesRewritten: number;
+  /**
+   * Shapes written inline, without a name, by the local name each is saved under. They mean
+   * the same with a name, but someone reading the diff should not be surprised by it.
+   */
+  shapesNamed: string[];
 }
 
 export interface ImportResult {
@@ -232,7 +238,7 @@ export function ontologyFromTriples(
   prefixes: Readonly<Record<string, string>> = {},
 ): ImportResult {
   const index = indexTriples(triples);
-  const report: ImportReport = { datatypesRewritten: 0 };
+  const report: ImportReport = { datatypesRewritten: 0, shapesNamed: [] };
 
   /*
    * What the model took, and what it now names. Everything not taken is kept as written, with
@@ -595,16 +601,36 @@ export function ontologyFromTriples(
   }
 
   /*
-   * A shape that was read is the writer's too, under the name it gives it. What the writer does
-   * not say — a cardinality, a message — is kept and attached to that shape by reference, so
-   * it goes when the class stops using the property.
+   * A shape that was read is the writer's too. What the writer does not say — a cardinality, a
+   * message — is kept and attached to that shape by reference, so it goes when the class stops
+   * using the property.
+   *
+   * It keeps the name the document gave it. One written inline has none, and is saved under the
+   * writer's; that is reported, since a diff showing new shape names would otherwise alarm. Two
+   * shapes for one class and property become one, under the first one's name.
    */
+  const shapeIris: Record<string, string> = {};
+  const settled = new Set<string>();
+  const nameShape = (term: string, ref: string, writersName: string) => {
+    if (settled.has(ref)) return;
+    settled.add(ref);
+    if (isBlankNode(term)) report.shapesNamed.push(writersName);
+    else if (term !== entityIri(base.iri, writersName)) shapeIris[ref] = term;
+  };
+
   for (const reading of readings) {
     const target = known(classId, reading.target, 'a class id');
     const path = known(propertyId, reading.path, 'a property id');
     if (!inUse.has(path)) continue;
     if (!anchors.has(reading.nodeShape)) anchors.set(reading.nodeShape, nodeShapeRef(target));
     anchors.set(reading.propertyShape, propertyShapeRef(target, path));
+    const className = known(named, reading.target, 'a local name');
+    nameShape(reading.nodeShape, nodeShapeRef(target), `${className}Shape`);
+    nameShape(
+      reading.propertyShape,
+      propertyShapeRef(target, path),
+      `${className}_${known(named, reading.path, 'a local name')}`,
+    );
     use(reading.said);
     use(
       [
@@ -641,6 +667,7 @@ export function ontologyFromTriples(
       attributes,
       usages,
       unmodelled: setAside(triples, used, anchors),
+      shapeIris,
     },
     report,
   };

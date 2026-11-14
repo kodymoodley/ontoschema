@@ -12,7 +12,7 @@ import {
 import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/autoOntology';
 import { allScenarios } from '../../tests/fixtures/scenarios';
 import { ontologyFromTriples } from './fromTriples';
-import { ONTOLOGY_REF, entityRef, propertyShapeRef } from './unmodelled';
+import { ONTOLOGY_REF, entityRef, nodeShapeRef, propertyShapeRef } from './unmodelled';
 import { addClass, addAttribute, attachProperty } from './mutations';
 import { createEmptyOntology } from './ontology';
 import { iri, literal, ontologyToTriples } from './triples';
@@ -126,7 +126,7 @@ describe('the round trip', () => {
     const { ontology } = buildAutoOntology();
     const { ontology: restored, report } = saveAndOpen(ontology);
 
-    expect(report).toEqual({ datatypesRewritten: 0 });
+    expect(report).toEqual({ datatypesRewritten: 0, shapesNamed: [] });
     expect(restored.unmodelled).toEqual([]);
   });
 
@@ -788,7 +788,7 @@ describe('a document from nowhere in particular', () => {
 
     expect(ontology.classes).toEqual([]);
     expect(ontology.unmodelled).toEqual([]);
-    expect(report).toEqual({ datatypesRewritten: 0 });
+    expect(report).toEqual({ datatypesRewritten: 0, shapesNamed: [] });
   });
 
   it('sanitises a local name that would not be valid here', () => {
@@ -960,7 +960,7 @@ describe('what the model takes, and what is kept as written', () => {
   });
 
   it('reads the pairing from a shape and keeps the constraints it does not model on it', () => {
-    const { ontology } = ontologyFromTriples([
+    const { ontology, report } = ontologyFromTriples([
       aClass('Car'),
       aClass('Company'),
       typed(`${AUTO}ownedBy`, `${OWL}ObjectProperty`),
@@ -975,6 +975,9 @@ describe('what the model takes, and what is kept as written', () => {
     const ownedBy = idOf(ontology, 'ownedBy');
 
     expect(ontology.usages.map((usage) => usage.propertyId)).toEqual([ownedBy]);
+    // The node shape keeps its name; the inline property shape has none, and gets the writer's.
+    expect(ontology.shapeIris).toEqual({ [nodeShapeRef(car)]: `${AUTO}CarRules` });
+    expect(report.shapesNamed).toEqual(['Car_ownedBy']);
     expect(ontology.unmodelled).toEqual([
       say(
         propertyShapeRef(car, ownedBy),

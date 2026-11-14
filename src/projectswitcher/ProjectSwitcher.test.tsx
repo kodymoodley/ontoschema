@@ -286,6 +286,24 @@ describe('opening an RDF document', () => {
     expect(ontology().classes).toHaveLength(2);
   });
 
+  it('says which shapes are saved with a name they did not have, without holding back', async () => {
+    const user = userEvent.setup();
+    render(<ProjectSwitcher />);
+    await open(
+      user,
+      'shaped.ttl',
+      `${TURTLE}
+       @prefix sh: <http://www.w3.org/ns/shacl#>.
+       car:CarShape a sh:NodeShape; sh:targetClass car:Car;
+         sh:property [ sh:path car:hasWheel; sh:class car:Wheel ].`,
+    );
+
+    expect(screen.getByRole('dialog', { name: REPORT })).toHaveTextContent(
+      /1 shape written without a name is saved with one, such as Car_hasWheel\. What it checks stays the same\./,
+    );
+    expect(screen.getByRole('dialog', { name: REPORT })).not.toHaveTextContent(/not saving into/);
+  });
+
   it('says that saving writes back what the canvas does not show', async () => {
     const user = userEvent.setup();
     render(<ProjectSwitcher />);

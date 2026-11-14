@@ -120,6 +120,18 @@ describe('a document this version wrote', () => {
     expect(restored?.ontology.prefixes).toEqual(prefixes);
   });
 
+  it('comes back with the names its file gave its shapes', () => {
+    const project = projectWithBoth();
+    const shapeIris = { 'urn:ontoschema:shape:c1': 'https://example.org/rules#CarRules' };
+
+    const restored = reviveProject({
+      ...project,
+      ontology: { ...project.ontology, shapeIris: { ...shapeIris, broken: null } },
+    });
+
+    expect(restored?.ontology.shapeIris).toEqual(shapeIris);
+  });
+
   it('opens with nothing kept when it was saved before anything was', () => {
     const { unmodelled: _, ...before } = projectWithBoth().ontology;
 

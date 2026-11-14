@@ -38,6 +38,7 @@ export function createEmptyOntology(
     attributes: [],
     usages: [],
     unmodelled: [],
+    shapeIris: {},
   };
 }
 

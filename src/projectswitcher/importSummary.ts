@@ -22,6 +22,8 @@ export interface ImportSummary {
   kept: string;
   /** What the file says beyond that, kept out of sight and saved as written; null when nothing. */
   unshown: string | null;
+  /** Shapes that are saved with a name they did not have, and mean the same; null when none. */
+  named: string | null;
   /**
    * What arrived but not as written, one plain sentence each. Kept apart from `unshown`
    * deliberately: something out of sight is still there, while something quietly different is
@@ -46,6 +48,12 @@ export function summariseImport(ontology: Ontology, report: ImportReport): Impor
       ? `${count(statements, 'statement', 'statements')} the canvas does not show, such as particular things or rules about classes. They are kept, and saving writes them back as they were.`
       : null;
 
+  const shapes = report.shapesNamed;
+  const named =
+    shapes.length > 0
+      ? `${count(shapes.length, 'shape', 'shapes')} written without a name ${shapes.length === 1 ? 'is' : 'are'} saved with one, such as ${shapes[0]}. What ${shapes.length === 1 ? 'it checks' : 'they check'} stays the same.`
+      : null;
+
   const changed: string[] = [];
   if (report.datatypesRewritten > 0) {
     changed.push(
@@ -53,12 +61,12 @@ export function summariseImport(ontology: Ontology, report: ImportReport): Impor
     );
   }
 
-  return { kept: `${sentence(kept)}.`, unshown, changed };
+  return { kept: `${sentence(kept)}.`, unshown, named, changed };
 }
 
 /** Whether anything is worth showing a person, as opposed to opening the file quietly. */
 export const worthReporting = (summary: ImportSummary) =>
-  summary.unshown !== null || summary.changed.length > 0;
+  summary.unshown !== null || summary.named !== null || summary.changed.length > 0;
 
 /** Whether saving into the file would change more of it than the edits made here. */
 export const savingWouldChange = (summary: ImportSummary) => summary.changed.length > 0;

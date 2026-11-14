@@ -93,6 +93,12 @@ export interface Ontology {
    * that edits the model touches it — see `unmodelled.ts`.
    */
   unmodelled: Triple[];
+  /**
+   * The names an opened document gave the shapes the writer now generates, keyed by the
+   * reference the writer knows each shape by (see `unmodelled.ts`). Only names other than the
+   * writer's own are here, so a shape this app named still follows its class when renamed.
+   */
+  shapeIris: Record<string, string>;
 }
 
 export interface Project {

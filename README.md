@@ -119,8 +119,9 @@ vocabularies. That part is kept as written and saved back unchanged. It follows 
 renamed, and goes with one that is deleted. The app says how much of it there is, and what it
 **changed**: a datatype it does not offer arrives as `xsd:string`.
 
-Saving lays a file out afresh, so its comments, statement order and prefix names are not kept. A
-shape the app reads is written under the name it gives shapes, with its constraints on it.
+Saving lays a file out afresh, so its comments and statement order are not kept; its prefix
+names are. A shape the app reads keeps its name and its constraints. One written inline, without
+a name, is saved with one, such as `Vehicle_ownedBy`, and the app says so when the file opens.
 
 **File › Back up everything** is the exception to all of this: the whole workspace, every project,
 exactly as it stands, in a private format nothing else reads. A Turtle document is one ontology; a

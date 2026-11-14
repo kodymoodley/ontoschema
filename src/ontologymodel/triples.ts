@@ -31,13 +31,15 @@ import {
 import {
   ABSOLUTE_IRI_VALUE,
   entityIri,
+  localNameOf,
+  namespaceOf,
   normalizeNamespaceIri,
   ontologyIri,
   uniqueLocalName,
 } from './identifier';
 import { indexOntology, classLocalNames, propertyLocalNames } from './ontology';
 import { encodePosition } from './layout';
-import { restore } from './unmodelled';
+import { nodeShapeRef, propertyShapeRef, restore } from './unmodelled';
 import type { Ref } from './unmodelled';
 import type { Annotation, Ontology, PropertyUsage } from './types';
 
@@ -359,7 +361,14 @@ export function ontologyToTriples(
 type NameAllocator = (desired: string) => string;
 
 function nameAllocator(ontology: Ontology, namespace: string): NameAllocator {
-  const taken = new Set([...classLocalNames(ontology), ...propertyLocalNames(ontology)]);
+  const taken = new Set([
+    ...classLocalNames(ontology),
+    ...propertyLocalNames(ontology),
+    // The names shapes kept from the file they came from, which a minted one must not take.
+    ...Object.values(ontology.shapeIris)
+      .filter((iri) => namespaceOf(iri) === namespace)
+      .map(localNameOf),
+  ]);
   return (desired: string) => {
     const unique = uniqueLocalName(desired, taken);
     taken.add(unique);
@@ -427,7 +436,7 @@ interface ShapeContext {
 
 /**
  * One node shape per class that has usages, and one named property shape per
- * (class, property) pair.
+ * (class, property) pair, under the name its document gave it if it came from one.
  *
  * Usages are grouped by (class, property) because two property shapes on the same path are
  * *conjunctive* in SHACL: `Car hasPart Wheel` plus `Car hasPart Door` as separate shapes
@@ -455,7 +464,8 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
     }
     if (byProperty.size === 0) continue;
 
-    const nodeShape = shapeIri(`${entity.localName}Shape`);
+    const nodeShape =
+      ontology.shapeIris[nodeShapeRef(entity.id)] ?? shapeIri(`${entity.localName}Shape`);
     context.names.node.set(entity.id, nodeShape);
     triples.push({ subject: nodeShape, predicate: RDF_TYPE, object: iri(SH_NODE_SHAPE) });
     triples.push({ subject: nodeShape, predicate: SH_TARGET_CLASS, object: iri(classSubject) });
@@ -474,7 +484,9 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
         ontology.relations.find((e) => e.id === propertyId);
       if (!property) continue;
 
-      const propertyShape = shapeIri(`${entity.localName}_${property.localName}`);
+      const propertyShape =
+        ontology.shapeIris[propertyShapeRef(entity.id, propertyId)] ??
+        shapeIri(`${entity.localName}_${property.localName}`);
       context.names.property.set(propertyShapeKey(entity.id, propertyId), propertyShape);
       triples.push({ subject: nodeShape, predicate: SH_PROPERTY, object: iri(propertyShape) });
       propertyShapeTriples.push(

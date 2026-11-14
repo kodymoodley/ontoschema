@@ -147,13 +147,7 @@ function reviveOntology(value: unknown): Ontology | null {
   );
   return {
     ...base,
-    prefixes: isRecord(value.prefixes)
-      ? Object.fromEntries(
-          Object.entries(value.prefixes).filter(
-            (entry): entry is [string, string] => typeof entry[1] === 'string',
-          ),
-        )
-      : {},
+    prefixes: stringRecord(value.prefixes),
     annotations: reviveAnnotations(value.annotations),
     classes: records(value.classes)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')
@@ -182,6 +176,7 @@ function reviveOntology(value: unknown): Ontology | null {
         annotations: reviveAnnotations(entity.annotations),
       })),
     usages: reviveUsages(value),
+    shapeIris: stringRecord(value.shapeIris),
     unmodelled: records(value.unmodelled).flatMap((entry) => {
       const triple = reviveTriple(entry);
       return triple ? [triple] : [];
@@ -256,6 +251,16 @@ function reviveAnnotations(value: unknown): Annotation[] {
         annotation.language = entry.language;
       return annotation;
     });
+}
+
+/** A map of strings to strings, keeping the entries that are. */
+function stringRecord(value: unknown): Record<string, string> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  );
 }
 
 function records(value: unknown): Record<string, unknown>[] {

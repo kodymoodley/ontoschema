@@ -442,6 +442,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         {importSummary?.unshown ? (
           <p className={styles.confirmText}>The file also says {importSummary.unshown}</p>
         ) : null}
+        {importSummary?.named ? <p className={styles.confirmText}>{importSummary.named}</p> : null}
         {importSummary && importSummary.changed.length > 0 ? (
           <>
             <p className={styles.confirmText}>

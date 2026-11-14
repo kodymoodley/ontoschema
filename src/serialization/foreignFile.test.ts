@@ -59,7 +59,9 @@ foaf:Person a owl:Class .
 :herbie a :Car ; :ownedBy :acme ; rdfs:label "Herbie" .
 
 :VehicleShape a sh:NodeShape ; sh:targetClass :Vehicle ;
-  sh:property [ sh:path :ownedBy ; sh:class :Company ; sh:minCount 1 ; sh:maxCount 1 ] .
+  sh:property [ sh:path :ownedBy ; sh:class :Company ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property :VehicleWeight .
+:VehicleWeight a sh:PropertyShape ; sh:path :weight ; sh:datatype xsd:decimal ; sh:maxCount 1 .
 `;
 
 const FLEET = 'https://example.org/fleet#';
@@ -74,9 +76,10 @@ async function openAndSave(text: string) {
 
 describe('a colleague’s file, opened and saved without an edit', () => {
   /*
-   * Shapes are the one place the file is reworded rather than kept: the writer generates its own
-   * for what the canvas draws, under its own names, so the colleague's inline property shape
-   * becomes `fleet:Vehicle_ownedBy`. What it said is checked on that shape, below.
+   * An inline shape is the one place the file is reworded rather than kept: the writer names
+   * every shape it generates, so the colleague's inline property shape becomes
+   * `fleet:Vehicle_ownedBy`, and the report says so. What it said is checked on that shape below.
+   * Their named shape, `fleet:VehicleWeight`, keeps its name, and is covered here.
    */
   it('still says everything it said, its inline shape aside', async () => {
     const { saved } = await openAndSave(COLLEAGUES_FILE);
@@ -116,6 +119,12 @@ describe('a colleague’s file, opened and saved without an edit', () => {
 
     expect(saved).toContain('@prefix foaf: <http://xmlns.com/foaf/0.1/>');
     expect(saved).toContain('foaf:Person a owl:Class');
+  });
+
+  it('says which shapes are saved with a name they did not have', async () => {
+    const { report } = await readOntology(COLLEAGUES_FILE, 'turtle');
+
+    expect(report.shapesNamed).toEqual(['Vehicle_ownedBy']);
   });
 
   it('comes out the same when saved a second time', async () => {

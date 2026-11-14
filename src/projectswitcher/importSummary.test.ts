@@ -9,7 +9,7 @@ import {
   worthReporting,
 } from './importSummary';
 
-const asWritten: ImportReport = { datatypesRewritten: 0 };
+const asWritten: ImportReport = { datatypesRewritten: 0, shapesNamed: [] };
 
 const kept = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
@@ -77,6 +77,34 @@ describe('what the canvas does not show', () => {
   it('is worth showing, but no reason to hold back saving, since saving writes it back', () => {
     const summary = summariseImport({ ...ontologyWith(1, 0, 0), unmodelled: kept(4) }, asWritten);
 
+    expect(worthReporting(summary)).toBe(true);
+    expect(savingWouldChange(summary)).toBe(false);
+  });
+});
+
+/*
+ * A shape written inline means the same once it has a name, but the new names show up in the
+ * diff of the first save, and someone reviewing it should know why before they wonder.
+ */
+describe('shapes saved with a name they did not have', () => {
+  it('are named, with what they are saved as, and said to mean the same', () => {
+    const summary = summariseImport(ontologyWith(2, 1, 0), {
+      ...asWritten,
+      shapesNamed: ['Vehicle_ownedBy', 'Car_hasPart'],
+    });
+
+    expect(summary.named).toBe(
+      '2 shapes written without a name are saved with one, such as Vehicle_ownedBy. What they check stays the same.',
+    );
+  });
+
+  it('are worth showing, but no reason to hold back saving', () => {
+    const summary = summariseImport(ontologyWith(2, 1, 0), {
+      ...asWritten,
+      shapesNamed: ['Vehicle_ownedBy'],
+    });
+
+    expect(summary.named).toContain('1 shape written without a name is saved with one');
     expect(worthReporting(summary)).toBe(true);
     expect(savingWouldChange(summary)).toBe(false);
   });
