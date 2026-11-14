@@ -105,15 +105,15 @@ describe.each(allScenarios())('$name, through both syntaxes', ({ ontology }) => 
 });
 
 describe('the shapes a document may arrive in', () => {
-  it('ignores the SHACL shapes that ride alongside, without tripping over them', async () => {
+  it('reads the SHACL shapes that ride alongside as the pairings, leaving nothing over', async () => {
     const { ontology } = buildReusedOntology();
     // Written with both layers, which is what an export from this app contains by default.
     const withShapes = serialize(ontology, 'turtle', 'auto').content;
-    const { ontology: restored, report } = await readOntology(withShapes, 'turtle');
+    const { ontology: restored } = await readOntology(withShapes, 'turtle');
 
     expect(names(restored)).toEqual(names(ontology));
-    // A node shape is a subject typed `sh:NodeShape`, which is not something this app models.
-    expect(report.individuals).toBeGreaterThan(0);
+    // The shapes are the writer's own, so it writes them again: none is kept beside the model.
+    expect(restored.unmodelled).toEqual([]);
     expect(restored.classes.some((entity) => entity.localName.includes('Shape'))).toBe(false);
   });
 

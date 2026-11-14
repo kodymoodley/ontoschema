@@ -4,10 +4,11 @@ import { UNTITLED } from '../projectstore';
 /**
  * What to tell someone who has just opened a file written somewhere else.
  *
- * This app models a narrow slice of OWL, so opening a foreign document keeps some of it and
- * leaves the rest. Saying so is not a courtesy: once a file can be opened and saved in the
- * same format, silence means a colleague's ontology can be rewritten without anyone noticing
- * — parts of it dropped, and one part changed rather than dropped.
+ * This app models a narrow slice of OWL, so a foreign document says more than the canvas shows.
+ * The rest is kept and saved back as written, but it is out of sight, and someone editing a
+ * colleague's file should know it is there. One thing is changed rather than kept, and saying
+ * so is not a courtesy: saved into the same file, silence would mean a colleague's ontology
+ * rewritten without anyone noticing.
  *
  * Plain words and counts, no vocabulary. Someone who knows what an `owl:Restriction` is does
  * not need to be told; someone who does not is helped by "a rule about which classes may be
@@ -17,14 +18,16 @@ import { UNTITLED } from '../projectstore';
  */
 
 export interface ImportSummary {
-  /** What arrived, as one sentence. Always present, even when nothing was left behind. */
+  /** What the canvas shows, as one sentence. Always present. */
   kept: string;
-  /** What was left behind, one plain sentence each. Empty when the file fitted entirely. */
-  dropped: string[];
+  /** What the file says beyond that, kept out of sight and saved as written; null when nothing. */
+  unshown: string | null;
+  /** Shapes that are saved with a name they did not have, and mean the same; null when none. */
+  named: string | null;
   /**
-   * What arrived but not as written. Kept apart from `dropped` deliberately: a thing that is
-   * gone and a thing that is quietly different are different kinds of bad news, and the
-   * second is the one that surprises people later.
+   * What arrived but not as written, one plain sentence each. Kept apart from `unshown`
+   * deliberately: something out of sight is still there, while something quietly different is
+   * the thing that surprises people later.
    */
   changed: string[];
 }
@@ -39,22 +42,17 @@ export function summariseImport(ontology: Ontology, report: ImportReport): Impor
     count(ontology.attributes.length, 'attribute', 'attributes'),
   ];
 
-  const dropped: string[] = [];
-  if (report.individuals > 0) {
-    dropped.push(
-      `${count(report.individuals, 'individual', 'individuals')} — OntoSchema describes kinds of thing, not particular ones.`,
-    );
-  }
-  if (report.classExpressions > 0) {
-    dropped.push(
-      `${count(report.classExpressions, 'rule about how a class is defined', 'rules about how classes are defined')} — such as a restriction on a property.`,
-    );
-  }
-  if (report.relationsWithoutBothEnds > 0) {
-    dropped.push(
-      `${count(report.relationsWithoutBothEnds, 'relation', 'relations')} that did not say which classes they connect.`,
-    );
-  }
+  const statements = ontology.unmodelled.length;
+  const unshown =
+    statements > 0
+      ? `${count(statements, 'statement', 'statements')} the canvas does not show, such as particular things or rules about classes. They are kept, and saving writes them back as they were.`
+      : null;
+
+  const shapes = report.shapesNamed;
+  const named =
+    shapes.length > 0
+      ? `${count(shapes.length, 'shape', 'shapes')} written without a name ${shapes.length === 1 ? 'is' : 'are'} saved with one, such as ${shapes[0]}. What ${shapes.length === 1 ? 'it checks' : 'they check'} stays the same.`
+      : null;
 
   const changed: string[] = [];
   if (report.datatypesRewritten > 0) {
@@ -63,12 +61,15 @@ export function summariseImport(ontology: Ontology, report: ImportReport): Impor
     );
   }
 
-  return { kept: `${sentence(kept)}.`, dropped, changed };
+  return { kept: `${sentence(kept)}.`, unshown, named, changed };
 }
 
 /** Whether anything is worth showing a person, as opposed to opening the file quietly. */
 export const worthReporting = (summary: ImportSummary) =>
-  summary.dropped.length > 0 || summary.changed.length > 0;
+  summary.unshown !== null || summary.named !== null || summary.changed.length > 0;
+
+/** Whether saving into the file would change more of it than the edits made here. */
+export const savingWouldChange = (summary: ImportSummary) => summary.changed.length > 0;
 
 /** `a, b and c` — an Oxford-comma-free list, which is how the rest of the app reads. */
 function sentence(parts: readonly string[]): string {

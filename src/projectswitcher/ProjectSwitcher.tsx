@@ -16,7 +16,12 @@ import {
 import { canLinkFiles, fileLinks, pickFileToOpen, writableFormat } from '../filelink';
 import type { LinkedFileHandle } from '../filelink';
 import { formatForFilename, readOntology } from '../serialization';
-import { projectNameFromFilename, summariseImport, worthReporting } from './importSummary';
+import {
+  projectNameFromFilename,
+  savingWouldChange,
+  summariseImport,
+  worthReporting,
+} from './importSummary';
 import type { ImportSummary } from './importSummary';
 import styles from './projectswitcher.module.css';
 
@@ -128,23 +133,24 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
       const { ontology, report } = await readOntology(content, format);
       const projectId = openAsNewProject(projectNameFromFilename(file.name), ontology);
       const summary = summariseImport(ontology, report);
-      const reporting = worthReporting(summary);
+      const holdBack = savingWouldChange(summary);
 
       /*
-       * Linked, so edits save themselves into the file. A file that lost something on the way in
-       * is linked but held back: saving into it would delete what was left out, and that is the
-       * person's call, made with the report in front of them.
+       * Linked, so edits save themselves into the file. A file that arrived changed is linked but
+       * held back: saving into it would write that change into someone's file, and that is the
+       * person's call, made with the report in front of them. What the canvas does not show is no
+       * reason to hold back, since saving writes it back as it was.
        */
       const writable = handle ? writableFormat(file.name) : undefined;
       if (handle && writable) {
         void fileLinks.link(projectId, handle, {
           text: content,
           format: writable,
-          paused: reporting,
+          paused: holdBack,
         });
       }
-      setPausedFile(handle && writable && reporting ? file.name : null);
-      if (reporting) setImportSummary(summary);
+      setPausedFile(handle && writable && holdBack ? file.name : null);
+      if (worthReporting(summary)) setImportSummary(summary);
     } catch {
       setImportError(
         `${file.name} could not be read as ${format === 'turtle' ? 'Turtle' : 'RDF/XML'}.`,
@@ -419,7 +425,7 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         there is something to say.
       */}
       <Modal
-        title="Opened, with some of the file left behind"
+        title="What OntoSchema opened"
         open={importSummary !== null}
         onClose={() => setImportSummary(null)}
         footer={
@@ -432,22 +438,11 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
           </Button>
         }
       >
-        <p className={styles.confirmText}>
-          OntoSchema kept {importSummary?.kept} What it does not model was left out rather than
-          refused, so the schema opens as far as it goes.
-        </p>
-        {importSummary && importSummary.dropped.length > 0 ? (
-          <>
-            <p className={styles.confirmText}>
-              <strong>Left out</strong>
-            </p>
-            <ul className={styles.reportList}>
-              {importSummary.dropped.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </>
+        <p className={styles.confirmText}>The canvas shows {importSummary?.kept}</p>
+        {importSummary?.unshown ? (
+          <p className={styles.confirmText}>The file also says {importSummary.unshown}</p>
         ) : null}
+        {importSummary?.named ? <p className={styles.confirmText}>{importSummary.named}</p> : null}
         {importSummary && importSummary.changed.length > 0 ? (
           <>
             <p className={styles.confirmText}>
@@ -462,14 +457,17 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
         ) : null}
         {pausedFile ? (
           <p className={styles.confirmText}>
-            Because saving would remove what was left out, OntoSchema is{' '}
+            Because saving would write that change into the file, OntoSchema is{' '}
             <strong>not saving into {pausedFile}</strong>. Choose beside the schema&apos;s name:
             save into it anyway, or keep the work in this browser and use Save as… for a new file.
           </p>
         ) : (
           <p className={styles.confirmText}>
-            Saving from here writes what OntoSchema kept, not the file you opened. Keep the original
-            if you need everything in it.
+            Saving lays the file out afresh and leaves out its comments, but everything it says
+            {importSummary && importSummary.changed.length > 0
+              ? ', apart from that change,'
+              : ''}{' '}
+            is written back.
           </p>
         )}
       </Modal>

@@ -22,6 +22,16 @@ const FLEET = [
   '',
 ].join('\n');
 
+/** The same schema as a colleague might really write it: with things the canvas does not draw. */
+const COLLEAGUES_FLEET = [
+  FLEET,
+  '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
+  'fleet:Garage a owl:Class ;',
+  '  rdfs:subClassOf [ a owl:Restriction ; owl:onProperty fleet:holds ; owl:someValuesFrom fleet:Vehicle ] .',
+  'fleet:herbie a fleet:Vehicle .',
+  '',
+].join('\n');
+
 async function writeOnDisk(page: Page, name: string, text: string) {
   await page.evaluate(
     async ([name, text]) => {
@@ -85,6 +95,26 @@ test.describe('a schema linked to its file', () => {
 
     await expect.poll(() => readOnDisk(page, 'fleet.ttl')).toContain('fleet:NewClass a owl:Class');
     expect(await readOnDisk(page, 'fleet.ttl')).toContain('ontoschema:position');
+  });
+
+  /*
+   * A colleague's file says more than the canvas shows. Editing it here must not cost them any of
+   * it: the individual and the restriction are still in the file after the edit is saved.
+   */
+  test('keeps what the canvas does not show when it saves an edit', async ({ page }) => {
+    await openApp(page);
+    await writeOnDisk(page, 'fleet.ttl', COLLEAGUES_FLEET);
+    await page.getByTestId('file-menu').click();
+    await page.getByRole('button', { name: 'Open…' }).click();
+    await page.getByTestId('import-report-ok').click();
+    await expect(status(page)).toHaveText('Saved to fleet.ttl');
+
+    await dragFromPalette(page, 'class', { x: 420, y: 160 });
+
+    await expect.poll(() => readOnDisk(page, 'fleet.ttl')).toContain('fleet:NewClass a owl:Class');
+    const saved = await readOnDisk(page, 'fleet.ttl');
+    expect(saved).toContain('fleet:herbie a fleet:Vehicle');
+    expect(saved).toContain('owl:someValuesFrom fleet:Vehicle');
   });
 
   test('reads the file back when something else changed it', async ({ page }) => {

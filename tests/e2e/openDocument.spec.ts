@@ -58,7 +58,7 @@ test('loads the RDF/XML parser on demand and reads the file with it', async ({ p
   await expect(page.locator('[data-class-name="Course"]')).toBeVisible();
 });
 
-test('reports what it left behind, and opens the file anyway', async ({ page }) => {
+test('reports what the canvas does not show, and opens the file anyway', async ({ page }) => {
   await openApp(page);
 
   const foreign = `
@@ -74,11 +74,11 @@ test('reports what it left behind, and opens the file anyway', async ({ page }) 
   `;
   await openDocument(page, 'zoo.ttl', foreign);
 
-  const report = page.getByRole('dialog', { name: /left behind/ });
+  const report = page.getByRole('dialog', { name: 'What OntoSchema opened' });
   await expect(report).toBeVisible();
-  await expect(report).toContainText('1 individual');
-  await expect(report).toContainText('1 relation that did not say');
-  await expect(report).toContainText('Saving from here writes what OntoSchema kept');
+  await expect(report).toContainText('1 statement the canvas does not show');
+  await expect(report).toContainText('1 attribute had a type OntoSchema does not offer');
+  await expect(report).toContainText('apart from that change');
 
   await page.getByTestId('import-report-ok').click();
   await expect(report).toBeHidden();

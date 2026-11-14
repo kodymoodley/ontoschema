@@ -56,6 +56,89 @@ describe('a document this version wrote', () => {
     expect(restored?.ontology.relations.map((entity) => entity.localName)).toEqual(['offeredBy']);
     expect(restored?.ontology.attributes.map((entity) => entity.localName)).toEqual(['make']);
   });
+
+  it('comes back with what the file it was opened from said beyond the schema', () => {
+    const kept = [
+      {
+        subject: 'urn:ontoschema:entity:c1',
+        predicate: 'http://www.w3.org/2002/07/owl#deprecated',
+        object: {
+          type: 'literal' as const,
+          value: 'true',
+          datatype: 'http://www.w3.org/2001/XMLSchema#boolean',
+        },
+      },
+      {
+        subject: '_:k1',
+        predicate: 'http://www.w3.org/2000/01/rdf-schema#label',
+        object: { type: 'literal' as const, value: 'Wagen', language: 'de' },
+      },
+      {
+        subject: 'https://example.org/acme',
+        predicate: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+        object: { type: 'iri' as const, value: 'urn:ontoschema:entity:c1' },
+      },
+    ];
+    const project = projectWithBoth();
+
+    const restored = projectFromFile(
+      projectToFile({ ...project, ontology: { ...project.ontology, unmodelled: kept } }),
+    );
+
+    expect(restored?.ontology.unmodelled).toEqual(kept);
+  });
+
+  it('leaves out a kept statement that is not a whole one, and keeps the rest', () => {
+    const project = projectWithBoth();
+    const whole = { subject: 'urn:a', predicate: 'urn:p', object: { type: 'iri', value: 'urn:b' } };
+
+    const restored = reviveProject({
+      ...project,
+      ontology: {
+        ...project.ontology,
+        unmodelled: [
+          whole,
+          { subject: 'urn:a', predicate: 'urn:p' },
+          { subject: 'urn:a', predicate: 'urn:p', object: { type: 'variable', value: 'x' } },
+          'not a statement',
+        ],
+      },
+    });
+
+    expect(restored?.ontology.unmodelled).toEqual([whole]);
+  });
+
+  it('comes back calling other vocabularies what its file called them', () => {
+    const project = projectWithBoth();
+    const prefixes = { foaf: 'http://xmlns.com/foaf/0.1/', dc: 'http://purl.org/dc/terms/' };
+
+    const restored = reviveProject({
+      ...project,
+      ontology: { ...project.ontology, prefixes: { ...prefixes, broken: 42 } },
+    });
+
+    expect(restored?.ontology.prefixes).toEqual(prefixes);
+  });
+
+  it('comes back with the names its file gave its shapes', () => {
+    const project = projectWithBoth();
+    const shapeIris = { 'urn:ontoschema:shape:c1': 'https://example.org/rules#CarRules' };
+
+    const restored = reviveProject({
+      ...project,
+      ontology: { ...project.ontology, shapeIris: { ...shapeIris, broken: null } },
+    });
+
+    expect(restored?.ontology.shapeIris).toEqual(shapeIris);
+  });
+
+  it('opens with nothing kept when it was saved before anything was', () => {
+    const { unmodelled: _, ...before } = projectWithBoth().ontology;
+
+    expect(reviveProject({ ...projectWithBoth(), ontology: before })?.ontology.unmodelled).toEqual(
+      [],
+    );
+  });
 });
 
 describe('a document written before relations and attributes were renamed', () => {

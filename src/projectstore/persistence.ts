@@ -1,5 +1,5 @@
 import { createEmptyOntology, createId, createProject, withVersionIri } from '../ontologymodel';
-import type { Annotation, Ontology, Project, PropertyUsage } from '../ontologymodel';
+import type { Annotation, Ontology, Project, PropertyUsage, Triple } from '../ontologymodel';
 import { isXsdDatatype } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import { createSaveQueue } from './savequeue';
@@ -150,6 +150,7 @@ function reviveOntology(value: unknown): Ontology | null {
   return {
     ...base,
     ...(typeof value.ontologyIri === 'string' ? { ontologyIri: value.ontologyIri } : {}),
+    prefixes: stringRecord(value.prefixes),
     annotations: reviveAnnotations(value.annotations),
     classes: records(value.classes)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')
@@ -178,7 +179,29 @@ function reviveOntology(value: unknown): Ontology | null {
         annotations: reviveAnnotations(entity.annotations),
       })),
     usages: reviveUsages(value),
+    shapeIris: stringRecord(value.shapeIris),
+    unmodelled: records(value.unmodelled).flatMap((entry) => {
+      const triple = reviveTriple(entry);
+      return triple ? [triple] : [];
+    }),
   };
+}
+
+/** One kept statement, or nothing when the stored entry is not a whole one. */
+function reviveTriple(value: Record<string, unknown>): Triple | null {
+  const { subject, predicate, object } = value;
+  if (typeof subject !== 'string' || typeof predicate !== 'string' || !isRecord(object)) {
+    return null;
+  }
+  if (typeof object.value !== 'string') return null;
+  if (object.type === 'iri' || object.type === 'blank') {
+    return { subject, predicate, object: { type: object.type, value: object.value } };
+  }
+  if (object.type !== 'literal') return null;
+  const literal: Triple['object'] = { type: 'literal', value: object.value };
+  if (typeof object.language === 'string') literal.language = object.language;
+  else if (typeof object.datatype === 'string') literal.datatype = object.datatype;
+  return { subject, predicate, object: literal };
 }
 
 /**
@@ -231,6 +254,16 @@ function reviveAnnotations(value: unknown): Annotation[] {
         annotation.language = entry.language;
       return annotation;
     });
+}
+
+/** A map of strings to strings, keeping the entries that are. */
+function stringRecord(value: unknown): Record<string, string> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  );
 }
 
 function records(value: unknown): Record<string, unknown>[] {

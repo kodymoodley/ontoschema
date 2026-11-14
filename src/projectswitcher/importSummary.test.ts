@@ -2,14 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { createEmptyOntology } from '../ontologymodel';
 import { UNTITLED } from '../projectstore';
 import type { ImportReport, Ontology } from '../ontologymodel';
-import { projectNameFromFilename, summariseImport, worthReporting } from './importSummary';
+import {
+  projectNameFromFilename,
+  savingWouldChange,
+  summariseImport,
+  worthReporting,
+} from './importSummary';
 
-const nothingDropped: ImportReport = {
-  individuals: 0,
-  classExpressions: 0,
-  relationsWithoutBothEnds: 0,
-  datatypesRewritten: 0,
-};
+const asWritten: ImportReport = { datatypesRewritten: 0, shapesNamed: [] };
+
+const kept = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    subject: `https://example.org/x/thing${index}`,
+    predicate: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+    object: { type: 'iri' as const, value: 'https://example.org/x/Thing' },
+  }));
 
 const ontologyWith = (classes: number, relations: number, attributes: number): Ontology => ({
   ...createEmptyOntology('https://example.org/x/', 'x'),
@@ -37,43 +44,69 @@ const ontologyWith = (classes: number, relations: number, attributes: number): O
 
 describe('what arrived', () => {
   it('counts the three kinds in one sentence', () => {
-    const summary = summariseImport(ontologyWith(15, 6, 12), nothingDropped);
+    const summary = summariseImport(ontologyWith(15, 6, 12), asWritten);
     expect(summary.kept).toBe('15 classes, 6 relations and 12 attributes.');
   });
 
   it('says one class rather than 1 classes', () => {
-    const summary = summariseImport(ontologyWith(1, 1, 1), nothingDropped);
+    const summary = summariseImport(ontologyWith(1, 1, 1), asWritten);
     expect(summary.kept).toBe('1 class, 1 relation and 1 attribute.');
   });
 
-  it('is not worth showing when the whole file fitted', () => {
-    expect(worthReporting(summariseImport(ontologyWith(3, 1, 2), nothingDropped))).toBe(false);
+  it('is not worth showing when the canvas shows the whole file', () => {
+    expect(worthReporting(summariseImport(ontologyWith(3, 1, 2), asWritten))).toBe(false);
   });
 });
 
-describe('what was left behind', () => {
-  it('names each kind, in words rather than vocabulary', () => {
-    const summary = summariseImport(ontologyWith(2, 0, 0), {
-      ...nothingDropped,
-      individuals: 3,
-      classExpressions: 1,
-      relationsWithoutBothEnds: 2,
-    });
+describe('what the canvas does not show', () => {
+  it('is counted in plain words, and said to be kept', () => {
+    const summary = summariseImport({ ...ontologyWith(2, 0, 0), unmodelled: kept(3) }, asWritten);
 
-    expect(summary.dropped).toHaveLength(3);
-    expect(summary.dropped.join(' ')).toContain('3 individuals');
-    expect(summary.dropped.join(' ')).toContain('2 relations that did not say which classes');
+    expect(summary.unshown).toContain('3 statements the canvas does not show');
+    expect(summary.unshown).toContain('kept');
     // No jargon: someone who knows the term does not need it, and someone who does not is
     // helped by the description instead.
-    expect(summary.dropped.join(' ')).not.toMatch(/owl:|rdfs:|Restriction|axiom/);
+    expect(summary.unshown).not.toMatch(/owl:|rdfs:|Restriction|axiom|individual/);
   });
 
-  it('says nothing about a kind that was not dropped', () => {
-    const summary = summariseImport(ontologyWith(2, 0, 0), {
-      ...nothingDropped,
-      individuals: 1,
+  it('says one statement rather than 1 statements', () => {
+    const summary = summariseImport({ ...ontologyWith(1, 0, 0), unmodelled: kept(1) }, asWritten);
+    expect(summary.unshown).toContain('1 statement the canvas');
+  });
+
+  it('is worth showing, but no reason to hold back saving, since saving writes it back', () => {
+    const summary = summariseImport({ ...ontologyWith(1, 0, 0), unmodelled: kept(4) }, asWritten);
+
+    expect(worthReporting(summary)).toBe(true);
+    expect(savingWouldChange(summary)).toBe(false);
+  });
+});
+
+/*
+ * A shape written inline means the same once it has a name, but the new names show up in the
+ * diff of the first save, and someone reviewing it should know why before they wonder.
+ */
+describe('shapes saved with a name they did not have', () => {
+  it('are named, with what they are saved as, and said to mean the same', () => {
+    const summary = summariseImport(ontologyWith(2, 1, 0), {
+      ...asWritten,
+      shapesNamed: ['Vehicle_ownedBy', 'Car_hasPart'],
     });
-    expect(summary.dropped).toEqual([expect.stringContaining('1 individual')]);
+
+    expect(summary.named).toBe(
+      '2 shapes written without a name are saved with one, such as Vehicle_ownedBy. What they check stays the same.',
+    );
+  });
+
+  it('are worth showing, but no reason to hold back saving', () => {
+    const summary = summariseImport(ontologyWith(2, 1, 0), {
+      ...asWritten,
+      shapesNamed: ['Vehicle_ownedBy'],
+    });
+
+    expect(summary.named).toContain('1 shape written without a name is saved with one');
+    expect(worthReporting(summary)).toBe(true);
+    expect(savingWouldChange(summary)).toBe(false);
   });
 });
 
@@ -81,17 +114,18 @@ describe('what was left behind', () => {
  * A rewrite is not a drop, and reporting it as one would understate it. Something missing is
  * noticed; something quietly different is not, and is the thing that surprises people later.
  */
-describe('what changed rather than went', () => {
-  it('is kept apart from what was dropped', () => {
+describe('what changed rather than stayed', () => {
+  it('is kept apart from what the canvas does not show, and holds back saving', () => {
     const summary = summariseImport(ontologyWith(2, 0, 4), {
-      ...nothingDropped,
+      ...asWritten,
       datatypesRewritten: 4,
     });
 
-    expect(summary.dropped).toEqual([]);
+    expect(summary.unshown).toBeNull();
     expect(summary.changed).toEqual([expect.stringContaining('4 attributes')]);
     expect(summary.changed[0]).toContain('text');
     expect(worthReporting(summary)).toBe(true);
+    expect(savingWouldChange(summary)).toBe(true);
   });
 });
 

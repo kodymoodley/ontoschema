@@ -31,12 +31,16 @@ import {
 import {
   ABSOLUTE_IRI_VALUE,
   entityIri,
+  localNameOf,
+  namespaceOf,
   normalizeNamespaceIri,
   headerIri,
   uniqueLocalName,
 } from './identifier';
 import { indexOntology, classLocalNames, propertyLocalNames, withVersionIri } from './ontology';
 import { encodePosition } from './layout';
+import { nodeShapeRef, propertyShapeRef, restore } from './unmodelled';
+import type { Ref } from './unmodelled';
 import type { Annotation, Ontology, PropertyUsage } from './types';
 
 /**
@@ -115,10 +119,11 @@ const DEFAULT_OPTIONS: Required<SerializationOptions> = {
 
 /**
  * Renders one annotation. Terms declared `iri` produce an IRI object when the value really
- * is one; `date` produces an xsd:date literal; `text` may carry a language tag.
+ * is one; `date` produces an xsd:date literal, `boolean` an xsd:boolean one; `text` may carry a
+ * language tag.
  * Blank values are skipped by the caller.
  */
-function annotationTriple(subject: string, annotation: Annotation): Triple | null {
+export function annotationTriple(subject: string, annotation: Annotation): Triple | null {
   const predicate = annotationTermIri(annotation.term);
   if (!predicate) return null;
 
@@ -136,6 +141,13 @@ function annotationTriple(subject: string, annotation: Annotation): Triple | nul
       subject,
       predicate,
       object: literal(value, { datatype: 'http://www.w3.org/2001/XMLSchema#date' }),
+    };
+  }
+  if (kind === 'boolean' && /^(true|false)$/.test(value)) {
+    return {
+      subject,
+      predicate,
+      object: literal(value, { datatype: 'http://www.w3.org/2001/XMLSchema#boolean' }),
     };
   }
   if (kind === 'text' && annotation.language && isValidLanguageTag(annotation.language)) {
@@ -310,6 +322,7 @@ export function ontologyToTriples(
     }
   }
 
+  const shapeNames: ShapeNames = { node: new Map(), property: new Map() };
   if (includeShapes) {
     triples.push(
       ...shapeTriples(ontology, {
@@ -318,11 +331,26 @@ export function ontologyToTriples(
         attributeIds: new Set(ontology.attributes.map((e) => e.id)),
         namespace,
         mintName,
+        names: shapeNames,
       }),
     );
   }
 
-  return dedupe(triples);
+  /*
+   * What the document said beyond the model, under today's names. A constraint on a shape this
+   * writer no longer generates goes with the shape.
+   */
+  const resolve = (ref: Ref): string | undefined => {
+    if (ref.kind === 'ontology') return header;
+    if (ref.kind === 'entity') return classIri.get(ref.id) ?? propertyIri(ref.id);
+    if (ref.kind === 'nodeShape') return shapeNames.node.get(ref.classId);
+    return shapeNames.property.get(propertyShapeKey(ref.classId, ref.propertyId));
+  };
+  triples.push(
+    ...restore(ontology.unmodelled, resolve, { axioms: includeAxioms, shapes: includeShapes }),
+  );
+
+  return groupBySubject(dedupe(triples));
 }
 
 /**
@@ -335,7 +363,14 @@ export function ontologyToTriples(
 type NameAllocator = (desired: string) => string;
 
 function nameAllocator(ontology: Ontology, namespace: string): NameAllocator {
-  const taken = new Set([...classLocalNames(ontology), ...propertyLocalNames(ontology)]);
+  const taken = new Set([
+    ...classLocalNames(ontology),
+    ...propertyLocalNames(ontology),
+    // The names shapes kept from the file they came from, which a minted one must not take.
+    ...Object.values(ontology.shapeIris)
+      .filter((iri) => namespaceOf(iri) === namespace)
+      .map(localNameOf),
+  ]);
   return (desired: string) => {
     const unique = uniqueLocalName(desired, taken);
     taken.add(unique);
@@ -383,17 +418,27 @@ function classExpression(
   return blank(union);
 }
 
+/** The shapes the writer named, filled in as it names them, for kept triples to refer to. */
+interface ShapeNames {
+  node: Map<string, string>;
+  /** Keyed by `propertyShapeKey`. */
+  property: Map<string, string>;
+}
+
+const propertyShapeKey = (classId: string, propertyId: string) => `${classId} ${propertyId}`;
+
 interface ShapeContext {
   classIri: Map<string, string>;
   propertyIri: (id: string) => string | undefined;
   attributeIds: Set<string>;
   namespace: string;
   mintName: NameAllocator;
+  names: ShapeNames;
 }
 
 /**
  * One node shape per class that has usages, and one named property shape per
- * (class, property) pair.
+ * (class, property) pair, under the name its document gave it if it came from one.
  *
  * Usages are grouped by (class, property) because two property shapes on the same path are
  * *conjunctive* in SHACL: `Car hasPart Wheel` plus `Car hasPart Door` as separate shapes
@@ -421,7 +466,9 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
     }
     if (byProperty.size === 0) continue;
 
-    const nodeShape = shapeIri(`${entity.localName}Shape`);
+    const nodeShape =
+      ontology.shapeIris[nodeShapeRef(entity.id)] ?? shapeIri(`${entity.localName}Shape`);
+    context.names.node.set(entity.id, nodeShape);
     triples.push({ subject: nodeShape, predicate: RDF_TYPE, object: iri(SH_NODE_SHAPE) });
     triples.push({ subject: nodeShape, predicate: SH_TARGET_CLASS, object: iri(classSubject) });
 
@@ -439,7 +486,10 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
         ontology.relations.find((e) => e.id === propertyId);
       if (!property) continue;
 
-      const propertyShape = shapeIri(`${entity.localName}_${property.localName}`);
+      const propertyShape =
+        ontology.shapeIris[propertyShapeRef(entity.id, propertyId)] ??
+        shapeIri(`${entity.localName}_${property.localName}`);
+      context.names.property.set(propertyShapeKey(entity.id, propertyId), propertyShape);
       triples.push({ subject: nodeShape, predicate: SH_PROPERTY, object: iri(propertyShape) });
       propertyShapeTriples.push(
         { subject: propertyShape, predicate: RDF_TYPE, object: iri(SH_PROPERTY_SHAPE) },
@@ -533,6 +583,23 @@ function rdfList(members: readonly string[], nextCell: () => string, sink: Tripl
 
 /** An IRI or a blank node, told apart by the `_:` a blank label always carries. */
 const term = (value: string): TripleObject => (isBlankNode(value) ? blank(value) : iri(value));
+
+/**
+ * Each subject's statements together, in the order subjects first appear.
+ *
+ * The writer emits them that way already; the kept triples come last and would otherwise form a
+ * second block for a class they mention, which a Turtle writer prints as a second `ex:Car …`
+ * paragraph far from the first.
+ */
+function groupBySubject(triples: readonly Triple[]): Triple[] {
+  const grouped = new Map<string, Triple[]>();
+  for (const triple of triples) {
+    const existing = grouped.get(triple.subject);
+    if (existing) existing.push(triple);
+    else grouped.set(triple.subject, [triple]);
+  }
+  return [...grouped.values()].flat();
+}
 
 /** Two identical assertions are one fact; duplicates would only bloat the output. */
 function dedupe(triples: readonly Triple[]): Triple[] {

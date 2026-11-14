@@ -161,6 +161,7 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Size |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | **Nine, three times over — a limit the app enforces** — **parked to the back of the queue** as a project with subfeatures rather than an item, but decided in principle. Nine classes to a module, nine modules to a module-group, nine module-groups to a schema: **729 classes to a file**, and the app refuses more. The reasoning is a design philosophy rather than a technical limit — past 729 classes in one file you are almost certainly overcomplicating the conceptualisation and should be breaking the system into subsystems anyway, and anyone who disagrees can build several files here and sew them together in Protégé. Modules are drawn the way the taxonomy view already draws them: a box around a group, and **you do not have to see what is inside**. That is the C4 idea — zoom out and the node count falls. Edges are capped by **directed graph density of 0.25**, which is 18 edges for a module of nine. _(todo 9)_ | L    |
+| **Any datatype as an attribute's range** — opening a file rewrites a range this app does not offer to `xsd:string`, and the report says so: `rdfs:Literal`, `rdf:langString` (text with a language tag, which this app otherwise cares about) and a vocabulary's own datatypes all narrow or change meaning that way. An attribute's range would become any datatype IRI, with the editor offering the `xsd` list plus whatever the file used, written as `rdfs:range` and as the shape's `sh:datatype`. The model type, the attribute editor, the shapes and saved projects all change, which is why it is its own item rather than part of keeping what an opened file says. _(todo 45)_                                                                                                                                                                                                                                                           | M    |
 
 <!-- prettier-ignore -->
 > **Nine, three times over: what still has to be decided.** The principle is settled; these are the
@@ -245,9 +246,11 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > becomes `xsd:string`, so the attribute arrives with its name and its class rather than being
 > dropped over a detail this tool does not model. That is the one import rule that **rewrites**
 > rather than discards, so a foreign ontology opened and saved here comes back changed, and the
-> report says so. Relations, but only where both ends are known: a subproperty qualifies if it has
-> both itself or inherits them from an ancestor. The ontology IRI and prefix if stated. Everything
-> else is dropped — individuals, restrictions, property chains — and the report counts what went.
+> report says so. Relations all go into the pool, and are drawn where both ends are known: a
+> subproperty has them itself or inherits them from an ancestor. The ontology IRI and prefix if
+> stated. Only terms in the document's own namespace are modelled. Everything else — individuals,
+> restrictions, property chains, terms from other vocabularies — is kept as written and saved back
+> unchanged, referring to modelled terms by id so that it follows a rename. The report counts it.
 >
 > **One project per file, and the answer to it: a workspace backup.** A Turtle document is one
 > ontology, so saving as RDF is per project by construction. _Back up everything_ and _Restore a
@@ -776,6 +779,7 @@ list as originally written is in the git history; ask and it comes back.
 | 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                          | L    |
 | 41  | Editing workflow       | Reuse a term instead of minting `name2`                                  | S–M  |
 | 44  | Export and interop     | Open a cloned repository as a folder; open `.ttl` files from the desktop | M    |
+| 45  | Modelling power        | Any datatype as an attribute's range                                     | M    |
 
 **Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43 — kept as numbers so a commit message naming one can still be resolved.
 

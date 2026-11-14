@@ -1,4 +1,5 @@
 import type { XsdDatatype } from '../annotationvocabulary';
+import type { Triple } from './triples';
 
 /** Canvas coordinates. Layout is part of the saved document, not of the RDF output. */
 export interface Position {
@@ -83,11 +84,27 @@ export interface Ontology {
    */
   ontologyIri?: string;
   prefix: string;
+  /**
+   * What the document it was opened from called other namespaces, `foaf` or `dc`, so that
+   * saving writes the names that document used rather than this app's own.
+   */
+  prefixes: Record<string, string>;
   annotations: Annotation[];
   classes: OntologyClass[];
   relations: Relation[];
   attributes: Attribute[];
   usages: PropertyUsage[];
+  /**
+   * What an opened document said that the model does not hold, written back on save. Nothing
+   * that edits the model touches it — see `unmodelled.ts`.
+   */
+  unmodelled: Triple[];
+  /**
+   * The names an opened document gave the shapes the writer now generates, keyed by the
+   * reference the writer knows each shape by (see `unmodelled.ts`). Only names other than the
+   * writer's own are here, so a shape this app named still follows its class when renamed.
+   */
+  shapeIris: Record<string, string>;
 }
 
 export interface Project {

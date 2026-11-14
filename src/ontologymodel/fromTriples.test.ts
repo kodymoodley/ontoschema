@@ -12,6 +12,7 @@ import {
 import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/autoOntology';
 import { allScenarios } from '../../tests/fixtures/scenarios';
 import { ontologyFromTriples } from './fromTriples';
+import { ONTOLOGY_REF, entityRef, nodeShapeRef, propertyShapeRef } from './unmodelled';
 import { addClass, addAttribute, attachProperty } from './mutations';
 import { createEmptyOntology } from './ontology';
 import { iri, literal, ontologyToTriples } from './triples';
@@ -103,47 +104,30 @@ describe('the round trip', () => {
     const { ontology } = buildAutoOntology();
     const restored = roundTrip(ontology).ontology;
 
-    // `hasPart` is the one exception, and it has a test of its own below.
-    expect(summarise(restored)).toEqual({
-      ...summarise(ontology),
-      relations: summarise(ontology).relations.filter((name) => name !== 'hasPart'),
-    });
+    expect(summarise(restored)).toEqual(summarise(ontology));
   });
 
   /*
-   * A relation in the pool that is never used has no domain and no range to write, so nothing
-   * in the document distinguishes it from a foreign property too vague to import — and the
-   * rule is to leave those out. The consequence is worth stating plainly: a schema saved with
-   * an unused relation comes back without it.
-   *
-   * Note the asymmetry. An unused *attribute* survives, because an attribute carries its own
-   * `rdfs:range` whether or not any class uses it, so there is always something to declare.
+   * A relation in the pool that is never used has no domain and no range to write, only its
+   * declaration. That is enough: it comes back to the pool, unused, as it was left. It used to be
+   * lost, which an unused attribute never was, since an attribute carries its own range.
    */
-  it('loses a relation that no class uses, which an unused attribute survives', () => {
+  it('keeps a relation that no class uses in the pool', () => {
     const { ontology } = buildAutoOntology();
+    const hasPart = (model: Ontology) => model.relations.find((r) => r.localName === 'hasPart');
+
     const restored = roundTrip(ontology).ontology;
 
-    expect(summarise(ontology).relations).toContain('hasPart');
-    expect(summarise(restored).relations).not.toContain('hasPart');
-    expect(
-      ontology.usages.some(
-        (usage) =>
-          usage.propertyId === ontology.relations.find((r) => r.localName === 'hasPart')?.id,
-      ),
-    ).toBe(false);
+    expect(hasPart(restored)).toBeDefined();
+    expect(restored.usages.some((usage) => usage.propertyId === hasPart(restored)?.id)).toBe(false);
   });
 
-  it('reports nothing dropped from a document this app wrote', () => {
+  it('sets aside nothing from a document this app wrote', () => {
     const { ontology } = buildAutoOntology();
-    const { report } = roundTrip(ontology);
+    const { ontology: restored, report } = saveAndOpen(ontology);
 
-    expect(report).toEqual({
-      individuals: 0,
-      classExpressions: 0,
-      // `hasPart` exists in the fixture but is never used, so it has no ends to state.
-      relationsWithoutBothEnds: 1,
-      datatypesRewritten: 0,
-    });
+    expect(report).toEqual({ datatypesRewritten: 0, shapesNamed: [] });
+    expect(restored.unmodelled).toEqual([]);
   });
 
   /*
@@ -382,7 +366,7 @@ describe('a foreign document', () => {
   const A = 'https://example.org/a/';
   const B = 'https://other.example/b/';
 
-  it('takes its namespace from wherever most of the terms live', () => {
+  it('takes its namespace from wherever most of the terms live, and leaves the rest as written', () => {
     const { ontology } = ontologyFromTriples([
       { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
       { subject: `${A}Van`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
@@ -391,13 +375,27 @@ describe('a foreign document', () => {
     ]);
 
     expect(ontology.iri).toBe(A);
-    // The stray is still imported; it is the namespace that follows the majority.
     expect(ontology.classes.map((entity) => entity.localName).sort()).toEqual([
       'Bus',
       'Car',
-      'Stray',
       'Van',
     ]);
+    // Not renamed into this namespace, which would make it a different class.
+    expect(ontology.unmodelled).toEqual([
+      { subject: `${B}Stray`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+    ]);
+  });
+
+  it('takes the namespace its header names, even where borrowed terms outnumber its own', () => {
+    const { ontology } = ontologyFromTriples([
+      { subject: 'https://example.org/a', predicate: RDF_TYPE, object: iri(`${OWL}Ontology`) },
+      { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${B}Van`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+      { subject: `${B}Bus`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
+    ]);
+
+    expect(ontology.iri).toBe(A);
+    expect(ontology.classes.map((entity) => entity.localName)).toEqual(['Car']);
   });
 
   /*
@@ -426,17 +424,24 @@ describe('a foreign document', () => {
     expect(summarise(ontology).usages.sort()).toEqual(['Car -keptAt-> Yard', 'Van -keptAt-> Yard']);
   });
 
-  /* Half a relation cannot be drawn, so it stays in the pool and the report says so. */
+  /* Half a relation cannot be drawn, so it sits in the pool and off the canvas. */
   it('does not place a relation that states a domain and no range', () => {
-    const { ontology, report } = ontologyFromTriples([
+    const { ontology } = ontologyFromTriples([
       { subject: `${A}Car`, predicate: RDF_TYPE, object: iri(OWL_CLASS) },
       { subject: `${A}keptAt`, predicate: RDF_TYPE, object: iri(OWL_OBJECT_PROPERTY) },
       { subject: `${A}keptAt`, predicate: RDFS_DOMAIN, object: iri(`${A}Car`) },
     ]);
 
-    expect(ontology.relations.map((entity) => entity.localName)).toEqual([]);
-    expect(report.relationsWithoutBothEnds).toBe(1);
+    // In the pool, unused, with the one end it states kept as written.
+    expect(ontology.relations.map((entity) => entity.localName)).toEqual(['keptAt']);
     expect(ontology.usages).toEqual([]);
+    expect(ontology.unmodelled).toEqual([
+      {
+        subject: entityRef(ontology.relations[0]!.id),
+        predicate: RDFS_DOMAIN,
+        object: iri(entityRef(ontology.classes[0]!.id)),
+      },
+    ]);
   });
 });
 
@@ -481,18 +486,18 @@ const typed = (subject: string, type: string): Triple => ({
 const aClass = (name: string) => typed(`${AUTO}${name}`, `${OWL}Class`);
 
 describe('what a document may contain that this app does not model', () => {
-  it('drops an individual and says so', () => {
-    const { ontology, report } = ontologyFromTriples([
-      aClass('Car'),
-      typed(`${AUTO}myCar`, `${AUTO}Car`),
-    ]);
+  it('keeps an individual, pointing at its class however that class is renamed', () => {
+    const { ontology } = ontologyFromTriples([aClass('Car'), typed(`${AUTO}myCar`, `${AUTO}Car`)]);
+    const [car] = ontology.classes;
 
     expect(ontology.classes.map((entity) => entity.localName)).toEqual(['Car']);
-    expect(report.individuals).toBe(1);
+    expect(ontology.unmodelled).toEqual([
+      { subject: `${AUTO}myCar`, predicate: RDF_TYPE, object: iri(entityRef(car!.id)) },
+    ]);
   });
 
-  it('drops a restriction rather than turning it into a class', () => {
-    const { ontology, report } = ontologyFromTriples([
+  it('keeps a restriction as written rather than turning it into a class', () => {
+    const { ontology } = ontologyFromTriples([
       aClass('Car'),
       {
         subject: `${AUTO}Car`,
@@ -505,7 +510,15 @@ describe('what a document may contain that this app does not model', () => {
 
     expect(ontology.classes).toHaveLength(1);
     expect(ontology.classes[0]?.superClassIds).toEqual([]);
-    expect(report.classExpressions).toBe(1);
+    expect(ontology.unmodelled).toEqual([
+      {
+        subject: entityRef(ontology.classes[0]!.id),
+        predicate: `${RDFS}subClassOf`,
+        object: { type: 'blank', value: '_:k1' },
+      },
+      typed('_:k1', `${OWL}Restriction`),
+      { subject: '_:k1', predicate: `${OWL}onProperty`, object: iri(`${AUTO}hasWheel`) },
+    ]);
   });
 
   it('rewrites a range it does not know to a string, and counts the rewrite', () => {
@@ -522,15 +535,16 @@ describe('what a document may contain that this app does not model', () => {
     expect(ontology.usages).toHaveLength(1);
   });
 
-  it('leaves out a relation with only one end, and counts it', () => {
-    const { ontology, report } = ontologyFromTriples([
+  it('puts a relation with only one end in the pool, off the canvas', () => {
+    const { ontology } = ontologyFromTriples([
       aClass('Car'),
       typed(`${AUTO}drives`, `${OWL}ObjectProperty`),
       { subject: `${AUTO}drives`, predicate: `${RDFS}domain`, object: iri(`${AUTO}Car`) },
     ]);
 
-    expect(ontology.relations).toHaveLength(0);
-    expect(report.relationsWithoutBothEnds).toBe(1);
+    expect(ontology.relations.map((entity) => entity.localName)).toEqual(['drives']);
+    expect(ontology.usages).toEqual([]);
+    expect(ontology.unmodelled).toHaveLength(1);
   });
 });
 
@@ -691,10 +705,10 @@ describe('property hierarchies', () => {
 
   /*
    * A document can say two properties are each other's parent. The climb has to stop rather
-   * than walk the ring for ever, and neither property has ends, so neither is placed.
+   * than walk the ring for ever, and neither property has ends, so neither is drawn.
    */
   it('terminates on a subproperty ring instead of climbing for ever', () => {
-    const { ontology, report } = ontologyFromTriples([
+    const { ontology } = ontologyFromTriples([
       aClass('Person'),
       typed(`${AUTO}a`, `${OWL}ObjectProperty`),
       typed(`${AUTO}b`, `${OWL}ObjectProperty`),
@@ -702,15 +716,15 @@ describe('property hierarchies', () => {
       { subject: `${AUTO}b`, predicate: `${RDFS}subPropertyOf`, object: iri(`${AUTO}a`) },
     ]);
 
-    expect(ontology.relations).toHaveLength(0);
-    expect(report.relationsWithoutBothEnds).toBe(2);
+    expect(ontology.relations).toHaveLength(2);
+    expect(ontology.usages).toEqual([]);
   });
 
   /*
-   * The parent is kept because the child was, even though the parent states nothing that would
-   * place it on its own. Dropping it would import a hierarchy flatter than the document states.
+   * The parent is in the pool, under its child, even though it states nothing that would place
+   * it. Dropping it would import a hierarchy flatter than the document states.
    */
-  it('keeps a parent that only a kept child gives a reason to import', () => {
+  it('keeps a parent that states nothing of its own, in the pool and in the hierarchy', () => {
     const { ontology } = ontologyFromTriples([
       ...base,
       typed(`${AUTO}vague`, `${OWL}ObjectProperty`),
@@ -727,12 +741,12 @@ describe('property hierarchies', () => {
     expect(ontology.usages.filter((usage) => usage.propertyId === vague?.id)).toHaveLength(0);
   });
 
-  it('leaves out a subproperty whose ancestors have no ends either', () => {
+  it('does not draw a subproperty whose ancestors have no ends either', () => {
     const orphaned = base.filter((triple) => triple.predicate !== `${RDFS}range`);
-    const { ontology, report } = ontologyFromTriples(orphaned);
+    const { ontology } = ontologyFromTriples(orphaned);
 
-    expect(ontology.relations).toHaveLength(0);
-    expect(report.relationsWithoutBothEnds).toBe(2);
+    expect(ontology.relations).toHaveLength(2);
+    expect(ontology.usages).toEqual([]);
   });
 });
 
@@ -777,7 +791,8 @@ describe('a document from nowhere in particular', () => {
     const { ontology, report } = ontologyFromTriples([]);
 
     expect(ontology.classes).toEqual([]);
-    expect(report.individuals).toBe(0);
+    expect(ontology.unmodelled).toEqual([]);
+    expect(report).toEqual({ datatypesRewritten: 0, shapesNamed: [] });
   });
 
   it('sanitises a local name that would not be valid here', () => {
@@ -788,15 +803,29 @@ describe('a document from nowhere in particular', () => {
     expect(only?.localName).not.toContain(' ');
   });
 
+  /* Renamed to suit this app's conventions, each would be a different term from the one written. */
+  it('keeps a legal local name exactly as written', () => {
+    const { ontology } = ontologyFromTriples([
+      aClass('my_class'),
+      aClass('vehicle'),
+      typed(`${AUTO}Weight`, `${OWL}DatatypeProperty`),
+    ]);
+
+    expect(ontology.classes.map((entity) => entity.localName)).toEqual(['my_class', 'vehicle']);
+    expect(ontology.attributes.map((entity) => entity.localName)).toEqual(['Weight']);
+  });
+
   it('keeps two terms apart when their local names collide across namespaces', () => {
     const { ontology } = ontologyFromTriples([
       aClass('Car'),
+      aClass('Van'),
       typed('https://elsewhere.example/Car', `${OWL}Class`),
     ]);
 
-    const names = ontology.classes.map((entity) => entity.localName);
-    expect(names).toHaveLength(2);
-    expect(new Set(names).size).toBe(2);
+    expect(ontology.classes.map((entity) => entity.localName)).toEqual(['Car', 'Van']);
+    expect(ontology.unmodelled.map((triple) => triple.subject)).toEqual([
+      'https://elsewhere.example/Car',
+    ]);
   });
 
   it('ignores a layout that is not readable, and places the classes as new', () => {
@@ -827,5 +856,178 @@ describe('a schema built here, exported and reopened', () => {
 
     const restored = roundTrip(ontology).ontology;
     expect(summarise(restored)).toEqual(summarise(ontology));
+  });
+});
+
+/* ------------------------------------------------------------- the model, and what it leaves */
+
+/*
+ * The model takes a statement only where the writer will say it again from the model; anything
+ * else is kept as written. These pin down where that line falls.
+ */
+describe('what the model takes, and what is kept as written', () => {
+  const SH = 'http://www.w3.org/ns/shacl#';
+  const XSD = 'http://www.w3.org/2001/XMLSchema#';
+  const say = (subject: string, predicate: string, object: Triple['object']): Triple => ({
+    subject,
+    predicate,
+    object,
+  });
+  const idOf = (ontology: Ontology, name: string) =>
+    [...ontology.classes, ...ontology.relations, ...ontology.attributes].find(
+      (entity) => entity.localName === name,
+    )?.id ?? '';
+
+  it('keeps an annotation the writer would write differently, and takes the rest', () => {
+    const { ontology } = ontologyFromTriples([
+      aClass('Car'),
+      say(`${AUTO}Car`, `${RDFS}label`, literal('Car', { language: 'en' })),
+      say(`${AUTO}Car`, `${OWL}versionInfo`, literal('1.0', { language: 'en' })),
+    ]);
+
+    expect(ontology.classes[0]?.annotations.map((annotation) => annotation.value)).toEqual(['Car']);
+    // A version takes no language, so the writer would drop the tag: kept as written instead.
+    expect(ontology.unmodelled).toEqual([
+      say(
+        entityRef(idOf(ontology, 'Car')),
+        `${OWL}versionInfo`,
+        literal('1.0', { language: 'en' }),
+      ),
+    ]);
+  });
+
+  it('takes a deprecation as the boolean it is, and writes it back as one', () => {
+    const typed = literal('true', { datatype: `${XSD}boolean` });
+    const { ontology } = ontologyFromTriples([
+      aClass('Car'),
+      say(`${AUTO}Car`, `${OWL}deprecated`, typed),
+    ]);
+
+    expect(ontology.classes[0]?.annotations).toMatchObject([
+      { term: 'owl:deprecated', value: 'true' },
+    ]);
+    expect(ontology.unmodelled).toEqual([]);
+    expect(ontologyToTriples(ontology)).toContainEqual(
+      say(`${AUTO}Car`, `${OWL}deprecated`, typed),
+    );
+  });
+
+  /* This app wrote it untyped until it knew better, so its own files have it that way. */
+  it('takes a deprecation written as plain text, and writes it back typed', () => {
+    const { ontology } = ontologyFromTriples([
+      aClass('Car'),
+      say(`${AUTO}Car`, `${OWL}deprecated`, literal('true')),
+    ]);
+
+    expect(ontology.classes[0]?.annotations).toMatchObject([
+      { term: 'owl:deprecated', value: 'true' },
+    ]);
+    expect(ontologyToTriples(ontology)).toContainEqual(
+      say(`${AUTO}Car`, `${OWL}deprecated`, literal('true', { datatype: `${XSD}boolean` })),
+    );
+  });
+
+  it('keeps a parent from another vocabulary, attached to the class that names it', () => {
+    const { ontology } = ontologyFromTriples([
+      aClass('Person'),
+      say(`${AUTO}Person`, `${RDFS}subClassOf`, iri('http://xmlns.com/foaf/0.1/Agent')),
+    ]);
+
+    expect(ontology.classes[0]?.superClassIds).toEqual([]);
+    expect(ontology.unmodelled).toEqual([
+      say(
+        entityRef(idOf(ontology, 'Person')),
+        `${RDFS}subClassOf`,
+        iri('http://xmlns.com/foaf/0.1/Agent'),
+      ),
+    ]);
+  });
+
+  it('takes a union domain it drew the relation from, leaving nothing of it behind', () => {
+    const { ontology } = ontologyFromTriples([
+      aClass('Car'),
+      aClass('Van'),
+      aClass('Yard'),
+      typed(`${AUTO}keptAt`, `${OWL}ObjectProperty`),
+      say(`${AUTO}keptAt`, `${RDFS}domain`, { type: 'blank', value: '_:u' }),
+      say(`${AUTO}keptAt`, `${RDFS}range`, iri(`${AUTO}Yard`)),
+      typed('_:u', OWL_CLASS),
+      say('_:u', OWL_UNION_OF, { type: 'blank', value: '_:c1' }),
+      say('_:c1', RDF_FIRST, iri(`${AUTO}Car`)),
+      say('_:c1', RDF_REST, { type: 'blank', value: '_:c2' }),
+      say('_:c2', RDF_FIRST, iri(`${AUTO}Van`)),
+      say('_:c2', RDF_REST, iri(RDF_NIL)),
+    ]);
+
+    expect(ontology.usages).toHaveLength(2);
+    expect(ontology.unmodelled).toEqual([]);
+  });
+
+  it('reads the pairing from a shape and keeps the constraints it does not model on it', () => {
+    const { ontology, report } = ontologyFromTriples([
+      aClass('Car'),
+      aClass('Company'),
+      typed(`${AUTO}ownedBy`, `${OWL}ObjectProperty`),
+      typed(`${AUTO}CarRules`, `${SH}NodeShape`),
+      say(`${AUTO}CarRules`, `${SH}targetClass`, iri(`${AUTO}Car`)),
+      say(`${AUTO}CarRules`, `${SH}property`, { type: 'blank', value: '_:p' }),
+      say('_:p', `${SH}path`, iri(`${AUTO}ownedBy`)),
+      say('_:p', `${SH}class`, iri(`${AUTO}Company`)),
+      say('_:p', `${SH}minCount`, literal('1', { datatype: `${XSD}integer` })),
+    ]);
+    const car = idOf(ontology, 'Car');
+    const ownedBy = idOf(ontology, 'ownedBy');
+
+    expect(ontology.usages.map((usage) => usage.propertyId)).toEqual([ownedBy]);
+    // The node shape keeps its name; the inline property shape has none, and gets the writer's.
+    expect(ontology.shapeIris).toEqual({ [nodeShapeRef(car)]: `${AUTO}CarRules` });
+    expect(report.shapesNamed).toEqual(['Car_ownedBy']);
+    expect(ontology.unmodelled).toEqual([
+      say(
+        propertyShapeRef(car, ownedBy),
+        `${SH}minCount`,
+        literal('1', { datatype: `${XSD}integer` }),
+      ),
+    ]);
+  });
+
+  it('keeps a shape naming a class from elsewhere whole, rather than drawing part of it', () => {
+    const triples = [
+      aClass('Car'),
+      typed(`${AUTO}ownedBy`, `${OWL}ObjectProperty`),
+      typed(`${AUTO}CarShape`, `${SH}NodeShape`),
+      say(`${AUTO}CarShape`, `${SH}targetClass`, iri(`${AUTO}Car`)),
+      say(`${AUTO}CarShape`, `${SH}property`, iri(`${AUTO}CarOwner`)),
+      say(`${AUTO}CarOwner`, `${SH}path`, iri(`${AUTO}ownedBy`)),
+      say(`${AUTO}CarOwner`, `${SH}class`, iri('http://xmlns.com/foaf/0.1/Agent')),
+    ];
+    const { ontology } = ontologyFromTriples(triples);
+
+    expect(ontology.usages).toEqual([]);
+    expect(ontology.unmodelled.map((triple) => triple.predicate)).toEqual(
+      triples.slice(2).map((triple) => triple.predicate),
+    );
+  });
+
+  it('keeps what the header says beyond its annotations, attached to the header', () => {
+    const { ontology } = ontologyFromTriples([
+      typed('https://example.org/auto', `${OWL}Ontology`),
+      aClass('Car'),
+      say('https://example.org/auto', `${OWL}imports`, iri('http://xmlns.com/foaf/0.1/')),
+    ]);
+
+    expect(ontology.unmodelled).toEqual([
+      say(ONTOLOGY_REF, `${OWL}imports`, iri('http://xmlns.com/foaf/0.1/')),
+    ]);
+  });
+
+  it('counts a range named like an xsd type, but not in xsd, as rewritten', () => {
+    const { ontology, report } = ontologyFromTriples([
+      typed(`${AUTO}note`, `${OWL}DatatypeProperty`),
+      say(`${AUTO}note`, `${RDFS}range`, iri(`${AUTO}string`)),
+    ]);
+
+    expect(ontology.attributes[0]?.range).toBe('string');
+    expect(report.datatypesRewritten).toBe(1);
   });
 });
