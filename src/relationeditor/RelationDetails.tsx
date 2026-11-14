@@ -1,14 +1,65 @@
 import {
+  CLASS_SIDES,
   canSubproperty,
   entityIri,
   findClass,
   findRelation,
+  isClassSide,
   toPropertyLocalName,
   usagesOfProperty,
 } from '../ontologymodel';
+import type { ClassSide } from '../ontologymodel';
 import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Badge, Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
 import styles from './relationeditor.module.css';
+
+/**
+ * Which side of each class one drawn line meets: pinned to a side, or Auto, following the classes
+ * to whichever sides face each other.
+ *
+ * The same thing dragging a line's end does on the canvas, for every way in that dragging does
+ * not serve: a finger, which cannot grab the end of a line, a keyboard, and a screen reader.
+ */
+function SidesOfLine({
+  relation,
+  subject,
+  object,
+  pinned,
+  onPin,
+}: {
+  relation: string;
+  subject: string;
+  object: string;
+  pinned: { source?: ClassSide; target?: ClassSide } | undefined;
+  onPin: (end: 'source' | 'target', side: ClassSide | null) => void;
+}) {
+  const choose = (end: 'source' | 'target', ofClass: string) => (
+    <Select
+      value={pinned?.[end] ?? ''}
+      aria-label={`Side of ${ofClass} the ${relation} line ${end === 'source' ? 'leaves from' : 'arrives at'}`}
+      title="Auto follows the classes to whichever sides face each other"
+      onChange={(event) => onPin(end, isClassSide(event.target.value) ? event.target.value : null)}
+    >
+      <option value="">Auto</option>
+      {CLASS_SIDES.map((side) => (
+        <option key={side} value={side}>
+          {side.charAt(0).toUpperCase() + side.slice(1)}
+        </option>
+      ))}
+    </Select>
+  );
+
+  return (
+    <div className={styles.usageSides}>
+      <span className={styles.usageSidesLabel}>Sides</span>
+      {choose('source', subject)}
+      <span className={styles.arrow} aria-hidden="true">
+        →
+      </span>
+      {choose('target', object)}
+    </div>
+  );
+}
 
 /**
  * Inspector section for a selected relation: what it is, and every pair of classes
@@ -27,6 +78,7 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
   const reparent = useProjectStore((state) => state.reparentRelation);
   const setUsageTarget = useProjectStore((state) => state.setUsageTarget);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
+  const pinEnd = useProjectStore((state) => state.pinUsageEndById);
   const remove = useProjectStore((state) => state.deleteRelationById);
   const select = useProjectStore((state) => state.select);
 
@@ -130,6 +182,15 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
                   >
                     ×
                   </button>
+                  {usage.objectClassId !== null ? (
+                    <SidesOfLine
+                      relation={entity.localName}
+                      subject={subject.localName}
+                      object={findClass(ontology, usage.objectClassId)?.localName ?? ''}
+                      pinned={usage.pinned}
+                      onPin={(end, side) => pinEnd(usage.id, end, side)}
+                    />
+                  ) : null}
                 </li>
               );
             })}

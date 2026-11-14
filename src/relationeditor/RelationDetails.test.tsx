@@ -32,6 +32,27 @@ describe('RelationDetails', () => {
     expect(screen.getByText(/Not used yet, so nothing is drawn/i)).toBeInTheDocument();
   });
 
+  /* The same as dragging a line's end, for a finger, a keyboard or a screen reader. */
+  it('pins the side a drawn line meets, and lets it follow the classes again', async () => {
+    const user = userEvent.setup();
+    const { offeredBy } = usedOnce();
+    render(<RelationDetails propertyId={offeredBy} />);
+    const arrives = screen.getByLabelText('Side of Dealership the offeredBy line arrives at');
+    const pinned = () => usagesOfProperty(ontology(), offeredBy)[0]?.pinned;
+
+    await user.selectOptions(arrives, 'top');
+    expect(pinned()).toEqual({ target: 'top' });
+
+    await user.selectOptions(
+      screen.getByLabelText('Side of Car the offeredBy line leaves from'),
+      'bottom',
+    );
+    expect(pinned()).toEqual({ target: 'top', source: 'bottom' });
+
+    await user.selectOptions(arrives, 'Auto');
+    expect(pinned()).toEqual({ source: 'bottom' });
+  });
+
   it('reports a single use, and that RDFS can state it', () => {
     const { offeredBy } = usedOnce();
     render(<RelationDetails propertyId={offeredBy} />);
