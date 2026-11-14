@@ -45,6 +45,8 @@ export interface InteractionActions {
   focusClass(classId: string): void;
   clearFocus(): void;
 
+  /** The canvas says a relation's line is in hand, or no longer is. */
+  setDrawingRelation(drawing: boolean): void;
   beginConnection(connection: PendingConnection): void;
   cancelConnection(): void;
   completeConnectionWith(propertyId: string): void;
@@ -102,6 +104,11 @@ export function createInteractionActions(
      * classes and lets the picker decide which relation this is — an existing one, or
      * a new one — which is what makes a property reusable across class pairs.
      */
+    setDrawingRelation(drawingRelation) {
+      set((state) =>
+        state.drawingRelation === drawingRelation ? state : { ...state, drawingRelation },
+      );
+    },
     beginConnection(connection) {
       set((state) => ({ ...state, pendingConnection: connection }));
     },

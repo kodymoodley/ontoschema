@@ -42,6 +42,15 @@ test('draws a relation by touch, lighting the side it will land on', async ({ pa
     .boundingBox())!;
   const target = (await page.locator('[data-class-name="SoloArtist"]').boundingBox())!;
 
+  // A dot answers to about a fingertip's width, not only to its own 9px.
+  const beside = { x: dot.x + dot.width / 2 + 12, y: dot.y + dot.height / 2 + 8 };
+  expect(
+    await page.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.getAttribute('data-handleid'),
+      beside,
+    ),
+  ).toBe('source-bottom');
+
   // Let go right on the top dot of the other class: its side's own target still takes it.
   const drag = await touchDrag(
     page,
@@ -52,6 +61,8 @@ test('draws a relation by touch, lighting the side it will land on', async ({ pa
     '[data-class-name="SoloArtist"] .react-flow__handle[data-handleid="target-top"]',
   );
   await expect(top).toHaveClass(/connectingto/);
+  // The inspector, opened by selecting the class, steps aside for the drag.
+  await expect(page.getByRole('complementary', { name: 'Inspector' })).toBeHidden();
   // Seen, not merely targeted: neither the zone nor its glow may be faded out.
   await expect(top).toHaveCSS('opacity', '1');
   await expect
@@ -60,6 +71,7 @@ test('draws a relation by touch, lighting the side it will land on', async ({ pa
 
   await drag.release();
   await chooseNewProperty(page, 'mentoredBy');
+  await expect(page.getByRole('complementary', { name: 'Inspector' })).toBeVisible();
   await expect(page.locator('[data-relation-name="mentoredBy"]')).toHaveAttribute(
     'data-to-side',
     'top',

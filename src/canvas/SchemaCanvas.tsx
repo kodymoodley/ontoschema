@@ -106,6 +106,7 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes, connectionLine }: SchemaCanva
   const beginConnection = useProjectStore((state) => state.beginConnection);
   const pinUsageEndById = useProjectStore((state) => state.pinUsageEndById);
   const unpinUsage = useProjectStore((state) => state.unpinUsage);
+  const setDrawingRelation = useProjectStore((state) => state.setDrawingRelation);
 
   const [rejectedDrop, setRejectedDrop] = useState<string | null>(null);
 
@@ -463,6 +464,9 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes, connectionLine }: SchemaCanva
         connectionRadius={CONNECTION_RADIUS}
         connectionDragThreshold={CONNECTION_DRAG_THRESHOLD}
         connectionLineComponent={connectionLine}
+        // Said to the store so the shell can clear the way; a reconnect starts and ends here too.
+        onConnectStart={() => setDrawingRelation(true)}
+        onConnectEnd={() => setDrawingRelation(false)}
         edgesReconnectable
         onReconnectStart={onReconnectStart}
         onReconnect={onReconnect}
