@@ -37,25 +37,25 @@ editor for building RDF/OWL vocabularies that a semantic data engineering workfl
 ## Next up
 
 **Everything sequenced is done.** A schema saves and opens as ordinary RDF — Turtle or RDF/XML,
-axioms and SHACL shapes and the canvas layout in one file, with a report of what a foreign
-document left behind. The inspector is one scrolling panel that opens on selection at every width,
-its metadata is an ordinary form with the vocabulary behind a switch, and both side panels fold
-away. The audit is done and every finding in [AUDIT.md](AUDIT.md) is closed.
+axioms and SHACL shapes and the canvas layout in one file, and a file written elsewhere keeps
+everything it said through a save. The inspector is one scrolling panel that opens on selection
+at every width, its metadata is an ordinary form with the vocabulary behind a switch, and both
+side panels fold away. The audit is done and every finding in [AUDIT.md](AUDIT.md) is closed.
 
 **The owner's November wishlist comes first** (todos 38–43). Its most urgent item has shipped:
 a schema opened from a git repository saves itself into its file, so editing ends in
 `git commit` with no download (todos 43 and 42; see the README's _Editing a schema file in
-place_). The rest is specified in full in its theme section below, smallest and most
-self-contained first, and the item that has to be measured before it can be designed last:
+place_). Drawing a relation now lands anywhere on a class, and the side a line meets can be
+pinned and is saved (todo 39; see the README's _Gestures on the canvas_). The rest is specified
+in full in its theme section below, smallest and most self-contained first, and the item that has
+to be measured before it can be designed last:
 
-1. **Snap a relation to the class under the pointer** (todo 39, **S**) — the one gesture every
-   relation starts with, and today it fails silently unless you let go within 20 pixels of a dot.
-2. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
+1. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
    meant, and reuse already exists; this offers it at the moment a name collides.
-3. **Hide and show relations** (todo 38, **M**) — an eye on each row of the entities panel's
+2. **Hide and show relations** (todo 38, **M**) — an eye on each row of the entities panel's
    Relation tab, appearing on hover, that hides every line drawn with that relation. On touch
    screens the eye appears on the selected row instead. Three decisions first, listed with it.
-4. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
+3. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
    tidy layout, fanned out left to right or top to bottom, and animates the classes there. A
    different arrangement on every press, none of them worse than _Tidy up_. The engine is chosen
    by benchmark, and this reverses the earlier decision to keep the layout button deterministic.
@@ -467,27 +467,6 @@ behaviour.
 3. **Show all.** Whether the canvas note is enough, or the Relation tab also needs a "Show all"
    at its head. The recommendation is the canvas note alone, to start with.
 
-### Snap a relation to the class under the pointer (todo 39)
-
-**Size S.** A relation is drawn by dragging from a dot on one class to a dot on another. The dots
-light up as you approach, but the connection only lands if you let go within 20 pixels of one,
-React Flow's default `connectionRadius`. Let go over the body of the class, or near a corner, and
-the drag ends with nothing drawn and no message. On a large class the four dots are far apart, so
-most of the class is a miss.
-
-**What it should do.** While a relation is being dragged, the whole of a class is the drop
-target. The side nearest the pointer lights up, and letting go anywhere over the class connects
-to it. The side matters less than it looks: the canvas already re-routes every edge to whichever
-sides the two classes face.
-
-**Done when:**
-
-- Letting go anywhere over a class connects to it, including its middle and corners, at any zoom.
-- The dot that lights up is always the one the new relation attaches to.
-- Letting go over empty canvas still cancels, as now.
-- Dragging back onto the starting class still draws a relation from a class to itself.
-- It works by touch as well as with a mouse.
-
 ### Shuffle the layout (todo 40)
 
 **Size L.** _Tidy up_ (Shift+A) ranks the classes with dagre, left to right by relation, and gives
@@ -775,12 +754,11 @@ list as originally written is in the git history; ask and it comes back.
 | 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29            | L    |
 | 20  | Export and interop     | Harden the old layout reader — parked to the back of the queue           | S    |
 | 38  | Canvas and readability | Hide and show relations, from the entities panel                         | M    |
-| 39  | Canvas and readability | Snap a relation to the class under the pointer                           | S    |
 | 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                          | L    |
 | 41  | Editing workflow       | Reuse a term instead of minting `name2`                                  | S–M  |
 | 44  | Export and interop     | Open a cloned repository as a folder; open `.ttl` files from the desktop | M    |
 | 45  | Modelling power        | Any datatype as an attribute's range                                     | M    |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43, 39 — kept as numbers so a commit message naming one can still be resolved.
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
