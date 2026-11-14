@@ -3,17 +3,30 @@
 }
 
 /*
+ * While something is being drawn the dots stand aside, so letting go on one lands on the side's
+ * own target beneath it and lights that, rather than lighting a dot. Doubled to outrank React
+ * Flow, which makes a possible end take the pointer.
+ */
+.connecting .sourceHandle.sourceHandle {
+  pointer-events: none;
+}
+
+/*
  * Where a relation being drawn can be let go: a band along each side, and the middle.
  *
  * Each is a React Flow handle stretched over the whole class and clipped to its own part, so its
- * anchor -- the point a line attaches to -- is still the middle of its side. The class is doubled
- * to outrank React Flow's own handle rules, which position a handle as a dot on its side.
+ * anchor -- the point a line attaches to -- is still the middle of its side.
+ *
+ * Named through the node, to outrank two rules that otherwise win or lose by stylesheet order:
+ * React Flow's, which draws a handle as a dot on its side, and the canvas's, which hides every
+ * handle until its class is hovered or selected. Losing the first shrinks a zone to a dot; losing
+ * the second hides its glow on a touch screen, where nothing is ever hovered.
  *
  * They take the pointer only while something is being drawn (`.connecting`), and the one the
  * pointer is over is marked `connectingto` by React Flow, which is what lights it. The glow is
  * on a pseudo-element so it can fade: a gradient cannot be transitioned, its opacity can.
  */
-.dropZone.dropZone {
+:global(.react-flow__node) .dropZone.dropZone {
   --band: 28px;
 
   position: absolute;
@@ -26,11 +39,12 @@
   border: 0;
   border-radius: 0;
   background: transparent;
+  opacity: 1;
   pointer-events: none;
   cursor: crosshair;
 }
 
-.connecting .dropZone.dropZone {
+:global(.react-flow__node) .connecting .dropZone.dropZone {
   pointer-events: auto;
 }
 
@@ -109,7 +123,7 @@
   );
 }
 
-.dropMiddle.dropMiddle {
+:global(.react-flow__node) .dropMiddle.dropMiddle {
   inset: var(--band);
 }
 
