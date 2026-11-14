@@ -3,6 +3,7 @@ import {
   CLASS_NODE_WIDTH,
   chooseSides,
   estimateClassHeight,
+  sideOfHandle,
   sourceHandleId,
   targetHandleId,
 } from './layout';
@@ -112,4 +113,23 @@ describe('handle ids', () => {
     expect(sourceHandleId('right')).toBe('source-right');
     expect(targetHandleId('bottom')).toBe('target-bottom');
   });
+});
+
+/* What a line let go on a handle pins: its side, or nothing for the middle of a class. */
+describe('sideOfHandle', () => {
+  it.each([
+    ['target-top', 'top'],
+    ['target-left', 'left'],
+    ['source-right', 'right'],
+    ['source-bottom', 'bottom'],
+  ])('reads %s as %s', (id, side) => {
+    expect(sideOfHandle(id)).toBe(side);
+  });
+
+  it.each([['target-middle'], ['middle'], [''], [null], [undefined]])(
+    'reads %s as no side',
+    (id) => {
+      expect(sideOfHandle(id)).toBeNull();
+    },
+  );
 });

@@ -12,7 +12,7 @@ import {
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher, SaveStatus } from '../projectswitcher';
 import { fileLinks, startFileLinks } from '../filelink';
-import { ConnectionPicker, RelationMarkers } from '../relationeditor';
+import { ConnectionLine, ConnectionPicker, RelationMarkers } from '../relationeditor';
 import {
   useActiveProjectId,
   useCanvasView,
@@ -510,7 +510,11 @@ export function App() {
           </Toolbar>
 
           {view === 'schema' ? (
-            <SchemaCanvas nodeTypes={schemaNodeTypes} edgeTypes={schemaEdgeTypes} />
+            <SchemaCanvas
+              nodeTypes={schemaNodeTypes}
+              edgeTypes={schemaEdgeTypes}
+              connectionLine={ConnectionLine}
+            />
           ) : (
             <TaxonomyCanvas nodeTypes={taxonomyNodeTypes} edgeTypes={taxonomyEdgeTypes} />
           )}

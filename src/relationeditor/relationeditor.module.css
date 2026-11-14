@@ -234,3 +234,52 @@
     grid-area: 2 / 2 / 3 / 4;
   }
 }
+
+/*
+ * The line drawn while a relation is being made: faint and marching while it has nowhere to land,
+ * solid once letting go would connect.
+ */
+.connectionLine {
+  stroke: var(--accent-relation);
+  fill: none;
+  opacity: 0.55;
+  transition: opacity 140ms ease;
+}
+
+.connectionLine path {
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+  animation: connection-march 600ms linear infinite;
+}
+
+.connectionLine circle {
+  fill: var(--surface-raised);
+  stroke-width: 2;
+}
+
+.connectionLineLanding {
+  opacity: 1;
+}
+
+.connectionLineLanding path {
+  stroke-dasharray: none;
+  animation: none;
+}
+
+.connectionLineLanding circle {
+  fill: var(--accent-relation);
+}
+
+@keyframes connection-march {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connectionLine,
+  .connectionLine path {
+    animation: none;
+    transition: none;
+  }
+}

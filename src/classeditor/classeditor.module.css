@@ -1,15 +1,120 @@
-/*
- * Every side carries a source and a target at the same point. Only the source is
- * interactive; React Flow locates the target by proximity while a connection is dragged,
- * so the invisible target never intercepts the pointer.
- */
-.targetHandle {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
 .sourceHandle {
   z-index: 1;
+}
+
+/*
+ * Where a relation being drawn can be let go: a band along each side, and the middle.
+ *
+ * Each is a React Flow handle stretched over the whole class and clipped to its own part, so its
+ * anchor -- the point a line attaches to -- is still the middle of its side. The class is doubled
+ * to outrank React Flow's own handle rules, which position a handle as a dot on its side.
+ *
+ * They take the pointer only while something is being drawn (`.connecting`), and the one the
+ * pointer is over is marked `connectingto` by React Flow, which is what lights it. The glow is
+ * on a pseudo-element so it can fade: a gradient cannot be transitioned, its opacity can.
+ */
+.dropZone.dropZone {
+  --band: 28px;
+
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  transform: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  pointer-events: none;
+  cursor: crosshair;
+}
+
+.connecting .dropZone.dropZone {
+  pointer-events: auto;
+}
+
+.dropZone::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.dropZone:global(.connectingto)::after {
+  opacity: 1;
+}
+
+.dropTop {
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--band)) var(--band), var(--band) var(--band));
+}
+
+.dropBottom {
+  clip-path: polygon(
+    0 100%,
+    var(--band) calc(100% - var(--band)),
+    calc(100% - var(--band)) calc(100% - var(--band)),
+    100% 100%
+  );
+}
+
+.dropLeft {
+  clip-path: polygon(0 0, var(--band) var(--band), var(--band) calc(100% - var(--band)), 0 100%);
+}
+
+.dropRight {
+  clip-path: polygon(
+    100% 0,
+    100% 100%,
+    calc(100% - var(--band)) calc(100% - var(--band)),
+    calc(100% - var(--band)) var(--band)
+  );
+}
+
+/* A bright edge on the side itself, fading into the class: this is where the line will sit. */
+.dropTop::after {
+  background: linear-gradient(
+    to bottom,
+    var(--glow) 0 3px,
+    var(--glow-soft) 3px,
+    transparent var(--band)
+  );
+}
+
+.dropBottom::after {
+  background: linear-gradient(
+    to top,
+    var(--glow) 0 3px,
+    var(--glow-soft) 3px,
+    transparent var(--band)
+  );
+}
+
+.dropLeft::after {
+  background: linear-gradient(
+    to right,
+    var(--glow) 0 3px,
+    var(--glow-soft) 3px,
+    transparent var(--band)
+  );
+}
+
+.dropRight::after {
+  background: linear-gradient(
+    to left,
+    var(--glow) 0 3px,
+    var(--glow-soft) 3px,
+    transparent var(--band)
+  );
+}
+
+.dropMiddle.dropMiddle {
+  inset: var(--band);
+}
+
+.dropMiddle::after {
+  display: none;
 }
 
 .classNode {
@@ -37,6 +142,36 @@
 
 .classNode:hover {
   box-shadow: var(--shadow-md);
+}
+
+/*
+ * While a relation is being drawn every class says it can take one, faintly, and the class the
+ * pointer is over says so plainly. Over its middle the whole outline lights, since the line will
+ * go to whichever side faces the other class.
+ */
+.connecting {
+  --glow: var(--accent-relation);
+  --glow-soft: color-mix(in srgb, var(--accent-relation) 22%, transparent);
+
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-relation) 28%, transparent),
+    var(--shadow-sm);
+}
+
+.connecting:has(:global(.connectingto)) {
+  border-color: var(--accent-relation);
+}
+
+.connecting:has(.dropMiddle:global(.connectingto)) {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent-relation) 40%, transparent),
+    var(--shadow-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropZone::after {
+    transition: none;
+  }
 }
 
 .selected {

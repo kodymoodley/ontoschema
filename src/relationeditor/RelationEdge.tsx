@@ -112,6 +112,9 @@ export function RelationEdge({
             className={`${styles.relationLabel} ${selected ? styles.relationLabelSelected : ''}`}
             data-relation-name={payload.property?.localName}
             data-usage-id={id}
+            // The sides the line meets its classes at, which is what pinning one decides.
+            data-from-side={sourcePosition}
+            data-to-side={targetPosition}
             title={
               payload.shared
                 ? `${payload.property?.localName} is also used elsewhere`

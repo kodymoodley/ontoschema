@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useConnection } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeLabel } from '../annotationvocabulary';
 import { toClassLocalName, toPropertyLocalName } from '../ontologymodel';
@@ -31,10 +31,10 @@ interface ClassNodeData {
 
 /** Handle ids match what `canvas/layout.ts` chooses when it routes an edge. */
 const SIDES = [
-  { side: 'left', position: Position.Left },
-  { side: 'right', position: Position.Right },
-  { side: 'top', position: Position.Top },
-  { side: 'bottom', position: Position.Bottom },
+  { side: 'left', position: Position.Left, zone: styles.dropLeft },
+  { side: 'right', position: Position.Right, zone: styles.dropRight },
+  { side: 'top', position: Position.Top, zone: styles.dropTop },
+  { side: 'bottom', position: Position.Bottom, zone: styles.dropBottom },
 ] as const;
 
 export function ClassNode({ data, selected }: NodeProps) {
@@ -42,12 +42,14 @@ export function ClassNode({ data, selected }: NodeProps) {
   const renameClass = useProjectStore((state) => state.renameClassById);
   const focusClass = useProjectStore((state) => state.focusClass);
 
+  // Whether a relation is being drawn or moved anywhere, which is when this class can take one.
+  const connecting = useConnection((connection) => connection.inProgress);
   const [editingName, setEditingName] = useState(false);
   const [editingUsageId, setEditingUsageId] = useState<string | null>(null);
 
   return (
     <div
-      className={`${styles.classNode} ${selected ? styles.selected : ''}`}
+      className={`${styles.classNode} ${selected ? styles.selected : ''} ${connecting ? styles.connecting : ''}`}
       data-class-node-id={entity.id}
       data-class-name={entity.localName}
       data-testid={`class-node-${entity.localName}`}
@@ -56,15 +58,18 @@ export function ClassNode({ data, selected }: NodeProps) {
       onDoubleClick={() => focusClass(entity.id)}
     >
       {/*
-        A connection point on every side, so an edge can leave and arrive wherever the two
-        classes actually face each other rather than always looping right-to-left. The
-        canvas picks the facing pair; a relation may also be drawn by hand from any side.
+        A dot on every side to draw a relation from, so it can leave wherever the two classes
+        face each other rather than always looping right-to-left.
 
-        Each side carries both a source and a target at the same point. The target is not
-        interactive — React Flow finds it by proximity while a connection is being dragged —
-        so it never steals the pointer from the source underneath it.
+        And the whole class to let it go on. Each side's target covers the band of the class
+        along that side, and one more covers the middle, so wherever the pointer is over the
+        class there is something under it: React Flow takes the target under the pointer before
+        the nearest one. Letting go near a side pins the line there; letting go over the middle
+        leaves it free, routed to whichever side faces the other class. The targets take the
+        pointer only while a relation is being drawn, so the rest of the time they are not
+        there at all.
       */}
-      {SIDES.map(({ side, position }) => (
+      {SIDES.map(({ side, position, zone }) => (
         <Fragment key={side}>
           <Handle
             type="source"
@@ -77,11 +82,18 @@ export function ClassNode({ data, selected }: NodeProps) {
             type="target"
             position={position}
             id={`target-${side}`}
-            isConnectable
-            className={styles.targetHandle}
+            isConnectableStart={false}
+            className={`${styles.dropZone} ${zone}`}
           />
         </Fragment>
       ))}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="target-middle"
+        isConnectableStart={false}
+        className={`${styles.dropZone} ${styles.dropMiddle}`}
+      />
 
       {/*
         The header owns no gesture of its own. Renaming belongs to the name itself, so the rest

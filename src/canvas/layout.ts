@@ -1,4 +1,5 @@
 import dagre from '@dagrejs/dagre';
+import { isClassSide } from '../ontologymodel';
 import type { ClassSide, OntologyClass } from '../ontologymodel';
 
 /**
@@ -155,6 +156,12 @@ export const SELF_LOOP_SIDES: { source: Side; target: Side } = { source: 'right'
 
 export const sourceHandleId = (side: Side) => `source-${side}`;
 export const targetHandleId = (side: Side) => `target-${side}`;
+
+/** The side a handle is on, read from its id; null for the middle of a class, which has none. */
+export function sideOfHandle(id: string | null | undefined): Side | null {
+  const side = id?.slice(id.indexOf('-') + 1);
+  return isClassSide(side) ? side : null;
+}
 
 export interface FocusZoomInput {
   node: { width: number; height: number };
