@@ -22,7 +22,13 @@ import {
   deleteClass,
   moveClass,
 } from '../ontologymodel';
-import { SERIALIZATION_FORMATS, sanitizeFilename, serialize } from './index';
+import {
+  DOCUMENT_OPTIONS,
+  SERIALIZATION_FORMATS,
+  readOntology,
+  sanitizeFilename,
+  serialize,
+} from './index';
 import { serializeJsonLd } from './jsonld';
 import { serializeRdfXml } from './rdfxml';
 import { serializeTurtle } from './turtle';
@@ -506,6 +512,19 @@ describe('output that does not move between runs', () => {
 
     expect(keys.length).toBeGreaterThan(2);
     expect([...keys].sort()).toEqual(keys);
+  });
+
+  /*
+   * The git workflow in one line: a teammate opens the file this app saved and saves it again.
+   * Shapes used to come back in a different order, so their first edit carried a reshuffle.
+   */
+  it('writes a file it saved, once opened again, byte for byte the same', async () => {
+    for (const format of ['turtle', 'rdfxml'] as const) {
+      const once = serialize(auto, format, 'auto', DOCUMENT_OPTIONS).content;
+      const reopened = (await readOntology(once, format)).ontology;
+
+      expect(serialize(reopened, format, 'auto', DOCUMENT_OPTIONS).content, format).toBe(once);
+    }
   });
 
   it('produces byte-identical files when nothing has changed', () => {

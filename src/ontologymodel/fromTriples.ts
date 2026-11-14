@@ -531,6 +531,27 @@ export function ontologyFromTriples(
   );
 
   const usages: PropertyUsage[] = [];
+  const draw = (property: string, subject: string, object: string | null) =>
+    usages.push({
+      id: createId('use'),
+      propertyId: known(propertyId, property, 'a property id'),
+      subjectClassId: known(classId, subject, 'a class id'),
+      objectClassId: object === null ? null : known(classId, object, 'a class id'),
+    });
+
+  /*
+   * Exactly what was drawn, when the shapes are there to say so, and in the order they list it.
+   * This is what a file saved by this app carries: it is why saving and opening one gives back
+   * the schema rather than a superset of it, and why saving it again moves no line.
+   */
+  for (const reading of readings) {
+    const isAttribute = attributeIris.includes(reading.path);
+    for (const object of reading.objects) {
+      if (isAttribute) draw(reading.path, reading.target, null);
+      else if (object !== null) draw(reading.path, reading.target, object);
+    }
+  }
+
   const relations: Relation[] = [];
 
   for (const iri of relationIris) {
@@ -542,29 +563,7 @@ export function ontologyFromTriples(
       superPropertyIds: takeParents(iri, (parent) => relationIris.includes(parent)),
       annotations: annotationsOn(iri),
     });
-    if (!placeable.has(iri)) continue;
-
-    /*
-     * Exactly what was drawn, when the shapes are there to say so. This is what a file saved
-     * by this app carries, and it is why saving and opening one gives back the schema rather
-     * than a superset of it.
-     */
-    const drawn = shapePairs.get(iri);
-    if (drawn) {
-      for (const pair of drawn) {
-        const subject = classId.get(pair.subject);
-        const object = pair.object ? classId.get(pair.object) : undefined;
-        if (subject && object) {
-          usages.push({
-            id: createId('use'),
-            propertyId: id,
-            subjectClassId: subject,
-            objectClassId: object,
-          });
-        }
-      }
-      continue;
-    }
+    if (!placeable.has(iri) || shapePairs.has(iri)) continue;
 
     /*
      * Otherwise every pairing the union licenses, which is more than was drawn when the
@@ -573,31 +572,14 @@ export function ontologyFromTriples(
      */
     const { domains, ranges } = inheritedEnds(iri);
     for (const domain of domains) {
-      for (const range of ranges) {
-        usages.push({
-          id: createId('use'),
-          propertyId: id,
-          subjectClassId: known(classId, domain, 'a class id'),
-          objectClassId: known(classId, range, 'a class id'),
-        });
-      }
+      for (const range of ranges) draw(iri, domain, range);
     }
   }
 
+  // An attribute's usage is a class and a property, so its domain says as much as a shape would.
   for (const iri of attributeIris) {
-    // An attribute's usage is a class and a property, so the two sources agree -- but the
-    // shapes are read first all the same, so one rule covers both kinds of property.
-    const classes = shapePairs.get(iri)?.map((pair) => pair.subject) ?? endsOf(iri).domains;
-    for (const domain of classes) {
-      const subject = classId.get(domain);
-      if (!subject) continue;
-      usages.push({
-        id: createId('use'),
-        propertyId: known(propertyId, iri, 'a property id'),
-        subjectClassId: subject,
-        objectClassId: null,
-      });
-    }
+    if (shapePairs.has(iri)) continue;
+    for (const domain of endsOf(iri).domains) draw(iri, domain, null);
   }
 
   /*
