@@ -49,13 +49,12 @@ function SidesOfLine({
     </Select>
   );
 
+  // One line per end, labelled: side by side, the two selects were too narrow to show their value.
   return (
     <div className={styles.usageSides}>
-      <span className={styles.usageSidesLabel}>Sides</span>
+      <span className={styles.usageSidesLabel}>From side</span>
       {choose('source', subject)}
-      <span className={styles.arrow} aria-hidden="true">
-        →
-      </span>
+      <span className={styles.usageSidesLabel}>To side</span>
       {choose('target', object)}
     </div>
   );

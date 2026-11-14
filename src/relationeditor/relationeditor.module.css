@@ -119,11 +119,14 @@
   color: var(--text-tertiary);
 }
 
-/* The sides a pair's line meets, on a line of its own under the pair, at every width. */
+/*
+ * The sides a pair's line meets, under the pair, one end to a line at every width. Side by side,
+ * the two selects got about 45px each in a phone's drawer, which showed their arrows and no value.
+ */
 .usageSides {
   display: grid;
   grid-column: 1 / -1;
-  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-2);
 }
@@ -228,6 +231,12 @@
 @media (max-width: 1024px) {
   .usageRow {
     grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  /* Each side's label above its select, so the select has the drawer's whole width for "Bottom". */
+  .usageSides {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
   }
 
   /* The subject and its remove button share the first line: they are both about this pair. */
