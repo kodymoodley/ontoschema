@@ -108,6 +108,18 @@ describe('a document this version wrote', () => {
     expect(restored?.ontology.unmodelled).toEqual([whole]);
   });
 
+  it('comes back calling other vocabularies what its file called them', () => {
+    const project = projectWithBoth();
+    const prefixes = { foaf: 'http://xmlns.com/foaf/0.1/', dc: 'http://purl.org/dc/terms/' };
+
+    const restored = reviveProject({
+      ...project,
+      ontology: { ...project.ontology, prefixes: { ...prefixes, broken: 42 } },
+    });
+
+    expect(restored?.ontology.prefixes).toEqual(prefixes);
+  });
+
   it('opens with nothing kept when it was saved before anything was', () => {
     const { unmodelled: _, ...before } = projectWithBoth().ontology;
 

@@ -652,6 +652,7 @@ export function ontologyFromTriples(
   return {
     ontology: {
       ...base,
+      prefixes: { ...prefixes },
       annotations: header ? annotationsOn(header) : [],
       classes,
       relations,

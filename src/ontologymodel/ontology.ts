@@ -31,6 +31,7 @@ export function createEmptyOntology(
   return {
     iri: normalizeNamespaceIri(iri),
     prefix,
+    prefixes: {},
     annotations: [],
     classes: [],
     relations: [],

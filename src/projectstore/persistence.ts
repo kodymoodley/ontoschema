@@ -147,6 +147,13 @@ function reviveOntology(value: unknown): Ontology | null {
   );
   return {
     ...base,
+    prefixes: isRecord(value.prefixes)
+      ? Object.fromEntries(
+          Object.entries(value.prefixes).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        )
+      : {},
     annotations: reviveAnnotations(value.annotations),
     classes: records(value.classes)
       .filter((entity) => typeof entity.id === 'string' && typeof entity.localName === 'string')

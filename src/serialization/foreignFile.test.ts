@@ -111,6 +111,13 @@ describe('a colleague’s file, opened and saved without an edit', () => {
     );
   });
 
+  it('calls other vocabularies what the file called them', async () => {
+    const { saved } = await openAndSave(COLLEAGUES_FILE);
+
+    expect(saved).toContain('@prefix foaf: <http://xmlns.com/foaf/0.1/>');
+    expect(saved).toContain('foaf:Person a owl:Class');
+  });
+
   it('comes out the same when saved a second time', async () => {
     const once = (await openAndSave(COLLEAGUES_FILE)).saved;
     const twice = (await openAndSave(once)).saved;

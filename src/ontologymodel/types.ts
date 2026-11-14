@@ -78,6 +78,11 @@ export interface Ontology {
   /** Namespace IRI; entity IRIs are this concatenated with the local name. */
   iri: string;
   prefix: string;
+  /**
+   * What the document it was opened from called other namespaces, `foaf` or `dc`, so that
+   * saving writes the names that document used rather than this app's own.
+   */
+  prefixes: Record<string, string>;
   annotations: Annotation[];
   classes: OntologyClass[];
   relations: Relation[];
