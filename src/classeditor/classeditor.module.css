@@ -13,17 +13,36 @@
 
 /*
  * A fingertip is about 44px across and a dot is 9. On a touch screen the dots of the selected
- * class -- the one whose dots are showing -- answer to a circle about as wide as a finger, drawn
- * by nothing, and each side's band is wider to match. Only the selected class: a class's dots take
- * the pointer even while hidden, and a wide target on every class would turn moving a class by its
+ * class -- the one whose dots are showing -- answer to an area about as wide as a finger, drawn
+ * by nothing, and each side's band is wider to match.
+ *
+ * The area reaches outward from the class and never into it, so it cannot cover what the class
+ * holds: grown inward, the top dot's covered the middle of the header, and a tap meant for the
+ * name started a relation instead. And only on the selected class: a class's dots take the
+ * pointer even while hidden, and a wide target on every class would turn moving a class by its
  * edge into drawing a relation from it.
  */
 @media (pointer: coarse) {
   :global(.react-flow__node.selected) .sourceHandle::before {
     content: '';
     position: absolute;
-    inset: -18px;
-    border-radius: 50%;
+    border-radius: 18px;
+  }
+
+  :global(.react-flow__node.selected) .sourceHandle:global(.react-flow__handle-top)::before {
+    inset: -18px -18px 0;
+  }
+
+  :global(.react-flow__node.selected) .sourceHandle:global(.react-flow__handle-bottom)::before {
+    inset: 0 -18px -18px;
+  }
+
+  :global(.react-flow__node.selected) .sourceHandle:global(.react-flow__handle-left)::before {
+    inset: -18px 0 -18px -18px;
+  }
+
+  :global(.react-flow__node.selected) .sourceHandle:global(.react-flow__handle-right)::before {
+    inset: -18px -18px -18px 0;
   }
 
   :global(.react-flow__node) .dropZone.dropZone {
