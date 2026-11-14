@@ -12,7 +12,7 @@ import {
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher, SaveStatus } from '../projectswitcher';
 import { fileLinks, startFileLinks } from '../filelink';
-import { ConnectionPicker, RelationMarkers } from '../relationeditor';
+import { ConnectionLine, ConnectionPicker, RelationMarkers } from '../relationeditor';
 import {
   useActiveProjectId,
   useCanvasView,
@@ -155,6 +155,7 @@ export function App() {
    */
   const selection = useSelection();
   const inspecting = selection !== null;
+  const drawingRelation = useProjectStore((state) => state.drawingRelation);
   useRevealInspector(selection, panels.reveal, panels.conceal);
 
   /*
@@ -267,6 +268,7 @@ export function App() {
       style={{ '--canvas-toolbar-height': `${toolbarHeight}px` } as CSSProperties}
       data-drawer={drawer}
       data-inspecting={inspecting}
+      data-drawing={drawingRelation}
       data-fold-entities={panels.isFolded('entities')}
       data-fold-inspector={panels.isFolded('inspector')}
     >
@@ -510,7 +512,11 @@ export function App() {
           </Toolbar>
 
           {view === 'schema' ? (
-            <SchemaCanvas nodeTypes={schemaNodeTypes} edgeTypes={schemaEdgeTypes} />
+            <SchemaCanvas
+              nodeTypes={schemaNodeTypes}
+              edgeTypes={schemaEdgeTypes}
+              connectionLine={ConnectionLine}
+            />
           ) : (
             <TaxonomyCanvas nodeTypes={taxonomyNodeTypes} edgeTypes={taxonomyEdgeTypes} />
           )}

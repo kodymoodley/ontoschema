@@ -96,12 +96,6 @@
   opacity: 1;
 }
 
-.canvas :global(.react-flow__connectionline path) {
-  stroke: var(--accent-relation);
-  stroke-width: 2;
-  stroke-dasharray: 4 3;
-}
-
 /*
  * Edge labels sit above the edges and below the classes.
  *

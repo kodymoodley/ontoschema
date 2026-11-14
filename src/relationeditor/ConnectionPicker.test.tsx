@@ -51,6 +51,33 @@ describe('ConnectionPicker', () => {
     expect(useProjectStore.getState().pendingConnection).toBeNull();
   });
 
+  /* Let go near a side of the class, and the new line stays on that side. */
+  it('pins the end of the line to the side it was let go near', async () => {
+    const user = userEvent.setup();
+    const car = store().createClass({ localName: 'Car' });
+    const dealership = store().createClass({ localName: 'Dealership' });
+    store().beginConnection({ subjectClassId: car, objectClassId: dealership, targetSide: 'top' });
+    render(<ConnectionPicker />);
+
+    await user.type(screen.getByLabelText('New relation name'), 'offeredBy');
+    await user.click(screen.getByTestId('confirm-connection'));
+
+    const property = ontology().relations.find((p) => p.localName === 'offeredBy');
+    expect(usagesOfProperty(ontology(), property?.id ?? '')[0]?.pinned).toEqual({ target: 'top' });
+  });
+
+  it('leaves the line free when it was let go over the middle of the class', async () => {
+    const user = userEvent.setup();
+    drawnConnection();
+    render(<ConnectionPicker />);
+
+    await user.type(screen.getByLabelText('New relation name'), 'offeredBy');
+    await user.click(screen.getByTestId('confirm-connection'));
+
+    const property = ontology().relations.find((p) => p.localName === 'offeredBy');
+    expect(usagesOfProperty(ontology(), property?.id ?? '')[0]).not.toHaveProperty('pinned');
+  });
+
   it('keeps focus in the name field while typing', async () => {
     const user = userEvent.setup();
     drawnConnection();

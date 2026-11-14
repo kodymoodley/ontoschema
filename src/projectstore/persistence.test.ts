@@ -132,6 +132,35 @@ describe('a document this version wrote', () => {
     expect(restored?.ontology.shapeIris).toEqual(shapeIris);
   });
 
+  it('comes back with the sides its lines were pinned to, and no made-up ones', () => {
+    const project = projectWithBoth();
+    const usage = (id: string, pinned: unknown) => ({
+      id,
+      propertyId: 'r1',
+      subjectClassId: 'c1',
+      objectClassId: 'c1',
+      pinned,
+    });
+
+    const restored = reviveProject({
+      ...project,
+      ontology: {
+        ...project.ontology,
+        usages: [
+          usage('u1', { source: 'left', target: 'top' }),
+          usage('u2', { source: 'sideways', target: 'bottom' }),
+          usage('u3', 'top'),
+        ],
+      },
+    });
+
+    expect(restored?.ontology.usages.map((one) => one.pinned)).toEqual([
+      { source: 'left', target: 'top' },
+      { target: 'bottom' },
+      undefined,
+    ]);
+  });
+
   it('opens with nothing kept when it was saved before anything was', () => {
     const { unmodelled: _, ...before } = projectWithBoth().ontology;
 

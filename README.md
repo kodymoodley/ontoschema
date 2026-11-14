@@ -185,15 +185,22 @@ Past about thirty classes, `Ctrl`+`K` finds anything by name or description.
 | Gesture                                        | What it does                                                       |
 | ---------------------------------------------- | ------------------------------------------------------------------ |
 | Drag from any edge of a class to another class | Draws a relation, then asks which relation it is                   |
+| Drag the end of a relation's line to a side    | Pins that end there; onto the middle of the class, frees it        |
+| Double-click a relation's line                 | Frees both its ends to follow the classes again                    |
 | **Double-click (or double-tap) a class**       | Brings it into focus: centred, filling about a third of the canvas |
 | **Double-click (or double-tap) empty canvas**  | Frames the whole schema again — the way back out of a focus        |
 | Double-click a class **header**                | Renames it in place                                                |
 | Drag an attribute from the pool onto a class   | Reuses that property there                                         |
 | Delete / Backspace                             | Removes the selection, unless a dialog is open or you are typing   |
 
-Relations attach to whichever pair of sides the two classes actually face, so moving a class
-re-routes its edges rather than leaving them looping back on themselves, and they are drawn with
-rigid right angles rather than curves. The schema view draws relations only: a class names its
+A relation can be let go anywhere on a class. Let go over its middle, the line attaches to
+whichever pair of sides the two classes actually face, so moving a class re-routes it rather than
+leaving it looping back on itself. Let go near one of its sides, and that side lights and the line
+is pinned there, staying put when the classes move; the pin is saved in the file as
+`ontoschema:fromSide` or `ontoschema:toSide` on the relation's shape. A selected relation's
+inspector offers the same choice for each of its lines, _Sides_, Auto or one side for each end,
+which is the way to change one by touch or from the keyboard. Relations are drawn with rigid
+right angles rather than curves. The schema view draws relations only: a class names its
 superclasses in its own box, and the hierarchy itself belongs to the taxonomy view, which lays it
 out rather than drawing it over wherever the classes were dragged.
 

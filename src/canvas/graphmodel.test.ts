@@ -8,6 +8,7 @@ import {
   createEmptyOntology,
   detachUsage,
   moveClass,
+  pinUsageEnd,
   renameClass,
 } from '../ontologymodel';
 import type { Ontology } from '../ontologymodel';
@@ -126,6 +127,17 @@ describe('schemaEdges', () => {
     const [edge] = schemaEdges(moved).filter((item) => item.type === EDGE_TYPE.relation);
     expect(edge?.sourceHandle).toBe('source-bottom');
     expect(edge?.targetHandle).toBe('target-top');
+  });
+
+  it('keeps a pinned end on its side wherever the classes go, and lets the other follow', () => {
+    const { ontology, source, target } = twoClasses({ x: 0, y: 0 }, { x: 600, y: 0 });
+    const related = addRelationBetween(ontology, { subjectClassId: source, objectClassId: target });
+    const pinned = pinUsageEnd(related.ontology, related.usageId, 'target', 'top');
+    const moved = moveClass(pinned, target, { x: -600, y: 0 });
+
+    const [edge] = schemaEdges(moved).filter((item) => item.type === EDGE_TYPE.relation);
+    expect(edge?.targetHandle).toBe('target-top');
+    expect(edge?.sourceHandle).toBe('source-left');
   });
 
   /*

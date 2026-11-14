@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   MiniMap,
   ReactFlow,
@@ -10,7 +11,14 @@ import {
   useNodesState,
   useReactFlow,
 } from '@xyflow/react';
-import type { Connection, EdgeTypes, NodeTypes, OnNodeDrag } from '@xyflow/react';
+import type {
+  Connection,
+  ConnectionLineComponent,
+  Edge,
+  EdgeTypes,
+  NodeTypes,
+  OnNodeDrag,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
   DRAG_MIME,
@@ -22,8 +30,15 @@ import {
 import styles from './canvas.module.css';
 import { DOUBLE_TAP_MS, TAP_SLOP_PX } from '../designsystem';
 import { OWNS_DOUBLE_CLICK } from './gestures';
-import { NODE_TYPE, sameClassNode, sameRelationEdge, schemaEdges, schemaNodes } from './graphmodel';
-import { CLASS_NODE_WIDTH, focusZoom, nextFreePosition } from './layout';
+import {
+  EDGE_TYPE,
+  NODE_TYPE,
+  sameClassNode,
+  sameRelationEdge,
+  schemaEdges,
+  schemaNodes,
+} from './graphmodel';
+import { CLASS_NODE_WIDTH, focusZoom, nextFreePosition, sideOfHandle } from './layout';
 import { provideViewCentre, viewCentre } from './viewcentre';
 import { provideFraming } from './framing';
 import { useFramingCorrection } from './framingcorrection';
@@ -54,9 +69,24 @@ const apart = (touch: { clientX: number; clientY: number }, from: { x: number; y
 interface SchemaCanvasProps {
   nodeTypes: NodeTypes;
   edgeTypes: EdgeTypes;
+  /** The line that follows the pointer while a relation is drawn. */
+  connectionLine: ConnectionLineComponent;
 }
 
-function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
+/*
+ * How near a side a line may be let go and still land on it, in pixels. React Flow's 20 meant
+ * a near miss drew nothing at all; over the class itself the drop zones answer instead.
+ */
+const CONNECTION_RADIUS = 40;
+
+/*
+ * How far the pointer must move before a press on a dot becomes drawing. A drop zone sits over
+ * every dot, so a press that wobbled a pixel and let go would otherwise land on its own class
+ * and ask for a relation from that class to itself.
+ */
+const CONNECTION_DRAG_THRESHOLD = 6;
+
+function SchemaCanvasInner({ nodeTypes, edgeTypes, connectionLine }: SchemaCanvasProps) {
   const ontology = useOntology();
   const selection = useSelection();
   const { screenToFlowPosition, getIntersectingNodes, getNode, getZoom, setCenter, fitView } =
@@ -74,6 +104,9 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const attachPropertyToClass = useProjectStore((state) => state.attachPropertyToClass);
   const moveClassById = useProjectStore((state) => state.moveClassById);
   const beginConnection = useProjectStore((state) => state.beginConnection);
+  const pinUsageEndById = useProjectStore((state) => state.pinUsageEndById);
+  const unpinUsage = useProjectStore((state) => state.unpinUsage);
+  const setDrawingRelation = useProjectStore((state) => state.setDrawingRelation);
 
   const [rejectedDrop, setRejectedDrop] = useState<string | null>(null);
 
@@ -196,10 +229,43 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
   const onConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
-      beginConnection({ subjectClassId: connection.source, objectClassId: connection.target });
+      // Let go near a side, and the line is pinned there; over the middle, and it is free.
+      const targetSide = sideOfHandle(connection.targetHandle);
+      beginConnection({
+        subjectClassId: connection.source,
+        objectClassId: connection.target,
+        ...(targetSide ? { targetSide } : {}),
+      });
     },
     [beginConnection],
   );
+
+  /*
+   * Moving one end of a drawn line to another side of its class. React Flow says which end
+   * stays put; the other is the one in hand.
+   */
+  const movingEnd = useRef<'source' | 'target' | null>(null);
+  const onReconnectStart = useCallback(
+    (_event: unknown, _edge: Edge, staying: 'source' | 'target') => {
+      movingEnd.current = staying === 'source' ? 'target' : 'source';
+    },
+    [],
+  );
+  const onReconnect = useCallback(
+    (edge: Edge, connection: Connection) => {
+      const end = movingEnd.current;
+      if (!end || edge.type !== EDGE_TYPE.relation) return;
+      const landedOn = end === 'source' ? connection.source : connection.target;
+      // Moving an end changes the side it meets, never the class: that is the inspector's job.
+      if (landedOn !== (end === 'source' ? edge.source : edge.target)) return;
+      const handle = end === 'source' ? connection.sourceHandle : connection.targetHandle;
+      pinUsageEndById(edge.id, end, sideOfHandle(handle));
+    },
+    [pinUsageEndById],
+  );
+  const onReconnectEnd = useCallback(() => {
+    movingEnd.current = null;
+  }, []);
 
   /*
    * Tell the palette where the middle of the view is, for as long as this canvas is on screen.
@@ -394,6 +460,21 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes }: SchemaCanvasProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        connectionMode={ConnectionMode.Loose}
+        connectionRadius={CONNECTION_RADIUS}
+        connectionDragThreshold={CONNECTION_DRAG_THRESHOLD}
+        connectionLineComponent={connectionLine}
+        // Said to the store so the shell can clear the way; a reconnect starts and ends here too.
+        onConnectStart={() => setDrawingRelation(true)}
+        onConnectEnd={() => setDrawingRelation(false)}
+        edgesReconnectable
+        onReconnectStart={onReconnectStart}
+        onReconnect={onReconnect}
+        onReconnectEnd={onReconnectEnd}
+        // Double-clicking a line frees both its ends to follow the classes again.
+        onEdgeDoubleClick={(_event, edge) => {
+          if (edge.type === EDGE_TYPE.relation) unpinUsage(edge.id);
+        }}
         onNodeDragStop={onNodeDragStop}
         onDrop={onDrop}
         onDragOver={(event) => {

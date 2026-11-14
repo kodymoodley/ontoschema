@@ -2,6 +2,7 @@ export type {
   Annotation,
   AnnotatableEntity,
   Attribute,
+  ClassSide,
   EntityKind,
   EntityRef,
   Relation,
@@ -13,8 +14,10 @@ export type {
 } from './types';
 
 export {
+  CLASS_SIDES,
   DEFAULT_NAMESPACE_IRI,
   DEFAULT_PREFIX,
+  isClassSide,
   attributeUsagesOfClass,
   classLocalNames,
   createAnnotation,
@@ -94,6 +97,7 @@ export {
   setOntologyPrefix,
   setSuperClass,
   setSuperRelation,
+  pinUsageEnd,
   setUsageEndpoints,
   updateAnnotation,
 } from './mutations';

@@ -39,6 +39,8 @@ interface SessionState extends Workspace {
   pendingConnection: PendingConnection | null;
   /** A class the canvas has been asked to bring into focus, if any. */
   focusRequest: string | null;
+  /** Whether a relation's line is being drawn or moved on the canvas right now. */
+  drawingRelation: boolean;
 }
 
 export type ProjectStoreState = SessionState &
@@ -64,6 +66,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
     history: EMPTY_HISTORY,
     pendingConnection: null,
     focusRequest: null,
+    drawingRelation: false,
 
     ...createOntologyActions(editor, set, get),
     ...createInteractionActions(editor, set, get),

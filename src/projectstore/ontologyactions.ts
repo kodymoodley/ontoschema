@@ -21,10 +21,11 @@ import {
   removeSubClassOf,
   setSuperClass,
   setSuperRelation,
+  pinUsageEnd,
   setUsageEndpoints,
   updateAnnotation,
 } from '../ontologymodel';
-import type { Annotation, EntityRef, Position } from '../ontologymodel';
+import type { Annotation, ClassSide, EntityRef, Position } from '../ontologymodel';
 import type { XsdDatatype } from '../annotationvocabulary';
 import type { Editor, SetState } from './editing';
 import type { ProjectStoreState } from './store';
@@ -74,6 +75,10 @@ export interface OntologyActions {
   attachPropertyToClass(propertyId: string, classId: string, objectClassId?: string | null): string;
   detachUsageById(usageId: string): void;
   setUsageTarget(usageId: string, objectClassId: string | null): void;
+  /** Pins one end of a usage's line to a side of its class, or with `null` frees it. */
+  pinUsageEndById(usageId: string, end: 'source' | 'target', side: ClassSide | null): void;
+  /** Frees both ends of a usage's line, so it follows the canvas again. */
+  unpinUsage(usageId: string): void;
 
   annotate(target: EntityRef, term: string, value?: string, language?: string): void;
   editAnnotation(
@@ -189,6 +194,14 @@ export function createOntologyActions(
     },
     setUsageTarget(usageId, objectClassId) {
       editor.edit((ontology) => setUsageEndpoints(ontology, usageId, { objectClassId }));
+    },
+    pinUsageEndById(usageId, end, side) {
+      editor.edit((ontology) => pinUsageEnd(ontology, usageId, end, side));
+    },
+    unpinUsage(usageId) {
+      editor.edit((ontology) =>
+        pinUsageEnd(pinUsageEnd(ontology, usageId, 'source', null), usageId, 'target', null),
+      );
     },
 
     /* -------------------------------------------------------- annotations */

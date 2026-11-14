@@ -21,6 +21,7 @@ import {
   renameClass,
   deleteClass,
   moveClass,
+  pinUsageEnd,
 } from '../ontologymodel';
 import {
   DOCUMENT_OPTIONS,
@@ -529,6 +530,22 @@ describe('output that does not move between runs', () => {
 
       expect(serialize(reopened, format, 'auto', DOCUMENT_OPTIONS).content, format).toBe(once);
     }
+  });
+
+  it('writes a file with pinned lines, once opened again, byte for byte the same', async () => {
+    const usage = auto.usages.find((one) => one.objectClassId !== null)!;
+    const pinned = pinUsageEnd(
+      pinUsageEnd(auto, usage.id, 'target', 'top'),
+      usage.id,
+      'source',
+      'left',
+    );
+
+    const once = serialize(pinned, 'turtle', 'auto', DOCUMENT_OPTIONS).content;
+    const reopened = (await readOntology(once, 'turtle')).ontology;
+
+    expect(once).toContain('ontoschema:toSide "top"');
+    expect(serialize(reopened, 'turtle', 'auto', DOCUMENT_OPTIONS).content).toBe(once);
   });
 
   it('produces byte-identical files when nothing has changed', () => {

@@ -44,10 +44,22 @@ async function writeOnDisk(page: Page, name: string, text: string) {
   );
 }
 
+/*
+ * A file caught mid-write cannot be read: while a writable commits, Chromium throws
+ * `NotReadableError`, or `NotFoundError` as the new contents are swapped in. And `expect.poll`
+ * gives up on a throw rather than asking again. Read as not yet written, so a poll waits the
+ * write out; anything else wrong still throws.
+ */
 const readOnDisk = (page: Page, name: string) =>
   page.evaluate(async (name) => {
     const folder = await navigator.storage.getDirectory();
-    return (await (await folder.getFileHandle(name)).getFile()).text();
+    try {
+      return await (await (await folder.getFileHandle(name)).getFile()).text();
+    } catch (error) {
+      const midWrite = ['NotReadableError', 'NotFoundError'];
+      if (error instanceof DOMException && midWrite.includes(error.name)) return '';
+      throw error;
+    }
   }, name);
 
 /** What a `git pull` looks like from the tab: the window comes back into focus. */

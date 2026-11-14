@@ -187,16 +187,12 @@ export async function connectClasses(page: Page, sourceName: string, targetName:
   const source = page.locator(`[data-class-name="${sourceName}"]`);
   await source.hover();
 
-  // Drag from the source class's right-hand dot to the target class's left-hand dot. The
-  // drop must land on the target handle: React Flow only connects within a small radius of
-  // one, so releasing over the middle of the node would do nothing.
-  // Each side carries a source and a target handle, so they are addressed by id.
+  // Drag from the source class's right-hand dot and let go over the middle of the target class,
+  // which connects without pinning a side: the line goes wherever the two classes face.
   const from = await source
     .locator('.react-flow__handle[data-handleid="source-right"]')
     .boundingBox();
-  const to = await page
-    .locator(`[data-class-name="${targetName}"] .react-flow__handle[data-handleid="target-left"]`)
-    .boundingBox();
+  const to = await page.locator(`[data-class-name="${targetName}"]`).boundingBox();
   if (!from || !to) throw new Error('cannot locate connection handles');
 
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);

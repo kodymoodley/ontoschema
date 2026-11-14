@@ -1,5 +1,5 @@
-import { addRelationBetween, attachProperty } from '../ontologymodel';
-import type { EntityRef } from '../ontologymodel';
+import { addRelationBetween, attachProperty, pinUsageEnd } from '../ontologymodel';
+import type { ClassSide, EntityRef, Ontology } from '../ontologymodel';
 import type { Editor, SetState } from './editing';
 import type { ProjectStoreState } from './store';
 
@@ -31,6 +31,8 @@ export type TaxonomyRelations = 'off' | 'selected';
 export interface PendingConnection {
   subjectClassId: string;
   objectClassId: string;
+  /** The side it was let go near, which pins that end; absent when let go over the middle. */
+  targetSide?: ClassSide;
 }
 
 export interface InteractionActions {
@@ -43,10 +45,19 @@ export interface InteractionActions {
   focusClass(classId: string): void;
   clearFocus(): void;
 
+  /** The canvas says a relation's line is in hand, or no longer is. */
+  setDrawingRelation(drawing: boolean): void;
   beginConnection(connection: PendingConnection): void;
   cancelConnection(): void;
   completeConnectionWith(propertyId: string): void;
   completeConnectionWithNewProperty(localName: string): void;
+}
+
+/** Pins the end of a just-drawn line to the side it was let go near, when it was. */
+function pinDrawnEnd(ontology: Ontology, usageId: string, pending: PendingConnection): Ontology {
+  return pending.targetSide && usageId
+    ? pinUsageEnd(ontology, usageId, 'target', pending.targetSide)
+    : ontology;
 }
 
 export function createInteractionActions(
@@ -93,6 +104,11 @@ export function createInteractionActions(
      * classes and lets the picker decide which relation this is — an existing one, or
      * a new one — which is what makes a property reusable across class pairs.
      */
+    setDrawingRelation(drawingRelation) {
+      set((state) =>
+        state.drawingRelation === drawingRelation ? state : { ...state, drawingRelation },
+      );
+    },
     beginConnection(connection) {
       set((state) => ({ ...state, pendingConnection: connection }));
     },
@@ -102,14 +118,14 @@ export function createInteractionActions(
     completeConnectionWith(propertyId) {
       const pending = get().pendingConnection;
       if (!pending) return;
-      editor.edit(
-        (ontology) =>
-          attachProperty(ontology, {
-            propertyId,
-            subjectClassId: pending.subjectClassId,
-            objectClassId: pending.objectClassId,
-          }).ontology,
-      );
+      editor.edit((ontology) => {
+        const attached = attachProperty(ontology, {
+          propertyId,
+          subjectClassId: pending.subjectClassId,
+          objectClassId: pending.objectClassId,
+        });
+        return pinDrawnEnd(attached.ontology, attached.id, pending);
+      });
       set((state) => ({
         ...state,
         pendingConnection: null,
@@ -126,7 +142,10 @@ export function createInteractionActions(
           subjectClassId: pending.subjectClassId,
           objectClassId: pending.objectClassId,
         });
-        return { ontology: result.ontology, id: result.propertyId };
+        return {
+          ontology: pinDrawnEnd(result.ontology, result.usageId, pending),
+          id: result.propertyId,
+        };
       });
       set((state) => ({
         ...state,

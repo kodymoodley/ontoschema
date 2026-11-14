@@ -2,7 +2,9 @@ import {
   OWL_CLASS,
   OWL_DATATYPE_PROPERTY,
   OWL_OBJECT_PROPERTY,
+  ONTOSCHEMA_FROM_SIDE,
   ONTOSCHEMA_POSITION,
+  ONTOSCHEMA_TO_SIDE,
   OWL_ANNOTATION_PROPERTY,
   OWL_ONTOLOGY,
   OWL_UNION_OF,
@@ -221,6 +223,17 @@ export function ontologyToTriples(
       object: iri(OWL_ANNOTATION_PROPERTY),
     });
   }
+  /*
+   * A pinned end is layout too, written on the relation's shape. Its terms are declared only
+   * when some end is pinned, so a schema with none saves exactly as it did before pins existed.
+   */
+  const writesPins = includeLayout && includeShapes;
+  if (writesPins) {
+    for (const [end, term] of PIN_TERMS) {
+      if (!ontology.usages.some((usage) => usage.pinned?.[end])) continue;
+      triples.push({ subject: term, predicate: RDF_TYPE, object: iri(OWL_ANNOTATION_PROPERTY) });
+    }
+  }
   const positionOf = (subject: string, entity: Ontology['classes'][number]): Triple => ({
     subject,
     predicate: ONTOSCHEMA_POSITION,
@@ -332,6 +345,7 @@ export function ontologyToTriples(
         namespace,
         mintName,
         names: shapeNames,
+        pins: writesPins,
       }),
     );
   }
@@ -434,6 +448,22 @@ interface ShapeContext {
   namespace: string;
   mintName: NameAllocator;
   names: ShapeNames;
+  /** Whether to write the sides a usage's line is pinned to. */
+  pins: boolean;
+}
+
+/** Which term records which end of a pinned line. */
+const PIN_TERMS = [
+  ['source', ONTOSCHEMA_FROM_SIDE],
+  ['target', ONTOSCHEMA_TO_SIDE],
+] as const;
+
+/** The sides one usage's line is pinned to, said of whatever stands for it in its shape. */
+function pinTriples(subject: string, usage: PropertyUsage | undefined): Triple[] {
+  return PIN_TERMS.flatMap(([end, predicate]) => {
+    const side = usage?.pinned?.[end];
+    return side ? [{ subject, predicate, object: literal(side) }] : [];
+  });
 }
 
 /**
@@ -519,12 +549,26 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
         ),
       ];
 
+      /* The one usage on this path that points at `target`, for its pinned sides. */
+      const pinsFor = (subject: string, target: string) =>
+        context.pins
+          ? pinTriples(
+              subject,
+              group.find(
+                (usage) =>
+                  usage.objectClassId !== null &&
+                  context.classIri.get(usage.objectClassId) === target,
+              ),
+            )
+          : [];
+
       if (targets.length === 1) {
         propertyShapeTriples.push({
           subject: propertyShape,
           predicate: SH_CLASS,
           object: iri(targets[0]!),
         });
+        propertyShapeTriples.push(...pinsFor(propertyShape, targets[0]!));
       } else if (targets.length > 1) {
         // Several target classes on one path: a disjunction, not a conjunction.
         const alternatives = targets.map(
@@ -550,6 +594,8 @@ function shapeTriples(ontology: Ontology, context: ShapeContext): Triple[] {
             predicate: SH_CLASS,
             object: iri(target),
           });
+          // Each alternative is one drawn line, so its pins are said of it.
+          propertyShapeTriples.push(...pinsFor(alternatives[position]!, target));
         });
       }
     }

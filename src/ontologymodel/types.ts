@@ -72,7 +72,16 @@ export interface PropertyUsage {
   propertyId: string;
   subjectClassId: string;
   objectClassId: string | null;
+  /**
+   * The sides of its classes this usage's line was pinned to by hand. An end left out follows
+   * the canvas, which routes it to whichever sides the two classes face. Layout, like a class's
+   * position, and saved in the file like one.
+   */
+  pinned?: { source?: ClassSide; target?: ClassSide };
 }
+
+/** A side of a class's box on the canvas. */
+export type ClassSide = 'left' | 'right' | 'top' | 'bottom';
 
 export interface Ontology {
   /** Namespace IRI; entity IRIs are this concatenated with the local name. */

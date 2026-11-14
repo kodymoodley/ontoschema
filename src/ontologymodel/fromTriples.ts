@@ -1,7 +1,9 @@
 import {
   ANNOTATION_TERMS,
+  ONTOSCHEMA_FROM_SIDE,
   ONTOSCHEMA_LAYOUT,
   ONTOSCHEMA_POSITION,
+  ONTOSCHEMA_TO_SIDE,
   OWL_CLASS,
   OWL_DATATYPE_PROPERTY,
   OWL_OBJECT_PROPERTY,
@@ -42,10 +44,10 @@ import {
   uniqueLocalName,
 } from './identifier';
 import { decodeLayout, decodePosition } from './layout';
-import { createEmptyOntology, createId, withVersionIri } from './ontology';
+import { createEmptyOntology, createId, isClassSide, withVersionIri } from './ontology';
 import { annotationTriple, isBlankNode } from './triples';
 import type { Triple, TripleObject } from './triples';
-import type { Annotation, Ontology, Position, PropertyUsage, Relation } from './types';
+import type { Annotation, ClassSide, Ontology, Position, PropertyUsage, Relation } from './types';
 import { ONTOLOGY_REF, entityRef, nodeShapeRef, propertyShapeRef, setAside } from './unmodelled';
 
 /**
@@ -135,8 +137,12 @@ interface ShapeReading {
   /** The class the node shape targets. */
   target: string;
   path: string;
-  /** The classes it points at: several for an `sh:or`, `null` alone for a datatype. */
-  objects: (string | null)[];
+  /**
+   * The classes it points at: several for an `sh:or`, `null` alone for a datatype. Each with
+   * the node that stands for that one line, where its pinned sides are said: the shape itself,
+   * or the `sh:or` alternative naming that class.
+   */
+  ends: { object: string | null; holder: string }[];
   /** The statements naming those classes or that datatype, which the writer says again. */
   said: Triple[];
 }
@@ -159,7 +165,7 @@ function shapeReadings(index: Index, modelled: (iri: string) => boolean): ShapeR
 
   /** The members of an `sh:or`, which is an RDF list of shapes each naming one class. */
   const alternatives = (head: TripleObject) => {
-    const classes: string[] = [];
+    const ends: { object: string; holder: string }[] = [];
     const said: Triple[] = [];
     let cell: TripleObject | undefined = head;
     const seen = new Set<string>();
@@ -171,14 +177,14 @@ function shapeReadings(index: Index, modelled: (iri: string) => boolean): ShapeR
         said.push(first);
         const [target] = index.statementsOf(first.object.value, SH_CLASS);
         if (target?.object.type === 'iri') {
-          classes.push(target.object.value);
+          ends.push({ object: target.object.value, holder: first.object.value });
           said.push(target);
         }
       }
       if (rest) said.push(rest);
       cell = rest?.object;
     }
-    return { classes, said };
+    return { ends, said };
   };
 
   for (const nodeShape of index.subjectsTyped(SH_NODE_SHAPE)) {
@@ -195,19 +201,27 @@ function shapeReadings(index: Index, modelled: (iri: string) => boolean): ShapeR
       const reading = { nodeShape, propertyShape, target: target.value, path: path.value };
 
       if (single?.object.type === 'iri') {
-        readings.push({ ...reading, objects: [single.object.value], said: [single] });
+        readings.push({
+          ...reading,
+          ends: [{ object: single.object.value, holder: propertyShape }],
+          said: [single],
+        });
       } else if (list) {
-        const { classes, said } = alternatives(list.object);
-        readings.push({ ...reading, objects: classes, said: [list, ...said] });
+        const { ends, said } = alternatives(list.object);
+        readings.push({ ...reading, ends, said: [list, ...said] });
       } else if (datatype) {
         // A datatype shape is an attribute on this class: one end, and no second one to name.
-        readings.push({ ...reading, objects: [null], said: [datatype] });
+        readings.push({
+          ...reading,
+          ends: [{ object: null, holder: propertyShape }],
+          said: [datatype],
+        });
       }
     }
   }
 
   return readings.filter((reading) =>
-    reading.objects.every((object) => object === null || modelled(object)),
+    reading.ends.every(({ object }) => object === null || modelled(object)),
   );
 }
 
@@ -407,6 +421,8 @@ export function ontologyFromTriples(
   // This app's own bookkeeping, which the writer states again whenever it applies.
   use(index.statementsOf(ONTOSCHEMA_POSITION, RDF_TYPE));
   use(index.statementsOf(ONTOSCHEMA_LAYOUT, RDF_TYPE));
+  use(index.statementsOf(ONTOSCHEMA_FROM_SIDE, RDF_TYPE));
+  use(index.statementsOf(ONTOSCHEMA_TO_SIDE, RDF_TYPE));
 
   const [stored] = header
     ? index.statementsOf(header, ONTOSCHEMA_LAYOUT).filter((t) => t.object.type === 'literal')
@@ -485,7 +501,7 @@ export function ontologyFromTriples(
   const shapePairs = new Map<string, { subject: string; object: string | null }[]>();
   for (const reading of readings) {
     const pairs = shapePairs.get(reading.path) ?? [];
-    for (const object of reading.objects) pairs.push({ subject: reading.target, object });
+    for (const { object } of reading.ends) pairs.push({ subject: reading.target, object });
     shapePairs.set(reading.path, pairs);
   }
 
@@ -537,13 +553,34 @@ export function ontologyFromTriples(
   );
 
   const usages: PropertyUsage[] = [];
-  const draw = (property: string, subject: string, object: string | null) =>
+  const draw = (
+    property: string,
+    subject: string,
+    object: string | null,
+    pinned?: PropertyUsage['pinned'],
+  ) =>
     usages.push({
       id: createId('use'),
       propertyId: known(propertyId, property, 'a property id'),
       subjectClassId: known(classId, subject, 'a class id'),
       objectClassId: object === null ? null : known(classId, object, 'a class id'),
+      ...(pinned ? { pinned } : {}),
     });
+
+  /** The sides a drawn line was pinned to, said of the node that stands for it. */
+  const pinsOn = (holder: string): PropertyUsage['pinned'] => {
+    const sideFor = (predicate: string) => {
+      const [statement] = index
+        .statementsOf(holder, predicate)
+        .filter((triple) => triple.object.type === 'literal' && isClassSide(triple.object.value));
+      use([statement]);
+      return statement?.object.value as ClassSide | undefined;
+    };
+    const source = sideFor(ONTOSCHEMA_FROM_SIDE);
+    const target = sideFor(ONTOSCHEMA_TO_SIDE);
+    if (!source && !target) return undefined;
+    return { ...(source ? { source } : {}), ...(target ? { target } : {}) };
+  };
 
   /*
    * Exactly what was drawn, when the shapes are there to say so, and in the order they list it.
@@ -552,9 +589,9 @@ export function ontologyFromTriples(
    */
   for (const reading of readings) {
     const isAttribute = attributeIris.includes(reading.path);
-    for (const object of reading.objects) {
+    for (const { object, holder } of reading.ends) {
       if (isAttribute) draw(reading.path, reading.target, null);
-      else if (object !== null) draw(reading.path, reading.target, object);
+      else if (object !== null) draw(reading.path, reading.target, object, pinsOn(holder));
     }
   }
 

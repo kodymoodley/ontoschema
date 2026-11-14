@@ -1,15 +1,173 @@
-/*
- * Every side carries a source and a target at the same point. Only the source is
- * interactive; React Flow locates the target by proximity while a connection is dragged,
- * so the invisible target never intercepts the pointer.
- */
-.targetHandle {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
 .sourceHandle {
   z-index: 1;
+}
+
+/*
+ * While something is being drawn the dots stand aside, so letting go on one lands on the side's
+ * own target beneath it and lights that, rather than lighting a dot. Doubled to outrank React
+ * Flow, which makes a possible end take the pointer.
+ */
+.connecting .sourceHandle.sourceHandle {
+  pointer-events: none;
+}
+
+/*
+ * A fingertip is about 44px across and a dot is 9. On a touch screen the dots of the selected
+ * class -- the one whose dots are showing -- answer to an area about as wide as a finger, drawn
+ * by nothing, and each side's band is wider to match.
+ *
+ * The area reaches outward from the class and never into it, so it cannot cover what the class
+ * holds: grown inward, the top dot's covered the middle of the header, and a tap meant for the
+ * name started a relation instead. And only on the selected class: a class's dots take the
+ * pointer even while hidden, and a wide target on every class would turn moving a class by its
+ * edge into drawing a relation from it.
+ */
+@media (pointer: coarse) {
+  :global(.react-flow__node.selected) .sourceHandle::before {
+    content: '';
+    position: absolute;
+    border-radius: 18px;
+  }
+
+  :global(.react-flow__node.selected) .sourceHandle:global(.react-flow__handle-top)::before {
+    inset: -18px -18px 0;
+  }
+
+  :global(.react-flow__node.selected) .sourceHandle:global(.react-flow__handle-bottom)::before {
+    inset: 0 -18px -18px;
+  }
+
+  :global(.react-flow__node.selected) .sourceHandle:global(.react-flow__handle-left)::before {
+    inset: -18px 0 -18px -18px;
+  }
+
+  :global(.react-flow__node.selected) .sourceHandle:global(.react-flow__handle-right)::before {
+    inset: -18px -18px -18px 0;
+  }
+
+  :global(.react-flow__node) .dropZone.dropZone {
+    --band: 40px;
+  }
+}
+
+/*
+ * Where a relation being drawn can be let go: a band along each side, and the middle.
+ *
+ * Each is a React Flow handle stretched over the whole class and clipped to its own part, so its
+ * anchor -- the point a line attaches to -- is still the middle of its side.
+ *
+ * Named through the node, to outrank two rules that otherwise win or lose by stylesheet order:
+ * React Flow's, which draws a handle as a dot on its side, and the canvas's, which hides every
+ * handle until its class is hovered or selected. Losing the first shrinks a zone to a dot; losing
+ * the second hides its glow on a touch screen, where nothing is ever hovered.
+ *
+ * They take the pointer only while something is being drawn (`.connecting`), and the one the
+ * pointer is over is marked `connectingto` by React Flow, which is what lights it. The glow is
+ * on a pseudo-element so it can fade: a gradient cannot be transitioned, its opacity can.
+ */
+:global(.react-flow__node) .dropZone.dropZone {
+  --band: 28px;
+
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  transform: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  opacity: 1;
+  pointer-events: none;
+  cursor: crosshair;
+}
+
+:global(.react-flow__node) .connecting .dropZone.dropZone {
+  pointer-events: auto;
+}
+
+.dropZone::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.dropZone:global(.connectingto)::after {
+  opacity: 1;
+}
+
+.dropTop {
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--band)) var(--band), var(--band) var(--band));
+}
+
+.dropBottom {
+  clip-path: polygon(
+    0 100%,
+    var(--band) calc(100% - var(--band)),
+    calc(100% - var(--band)) calc(100% - var(--band)),
+    100% 100%
+  );
+}
+
+.dropLeft {
+  clip-path: polygon(0 0, var(--band) var(--band), var(--band) calc(100% - var(--band)), 0 100%);
+}
+
+.dropRight {
+  clip-path: polygon(
+    100% 0,
+    100% 100%,
+    calc(100% - var(--band)) calc(100% - var(--band)),
+    calc(100% - var(--band)) var(--band)
+  );
+}
+
+/* A bright edge on the side itself, fading into the class: this is where the line will sit. */
+.dropTop::after {
+  background: linear-gradient(
+    to bottom,
+    var(--glow) 0 3px,
+    var(--glow-soft) 3px,
+    transparent var(--band)
+  );
+}
+
+.dropBottom::after {
+  background: linear-gradient(
+    to top,
+    var(--glow) 0 3px,
+    var(--glow-soft) 3px,
+    transparent var(--band)
+  );
+}
+
+.dropLeft::after {
+  background: linear-gradient(
+    to right,
+    var(--glow) 0 3px,
+    var(--glow-soft) 3px,
+    transparent var(--band)
+  );
+}
+
+.dropRight::after {
+  background: linear-gradient(
+    to left,
+    var(--glow) 0 3px,
+    var(--glow-soft) 3px,
+    transparent var(--band)
+  );
+}
+
+:global(.react-flow__node) .dropMiddle.dropMiddle {
+  inset: var(--band);
+}
+
+.dropMiddle::after {
+  display: none;
 }
 
 .classNode {
@@ -37,6 +195,36 @@
 
 .classNode:hover {
   box-shadow: var(--shadow-md);
+}
+
+/*
+ * While a relation is being drawn every class says it can take one, faintly, and the class the
+ * pointer is over says so plainly. Over its middle the whole outline lights, since the line will
+ * go to whichever side faces the other class.
+ */
+.connecting {
+  --glow: var(--accent-relation);
+  --glow-soft: color-mix(in srgb, var(--accent-relation) 22%, transparent);
+
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-relation) 28%, transparent),
+    var(--shadow-sm);
+}
+
+.connecting:has(:global(.connectingto)) {
+  border-color: var(--accent-relation);
+}
+
+.connecting:has(.dropMiddle:global(.connectingto)) {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent-relation) 40%, transparent),
+    var(--shadow-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropZone::after {
+    transition: none;
+  }
 }
 
 .selected {

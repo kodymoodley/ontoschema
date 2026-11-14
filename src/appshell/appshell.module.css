@@ -259,6 +259,16 @@
     visibility: hidden;
     transform: translateX(100%);
   }
+
+  /*
+   * And while a relation is being drawn. Selecting a class is what shows its dots on a phone, and
+   * selecting opens this drawer over the right of the canvas -- where the class being drawn to
+   * often is. It slides away for the drag and back when the line is let go.
+   */
+  .shell[data-drawing='true'] .right {
+    visibility: hidden;
+    transform: translateX(100%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
