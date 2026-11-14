@@ -65,8 +65,13 @@ const BUDGETS = {
    * is the metadata forms, the panel folding and the framing corrections: application code, no
    * new dependency, each merged deliberately. Raised rather than trimmed because trimming is
    * optimisation work and wants its own pass, not a line in an audit.
+   *
+   * Raised to 214 for keeping what an opened file says beyond the schema: 208.1 when saving into
+   * a file merged, 209.9 with the kept statements, their shape names and prefixes, and 210.3 once
+   * that met the version IRI work. Application code, no new dependency. The way back under 210 is
+   * loading the importer only when a file is opened, which is its own piece of work.
    */
-  total: 210,
+  total: 214,
 };
 
 /**
