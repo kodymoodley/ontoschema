@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ontologyIri, validateNamespaceIri, validatePrefix } from '../ontologymodel';
+import { headerIri, validateNamespaceIri, validatePrefix } from '../ontologymodel';
 import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Field, TextInput } from '../designsystem';
 import styles from './ontologymetadata.module.css';
@@ -67,7 +67,7 @@ export function OntologyMetadataForm() {
       */}
       {showTerms ? (
         <Field label="Schema IRI">
-          <code className={styles.iri}>{ontologyIri(ontology.iri)}</code>
+          <code className={styles.iri}>{headerIri(ontology)}</code>
         </Field>
       ) : null}
     </div>

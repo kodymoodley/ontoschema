@@ -101,7 +101,9 @@ describe.each(allScenarios())('$name', ({ ontology }) => {
      */
     const described = new Set(triples.map((triple) => triple.subject));
 
+    // A version IRI names a version of the document, not a term in it.
     const dangling = triples
+      .filter((triple) => triple.predicate !== 'http://www.w3.org/2002/07/owl#versionIRI')
       .filter((triple) => triple.object.type === 'iri')
       .map((triple) => triple.object.value)
       .filter((value) => value.startsWith(ontology.iri))

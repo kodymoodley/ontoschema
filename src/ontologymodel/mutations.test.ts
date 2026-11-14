@@ -37,6 +37,7 @@ import {
   usagesOfProperty,
 } from './ontology';
 import type { Ontology } from './types';
+import { headerIri } from './identifier';
 
 describe('class mutations', () => {
   it('normalises the name of a newly dropped class', () => {
@@ -527,5 +528,49 @@ describe('placing many classes at once', () => {
       { x: 0, y: 0 },
       { x: 0, y: 0 },
     ]);
+  });
+});
+
+describe('an ontology IRI kept from a file', () => {
+  const opened = {
+    ...createEmptyOntology('https://example.org/apco#'),
+    ontologyIri: 'https://example.org/apco#',
+  };
+
+  it('stays when the namespace is written back unchanged', () => {
+    expect(setOntologyIri(opened, 'https://example.org/apco#').ontologyIri).toBe(
+      'https://example.org/apco#',
+    );
+  });
+
+  it('is let go when the namespace moves, so the header follows it', () => {
+    const moved = setOntologyIri(opened, 'https://example.org/other#');
+    expect(moved.ontologyIri).toBeUndefined();
+    expect(headerIri(moved)).toBe('https://example.org/other');
+  });
+});
+
+describe('the version IRI when the namespace moves', () => {
+  const version = (ontology: Ontology) =>
+    ontology.annotations.find((annotation) => annotation.term === 'owl:versionIRI')?.value;
+  const withVersion = (value: string): Ontology => ({
+    ...createEmptyOntology('https://example.org/ontology/'),
+    annotations: [{ id: 'v', term: 'owl:versionIRI', value }],
+  });
+
+  it('moves with it when it sat under the old ontology IRI, keeping its version', () => {
+    const moved = setOntologyIri(
+      withVersion('https://example.org/ontology/1.4.0'),
+      'https://example.org/cars#',
+    );
+    expect(version(moved)).toBe('https://example.org/cars/1.4.0');
+  });
+
+  it('stays where it is when it points somewhere else', () => {
+    const moved = setOntologyIri(
+      withVersion('https://w3id.org/releases/ontology-1.4.0'),
+      'https://example.org/cars#',
+    );
+    expect(version(moved)).toBe('https://w3id.org/releases/ontology-1.4.0');
   });
 });

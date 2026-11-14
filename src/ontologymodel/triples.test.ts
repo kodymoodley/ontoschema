@@ -319,10 +319,15 @@ describe('one class using one property with several targets', () => {
 });
 
 describe('edge cases', () => {
-  it('an empty ontology still declares its header', () => {
+  it('an empty ontology still declares its header, and its initial version', () => {
     const triples = ontologyToTriples(createEmptyOntology('https://example.org/blank/', 'blank'));
-    expect(triples).toHaveLength(1);
+    expect(triples).toHaveLength(2);
     expect(triples[0]?.object.value).toBe(OWL_ONTOLOGY);
+    expect(triples[1]).toEqual({
+      subject: 'https://example.org/blank',
+      predicate: 'http://www.w3.org/2002/07/owl#versionIRI',
+      object: { type: 'iri', value: 'https://example.org/blank/0.0.1' },
+    });
   });
 
   it('a relation usage with no target emits neither range nor sh:class', () => {

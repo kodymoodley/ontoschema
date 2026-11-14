@@ -199,7 +199,9 @@ test('a name with characters illegal in an IRI is corrected rather than exported
   expect(() => new Parser({ format: 'text/turtle' }).parse(turtle)).not.toThrow();
 });
 
-test('an empty ontology exports a valid document containing only its header', async ({ page }) => {
+test('an empty ontology exports a valid document containing only its header and version', async ({
+  page,
+}) => {
   await openApp(page);
   await openExport(page);
   await expect(page.getByText(/no classes or properties yet/i)).toBeVisible();
@@ -207,8 +209,11 @@ test('an empty ontology exports a valid document containing only its header', as
 
   const turtle = await downloadExport(page, 'ttl');
   const quads = new Parser({ format: 'text/turtle' }).parse(turtle);
-  expect(quads).toHaveLength(1);
+  // The header, and the version IRI no file is written without.
+  expect(quads).toHaveLength(2);
   expect(quads[0]?.object.value).toBe('http://www.w3.org/2002/07/owl#Ontology');
+  expect(quads[1]?.predicate.value).toBe('http://www.w3.org/2002/07/owl#versionIRI');
+  expect(quads[1]?.object.value).toMatch(/\/0\.0\.1$/);
 });
 
 test('annotations in two languages survive a round trip through the export', async ({ page }) => {

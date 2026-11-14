@@ -1,4 +1,4 @@
-import { createProject } from '../ontologymodel';
+import { createProject, withVersionIri } from '../ontologymodel';
 import type { Ontology, Project } from '../ontologymodel';
 import { EMPTY_HISTORY, redoStep, undoStep } from './history';
 import { projectFromFile, saveWorkspace, workspaceFromFile, workspaceToFile } from './persistence';
@@ -123,7 +123,7 @@ export function createWorkspaceActions(
       return project.id;
     },
     openAsNewProject(name, ontology) {
-      const project = { ...createProject(name), ontology };
+      const project = createProject(name, ontology);
       openWorkspace(addProject(get(), project));
       return project.id;
     },
@@ -143,7 +143,7 @@ export function createWorkspaceActions(
     },
     reloadProject(id, ontology) {
       set((state) => {
-        const next = withProjectOntology(state, id, ontology);
+        const next = withProjectOntology(state, id, withVersionIri(ontology));
         if (next === state) return state;
         saveWorkspace(next, { immediate: true });
         const open = state.activeProjectId === id;

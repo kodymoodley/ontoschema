@@ -133,6 +133,15 @@ export function ontologyIri(namespaceIri: string): string {
 }
 
 /**
+ * The IRI a schema's `owl:Ontology` header is written with: the one kept from the file it was
+ * opened from, or else the one its namespace implies. A file whose header does not follow the
+ * convention, such as `https://example.org/vocab#` stated with its `#`, keeps that IRI.
+ */
+export function headerIri(ontology: { iri: string; ontologyIri?: string }): string {
+  return ontology.ontologyIri ?? ontologyIri(ontology.iri);
+}
+
+/**
  * Finds a name not already taken, appending 2, 3, ... as needed.
  * Used when dropping a second `Class` on the canvas or duplicating a property.
  */
