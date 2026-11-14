@@ -1,5 +1,5 @@
 import dagre from '@dagrejs/dagre';
-import type { OntologyClass } from '../ontologymodel';
+import type { ClassSide, OntologyClass } from '../ontologymodel';
 
 /**
  * Tree layout for one taxonomy module.
@@ -100,7 +100,8 @@ export function estimateClassHeight(attributeCount: number, hasSuperclass: boole
   return header + superclassLine + body + footer;
 }
 
-export type Side = 'left' | 'right' | 'top' | 'bottom';
+/** The same four sides the model pins a line to. */
+export type Side = ClassSide;
 
 export interface Box {
   x: number;

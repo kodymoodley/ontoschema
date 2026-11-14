@@ -245,19 +245,23 @@ export function schemaEdges(ontology: Ontology): Edge[] {
    * Which sides each relation uses, worked out for all of them before any is drawn. The fan
    * below needs to know who else is meeting a given side, and that cannot be answered one edge
    * at a time.
+   *
+   * An end pinned by hand keeps its side wherever the classes go; an end that is not follows
+   * them, to whichever side faces the other class.
    */
   const chosen = new Map<string, { source: Side; target: Side }>();
   for (const usage of drawable) {
     const from = boxes.get(usage.subjectClassId);
     const to = boxes.get(usage.objectClassId ?? usage.subjectClassId);
-    chosen.set(
-      usage.id,
-      selfLoop(usage)
-        ? SELF_LOOP_SIDES
-        : from && to
-          ? chooseSides(from, to)
-          : { source: 'right' as const, target: 'left' as const },
-    );
+    const facing = selfLoop(usage)
+      ? SELF_LOOP_SIDES
+      : from && to
+        ? chooseSides(from, to)
+        : { source: 'right' as const, target: 'left' as const };
+    chosen.set(usage.id, {
+      source: usage.pinned?.source ?? facing.source,
+      target: usage.pinned?.target ?? facing.target,
+    });
   }
 
   const offsets = endpointOffsets(
