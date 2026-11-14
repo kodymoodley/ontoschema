@@ -117,7 +117,8 @@ const DEFAULT_OPTIONS: Required<SerializationOptions> = {
 
 /**
  * Renders one annotation. Terms declared `iri` produce an IRI object when the value really
- * is one; `date` produces an xsd:date literal; `text` may carry a language tag.
+ * is one; `date` produces an xsd:date literal, `boolean` an xsd:boolean one; `text` may carry a
+ * language tag.
  * Blank values are skipped by the caller.
  */
 export function annotationTriple(subject: string, annotation: Annotation): Triple | null {
@@ -138,6 +139,13 @@ export function annotationTriple(subject: string, annotation: Annotation): Tripl
       subject,
       predicate,
       object: literal(value, { datatype: 'http://www.w3.org/2001/XMLSchema#date' }),
+    };
+  }
+  if (kind === 'boolean' && /^(true|false)$/.test(value)) {
+    return {
+      subject,
+      predicate,
+      object: literal(value, { datatype: 'http://www.w3.org/2001/XMLSchema#boolean' }),
     };
   }
   if (kind === 'text' && annotation.language && isValidLanguageTag(annotation.language)) {

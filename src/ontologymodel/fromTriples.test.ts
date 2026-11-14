@@ -878,17 +878,49 @@ describe('what the model takes, and what is kept as written', () => {
     const { ontology } = ontologyFromTriples([
       aClass('Car'),
       say(`${AUTO}Car`, `${RDFS}label`, literal('Car', { language: 'en' })),
-      say(`${AUTO}Car`, `${OWL}deprecated`, literal('true', { datatype: `${XSD}boolean` })),
+      say(`${AUTO}Car`, `${OWL}versionInfo`, literal('1.0', { language: 'en' })),
     ]);
 
     expect(ontology.classes[0]?.annotations.map((annotation) => annotation.value)).toEqual(['Car']);
+    // A version takes no language, so the writer would drop the tag: kept as written instead.
     expect(ontology.unmodelled).toEqual([
       say(
         entityRef(idOf(ontology, 'Car')),
-        `${OWL}deprecated`,
-        literal('true', { datatype: `${XSD}boolean` }),
+        `${OWL}versionInfo`,
+        literal('1.0', { language: 'en' }),
       ),
     ]);
+  });
+
+  it('takes a deprecation as the boolean it is, and writes it back as one', () => {
+    const typed = literal('true', { datatype: `${XSD}boolean` });
+    const { ontology } = ontologyFromTriples([
+      aClass('Car'),
+      say(`${AUTO}Car`, `${OWL}deprecated`, typed),
+    ]);
+
+    expect(ontology.classes[0]?.annotations).toMatchObject([
+      { term: 'owl:deprecated', value: 'true' },
+    ]);
+    expect(ontology.unmodelled).toEqual([]);
+    expect(ontologyToTriples(ontology)).toContainEqual(
+      say(`${AUTO}Car`, `${OWL}deprecated`, typed),
+    );
+  });
+
+  /* This app wrote it untyped until it knew better, so its own files have it that way. */
+  it('takes a deprecation written as plain text, and writes it back typed', () => {
+    const { ontology } = ontologyFromTriples([
+      aClass('Car'),
+      say(`${AUTO}Car`, `${OWL}deprecated`, literal('true')),
+    ]);
+
+    expect(ontology.classes[0]?.annotations).toMatchObject([
+      { term: 'owl:deprecated', value: 'true' },
+    ]);
+    expect(ontologyToTriples(ontology)).toContainEqual(
+      say(`${AUTO}Car`, `${OWL}deprecated`, literal('true', { datatype: `${XSD}boolean` })),
+    );
   });
 
   it('keeps a parent from another vocabulary, attached to the class that names it', () => {

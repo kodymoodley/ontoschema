@@ -25,6 +25,7 @@ import {
   SH_PROPERTY_SHAPE,
   SH_TARGET_CLASS,
   annotationTermIri,
+  findAnnotationTerm,
   isXsdDatatype,
   xsdDatatypeIri,
 } from '../annotationvocabulary';
@@ -376,10 +377,24 @@ export function ontologyFromTriples(
         annotation.language = triple.object.language;
       }
       const written = annotationTriple(subject, annotation);
-      if (!written || !sameTerm(written.object, triple.object)) return [];
+      if (!written || !(sameTerm(written.object, triple.object) || wasPlain(written, triple))) {
+        return [];
+      }
       use([triple]);
       return [annotation];
     });
+
+  /*
+   * The one exception: `true` or `false` written as plain text where the term takes a boolean,
+   * which is how this app itself wrote `owl:deprecated` until it knew better. Saving it typed
+   * says what it always meant, and is what OWL tools read as deprecated.
+   */
+  const wasPlain = (written: Triple, original: Triple) =>
+    findAnnotationTerm(curieByIri.get(original.predicate) ?? '')?.kind === 'boolean' &&
+    original.object.type === 'literal' &&
+    !original.object.language &&
+    !original.object.datatype &&
+    written.object.value === original.object.value;
 
   /* ------------------------------------------------------------------- layout */
 

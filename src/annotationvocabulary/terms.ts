@@ -7,8 +7,9 @@ import type { KnownPrefix } from './namespaces';
  *  - `iri`      the value is an IRI reference (dcterms:creator as a URI, prov:wasDerivedFrom)
  *  - `date`     xsd:date typed literal (dcterms:created)
  *  - `plain`    literal that must never carry a language tag (owl:versionInfo)
+ *  - `boolean`  xsd:boolean typed literal, `true` or `false` (owl:deprecated)
  */
-export type AnnotationValueKind = 'text' | 'iri' | 'date' | 'plain';
+export type AnnotationValueKind = 'text' | 'iri' | 'date' | 'plain' | 'boolean';
 
 export interface AnnotationTerm {
   /** CURIE, e.g. `skos:prefLabel`. Doubles as the term's stable id in the model. */
@@ -43,7 +44,7 @@ export const ANNOTATION_TERMS: readonly AnnotationTerm[] = [
   term('rdfs:isDefinedBy', 'Is defined by', 'iri', 'Defining resource'),
 
   term('owl:versionInfo', 'Version info', 'plain', 'Version string'),
-  term('owl:deprecated', 'Deprecated', 'plain', 'true / false'),
+  term('owl:deprecated', 'Deprecated', 'boolean', 'true / false'),
   term('owl:priorVersion', 'Prior version', 'iri', 'Previous version IRI'),
   term('owl:incompatibleWith', 'Incompatible with', 'iri', 'Incompatible version IRI'),
 
