@@ -17,6 +17,7 @@ import {
 import { canSubclass, canSubproperty } from './taxonomy';
 import type {
   Annotation,
+  ClassSide,
   Attribute,
   Relation,
   Ontology,
@@ -317,6 +318,27 @@ export function attachProperty(
 /** Removes a single usage. The property stays in the pool, ready to be used elsewhere. */
 export function detachUsage(ontology: Ontology, usageId: string): Ontology {
   return { ...ontology, usages: ontology.usages.filter((usage) => usage.id !== usageId) };
+}
+
+/**
+ * Pins one end of a usage's line to a side of its class, or with `null` lets it follow the
+ * canvas again. A usage with neither end pinned carries no `pinned` at all, so it reads, and is
+ * saved, exactly as one that was never pinned.
+ */
+export function pinUsageEnd(
+  ontology: Ontology,
+  usageId: string,
+  end: 'source' | 'target',
+  side: ClassSide | null,
+): Ontology {
+  return {
+    ...ontology,
+    usages: mapById(ontology.usages, usageId, ({ pinned, ...usage }) => {
+      const sides = { ...pinned, [end]: side };
+      if (!side) delete sides[end];
+      return Object.keys(sides).length > 0 ? { ...usage, pinned: sides } : usage;
+    }),
+  };
 }
 
 /** Re-points one end of a relation usage. */

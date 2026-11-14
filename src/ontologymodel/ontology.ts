@@ -1,5 +1,6 @@
 import type {
   Annotation,
+  ClassSide,
   Attribute,
   Relation,
   Ontology,
@@ -10,6 +11,11 @@ import type {
 import { headerIri, normalizeNamespaceIri } from './identifier';
 
 export const DEFAULT_NAMESPACE_IRI = 'https://example.org/ontology/';
+
+export const CLASS_SIDES: readonly ClassSide[] = ['left', 'right', 'top', 'bottom'];
+
+export const isClassSide = (value: unknown): value is ClassSide =>
+  (CLASS_SIDES as readonly unknown[]).includes(value);
 export const DEFAULT_PREFIX = 'ex';
 
 /**

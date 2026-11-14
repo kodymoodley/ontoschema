@@ -47,6 +47,16 @@ export const OWL_ANNOTATION_PROPERTY = `${NAMESPACES.owl}AnnotationProperty`;
 export const ONTOSCHEMA_POSITION = `${NAMESPACES.ontoschema}position`;
 
 /**
+ * The side of its class a relation's line is pinned to leave from, and arrive at: `"right"`.
+ *
+ * Written on the relation's SHACL shape, or on the `sh:or` alternative for that one target,
+ * because that is where one drawn line lives in the file. Each is its own line, so pinning one
+ * end changes one line of a Turtle file. An end with neither follows the canvas's routing.
+ */
+export const ONTOSCHEMA_FROM_SIDE = `${NAMESPACES.ontoschema}fromSide`;
+export const ONTOSCHEMA_TO_SIDE = `${NAMESPACES.ontoschema}toSide`;
+
+/**
  * Where the classes sat, as one annotation on the ontology: the form files were saved in before
  * `ONTOSCHEMA_POSITION`. Still read, so those files open with their layout, and never written.
  *

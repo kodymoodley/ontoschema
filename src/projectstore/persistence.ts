@@ -1,4 +1,10 @@
-import { createEmptyOntology, createId, createProject, withVersionIri } from '../ontologymodel';
+import {
+  createEmptyOntology,
+  createId,
+  createProject,
+  isClassSide,
+  withVersionIri,
+} from '../ontologymodel';
 import type { Annotation, Ontology, Project, PropertyUsage, Triple } from '../ontologymodel';
 import { isXsdDatatype } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
@@ -218,6 +224,7 @@ function reviveUsages(value: Record<string, unknown>): PropertyUsage[] {
       propertyId: usage.propertyId as string,
       subjectClassId: usage.subjectClassId as string,
       objectClassId: typeof usage.objectClassId === 'string' ? usage.objectClassId : null,
+      ...revivePinned(usage.pinned),
     }));
   if (stored.length > 0 || Array.isArray(value.usages)) return stored;
 
@@ -254,6 +261,15 @@ function reviveAnnotations(value: unknown): Annotation[] {
         annotation.language = entry.language;
       return annotation;
     });
+}
+
+/** The sides a usage's line was pinned to, keeping only real sides. */
+function revivePinned(value: unknown): Pick<PropertyUsage, 'pinned'> {
+  if (!isRecord(value)) return {};
+  const pinned: NonNullable<PropertyUsage['pinned']> = {};
+  if (isClassSide(value.source)) pinned.source = value.source;
+  if (isClassSide(value.target)) pinned.target = value.target;
+  return Object.keys(pinned).length > 0 ? { pinned } : {};
 }
 
 /** A map of strings to strings, keeping the entries that are. */
