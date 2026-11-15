@@ -1,37 +1,47 @@
-.panel {
+.picker {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   min-height: 0;
 }
 
-.results {
+/* The box takes the width; whatever acts on it sits at its right. */
+.queryRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.query {
+  flex: 1;
+  min-width: 0;
+}
+
+.rows {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  /* Long enough to be worth ranking, short enough that the dialog does not fill the window. */
-  max-height: 360px;
+  /*
+   * A list of any length in a box of one height, about eight rows: long enough to be worth
+   * ranking, short enough that the dialog keeps its shape however many there are.
+   */
+  max-height: min(320px, 40vh);
   margin: 0;
   padding: 0;
   overflow-y: auto;
   list-style: none;
 }
 
-.result {
+.row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: 100%;
   padding: var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
-  background: transparent;
-  text-align: left;
   cursor: pointer;
 }
 
-.result:hover,
-.result:focus-visible {
+.active {
   border-color: var(--border-subtle);
   background: var(--surface-base);
 }
@@ -43,10 +53,10 @@
 }
 
 /*
- * The text that explains the hit, clipped to one line. A definition can be a paragraph, and a
- * result list that reflows as you type is harder to read than one that keeps its shape.
+ * The detail, clipped to one line. A definition can be a paragraph, and a list that reflows as
+ * you type is harder to read than one that keeps its shape.
  */
-.context {
+.detail {
   flex: 1;
   min-width: 0;
   overflow: hidden;

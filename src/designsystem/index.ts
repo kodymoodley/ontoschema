@@ -17,7 +17,10 @@ export {
   Toolbar,
   cx,
 } from './Primitives';
-export type { TabOption } from './Primitives';
+export type { BadgeTone, TabOption } from './Primitives';
+
+export { SearchPicker } from './SearchPicker';
+export type { PickerRow } from './SearchPicker';
 
 export { HamburgerIcon, Menu, MenuGroup, MenuSeparator } from './Menu';
 

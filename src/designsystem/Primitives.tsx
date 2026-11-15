@@ -280,7 +280,7 @@ export function EmptyState({ children }: { children: ReactNode }) {
 
 /* ----------------------------------------------------------------- Badge */
 
-type BadgeTone = 'class' | 'relation' | 'attribute' | 'neutral';
+export type BadgeTone = 'class' | 'relation' | 'attribute' | 'neutral';
 
 export function Badge({ tone = 'neutral', children }: { tone?: BadgeTone; children: ReactNode }) {
   return (
