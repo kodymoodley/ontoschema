@@ -124,7 +124,8 @@ app models a narrow slice of OWL, so a document written elsewhere says more than
 individuals, restrictions, property chains, disjointness, SHACL cardinalities, and terms from other
 vocabularies. That part is kept as written and saved back unchanged. It follows a class that is
 renamed, and goes with one that is deleted. The app says how much of it there is, and what it
-**changed**: a datatype it does not offer arrives as `xsd:string`.
+**changed**: an attribute whose type is not one of the 39 `xsd` datatypes RDF recommends arrives as
+`xsd:string`.
 
 Saving lays a file out afresh, so its comments and statement order are not kept; its prefix
 names are. A shape the app reads keeps its name and its constraints. One written inline, without
@@ -211,6 +212,7 @@ left to right and back, and this browser remembers which. On a phone it stays to
 | **Double-click (or double-tap) empty canvas**  | Frames the whole schema again — the way back out of a focus        |
 | Double-click a class **header**                | Renames it in place                                                |
 | Drag an attribute from the pool onto a class   | Reuses that property there                                         |
+| Click an attribute's **type** on a class       | Changes it, to any of the 39 `xsd` datatypes RDF recommends        |
 | Delete / Backspace                             | Removes the selection, unless a dialog is open or you are typing   |
 
 A relation can be let go anywhere on a class. Let go over its middle, the line attaches to
