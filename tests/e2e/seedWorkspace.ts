@@ -54,3 +54,36 @@ function onAGrid(ontology: Ontology): Ontology {
     })),
   };
 }
+
+/**
+ * Where the classes are in the model, read back out of the persisted workspace.
+ *
+ * Not from the screen. Arranging frames the camera on the new drawing, so a screen coordinate
+ * after an arrange is a fact about the camera as much as about the layout — which is exactly
+ * what a test of the layout must not measure. Overlap is safe to read from the screen because
+ * pan and zoom apply to every box equally; a coordinate is not.
+ *
+ * The workspace is written on a queue with a 500ms debounce, so a read taken straight after a
+ * gesture is usually still showing the state before it. Every caller waits for the value
+ * it expects rather than for the writing to stop — waiting for it to stop is not enough at this
+ * sampling rate, because two reads 100ms apart are both stale while one write is pending.
+ */
+export async function savedPositions(page: Page): Promise<Record<string, string>> {
+  return page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return {};
+    const workspace = JSON.parse(raw) as {
+      activeProjectId: string;
+      projects: {
+        id: string;
+        ontology: { classes: { localName: string; position: { x: number; y: number } }[] };
+      }[];
+    };
+    const project = workspace.projects.find((one) => one.id === workspace.activeProjectId);
+    const out: Record<string, string> = {};
+    for (const entity of project?.ontology.classes ?? []) {
+      out[entity.localName] = `${Math.round(entity.position.x)},${Math.round(entity.position.y)}`;
+    }
+    return out;
+  }, STORAGE_KEY);
+}
