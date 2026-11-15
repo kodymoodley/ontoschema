@@ -42,6 +42,7 @@ export type { AnnotationTerm, AnnotationValueKind } from './terms';
 
 export {
   XSD_DATATYPES,
+  XSD_DATATYPE_GROUPS,
   DEFAULT_XSD_DATATYPE,
   xsdDatatypeIri,
   xsdDatatypeLabel,

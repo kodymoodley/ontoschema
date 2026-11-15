@@ -194,7 +194,11 @@ test('an example fills in every documentation field, on a class and on an attrib
   expect(await filled('Definition')).toContain('recorded');
 
   // An attribute too, which is where the volume of this is and where it was missing entirely.
-  await page.getByRole('button', { name: 'durationSeconds', exact: true }).click();
+  // The inspector's row; the class box on the canvas has a button of the same name.
+  await page
+    .getByRole('complementary', { name: 'Inspector' })
+    .getByRole('button', { name: 'durationSeconds', exact: true })
+    .click();
   await openSection(page, 'Documentation');
   for (const label of ['Label', 'Definition', 'Comment', 'Example']) {
     expect(await filled(label), `${label} was empty on the durationSeconds attribute`).not.toBe('');

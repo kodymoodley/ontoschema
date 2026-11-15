@@ -369,7 +369,8 @@ test.describe('on a phone', () => {
     await musicLibrary(page);
     await find(page, 'Track');
 
-    const name = page.getByRole('button', { name: 'durationSeconds', exact: true });
+    // The inspector's row; the class box on the canvas has a button of the same name.
+    const name = inspector(page).getByRole('button', { name: 'durationSeconds', exact: true });
     const cut = await name.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
     expect(cut, 'the name was truncated').toBe(false);
   });

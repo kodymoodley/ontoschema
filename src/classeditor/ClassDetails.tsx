@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { XSD_DATATYPES, xsdDatatypeLabel } from '../annotationvocabulary';
+import { xsdDatatypeLabel } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import {
   attributeUsagesOfClass,
@@ -16,6 +16,7 @@ import {
 } from '../ontologymodel';
 import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
+import { DatatypeOptions } from './DatatypeOptions';
 import styles from './details.module.css';
 
 /**
@@ -215,11 +216,7 @@ export function ClassDetails({ classId }: { classId: string }) {
             aria-label="New attribute range"
             onChange={(event) => setAttributeRange(event.target.value as XsdDatatype)}
           >
-            {XSD_DATATYPES.map((datatype) => (
-              <option key={datatype} value={datatype}>
-                {xsdDatatypeLabel(datatype)}
-              </option>
-            ))}
+            <DatatypeOptions />
           </Select>
           <Button
             onClick={addAttribute}

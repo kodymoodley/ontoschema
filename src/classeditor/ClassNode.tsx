@@ -2,10 +2,12 @@ import { Fragment, useState } from 'react';
 import { Handle, Position, useConnection } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeLabel } from '../annotationvocabulary';
+import type { XsdDatatype } from '../annotationvocabulary';
 import { nameProblem } from '../ontologymodel';
 import type { Attribute, NamedKind, OntologyClass } from '../ontologymodel';
 import { useDoubleTap } from '../designsystem';
 import { activeOntology, useProjectStore } from '../projectstore';
+import { DatatypeOptions } from './DatatypeOptions';
 import { InlineName } from './InlineName';
 import styles from './classeditor.module.css';
 
@@ -162,9 +164,13 @@ export function ClassNode({ data, selected }: NodeProps) {
 /**
  * One attribute inside a class box.
  *
- * A single click selects the property; a double-click renames it here rather than sending you
- * to the inspector. The gesture has to be stopped from reaching the node, which answers a
- * double-click by zooming — before this, double-clicking a row zoomed the canvas instead.
+ * Two controls side by side. The name: a single click selects the property, and a double-click
+ * renames it here rather than sending you to the inspector. The datatype: a click opens the list
+ * of types (`AttributeRange`). Two controls rather than one row-wide button, because a list
+ * cannot sit inside a button.
+ *
+ * The name's double-click has to be stopped from reaching the node, which answers a double-click
+ * by zooming — before this, double-clicking a row zoomed the canvas instead.
  *
  * Renaming reaches every class holding the property, because the property is one thing in a
  * shared pool. The field says so while it is open, since the other classes are usually not on
@@ -224,40 +230,91 @@ function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
   }
 
   return (
-    <button
-      type="button"
+    <div
       className={styles.attribute}
       data-attribute-name={row.property.localName}
       data-usage-id={row.usageId}
-      title={
-        shared ? `${row.property.localName} is also used on other classes` : row.property.localName
-      }
-      onClick={(event) => {
-        event.stopPropagation();
-        select({ kind: 'attribute', id: row.property.id });
-      }}
-      onDoubleClick={(event) => {
-        // The node zooms on a double-click; this one belongs to the row.
-        event.stopPropagation();
-        onEditingChange(true);
-      }}
-      ref={doubleTap}
-      onKeyDown={(event) => {
-        // F2 renames in place, the same convention as a file manager, so the gesture is not
-        // reachable only with a mouse.
-        if (event.key !== 'F2') return;
-        event.preventDefault();
-        onEditingChange(true);
-      }}
     >
-      <span className={styles.attributeMarker} aria-hidden="true" />
-      <span className={styles.attributeName}>{row.property.localName}</span>
-      {shared ? (
-        <span className={styles.sharedMark} aria-label="shared">
-          ↗
-        </span>
-      ) : null}
-      {range}
-    </button>
+      <button
+        type="button"
+        className={styles.attributeMain}
+        title={
+          shared
+            ? `${row.property.localName} is also used on other classes`
+            : row.property.localName
+        }
+        onClick={(event) => {
+          event.stopPropagation();
+          select({ kind: 'attribute', id: row.property.id });
+        }}
+        onDoubleClick={(event) => {
+          // The node zooms on a double-click; this one belongs to the row.
+          event.stopPropagation();
+          onEditingChange(true);
+        }}
+        ref={doubleTap}
+        onKeyDown={(event) => {
+          // F2 renames in place, the same convention as a file manager, so the gesture is not
+          // reachable only with a mouse.
+          if (event.key !== 'F2') return;
+          event.preventDefault();
+          onEditingChange(true);
+        }}
+      >
+        <span className={styles.attributeMarker} aria-hidden="true" />
+        <span className={styles.attributeName}>{row.property.localName}</span>
+        {shared ? (
+          <span className={styles.sharedMark} aria-label="shared">
+            ↗
+          </span>
+        ) : null}
+      </button>
+      <AttributeRange property={row.property} elsewhere={elsewhere} />
+    </div>
+  );
+}
+
+/**
+ * An attribute's datatype, changed where it is shown.
+ *
+ * It reads as the type it always did, small and monospaced, until it is pointed at or tabbed to,
+ * when a caret says it is a list. A click or a tap opens the browser's own list of types, the same
+ * grouped list the inspector offers, and choosing one is a single step to undo.
+ *
+ * The list is a native `<select>` laid invisibly over the text. A visible one is as wide as its
+ * longest option, `nonNegativeInteger`, on every row; the text underneath keeps the column only as
+ * wide as the type it names, and the list on top keeps the keyboard, screen readers and a phone's
+ * own picker working.
+ *
+ * Changing it selects nothing. Selecting would open the inspector, and the canvas would shift
+ * while the list was open, moving the box out from under it. `nodrag` keeps a press on it from
+ * dragging the class, which on a touch screen would also stop the list from opening at all.
+ */
+function AttributeRange({ property, elsewhere }: { property: Attribute; elsewhere: number }) {
+  const setRange = useProjectStore((state) => state.setAttributeRange);
+  return (
+    <label className={styles.attributeRange}>
+      <span className={styles.attributeRangeText}>{xsdDatatypeLabel(property.range)}</span>
+      <span className={styles.attributeRangeCaret} aria-hidden="true">
+        ▾
+      </span>
+      <select
+        className={`${styles.attributeRangePicker} nodrag`}
+        value={property.range}
+        aria-label={`Type of ${property.localName}`}
+        // The type belongs to the attribute, so it changes wherever the attribute is used; the
+        // other classes are usually not on screen to be seen changing.
+        title={
+          elsewhere > 0
+            ? `Also changes the type on ${elsewhere} other ${elsewhere === 1 ? 'class' : 'classes'}`
+            : 'Change the type'
+        }
+        onChange={(event) => setRange(property.id, event.target.value as XsdDatatype)}
+        onClick={(event) => event.stopPropagation()}
+        onDoubleClick={(event) => event.stopPropagation()}
+      >
+        <DatatypeOptions />
+      </select>
+    </label>
   );
 }

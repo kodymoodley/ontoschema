@@ -1,17 +1,61 @@
 import { NAMESPACES } from './namespaces';
 
-/** The xsd datatypes offered as ranges for datatype properties. */
-export const XSD_DATATYPES = [
-  'string',
-  'integer',
-  'decimal',
-  'date',
-  'dateTime',
-  'boolean',
-  'anyURI',
+/**
+ * The xsd datatypes an attribute can have: every one that RDF recommends, grouped as RDF does.
+ *
+ * Taken from the table in RDF 1.1 Concepts, section 5.1 ("The XML Schema Built-in Datatypes"),
+ * in its order and under its headings, a little shortened to fit a dropdown, so the list can be
+ * checked against the spec line by line.
+ * The spec says the other built-in types should not be used in RDF -- `QName` and `ENTITY` need
+ * an XML document around them, `ID` and `IDREF` point within one, `NOTATION` is not for direct
+ * use, and `IDREFS`, `ENTITIES` and `NMTOKENS` are lists -- so they are not offered, and a file
+ * that uses one has it rewritten to `string` on opening, as with any other range not offered.
+ */
+export const XSD_DATATYPE_GROUPS = [
+  { label: 'Core types', datatypes: ['string', 'boolean', 'decimal', 'integer'] },
+  { label: 'Floating-point numbers', datatypes: ['double', 'float'] },
+  { label: 'Time and date', datatypes: ['date', 'time', 'dateTime', 'dateTimeStamp'] },
+  {
+    label: 'Recurring and partial dates',
+    datatypes: [
+      'gYear',
+      'gMonth',
+      'gDay',
+      'gYearMonth',
+      'gMonthDay',
+      'duration',
+      'yearMonthDuration',
+      'dayTimeDuration',
+    ],
+  },
+  {
+    label: 'Limited-range integers',
+    datatypes: [
+      'byte',
+      'short',
+      'int',
+      'long',
+      'unsignedByte',
+      'unsignedShort',
+      'unsignedInt',
+      'unsignedLong',
+      'positiveInteger',
+      'nonNegativeInteger',
+      'negativeInteger',
+      'nonPositiveInteger',
+    ],
+  },
+  { label: 'Encoded binary data', datatypes: ['hexBinary', 'base64Binary'] },
+  {
+    label: 'Miscellaneous',
+    datatypes: ['anyURI', 'language', 'normalizedString', 'token', 'NMTOKEN', 'Name', 'NCName'],
+  },
 ] as const;
 
-export type XsdDatatype = (typeof XSD_DATATYPES)[number];
+/** Every datatype offered, in the order the groups list them. */
+export const XSD_DATATYPES = XSD_DATATYPE_GROUPS.flatMap((group) => group.datatypes);
+
+export type XsdDatatype = (typeof XSD_DATATYPE_GROUPS)[number]['datatypes'][number];
 
 export const DEFAULT_XSD_DATATYPE: XsdDatatype = 'string';
 

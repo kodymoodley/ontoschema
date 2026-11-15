@@ -289,3 +289,58 @@ describe('renaming an attribute in place', () => {
     expect(screen.getByText('↗ 1 more')).toBeInTheDocument();
   });
 });
+
+describe('changing an attribute’s type on the class box', () => {
+  const picker = (name: string) => screen.getByRole('combobox', { name: `Type of ${name}` });
+
+  it('changes the type where it is shown, as one step, selecting nothing', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+    const before = store().history.past.length;
+
+    await user.selectOptions(picker('year'), 'gYear');
+
+    expect(ontology().attributes.find((entity) => entity.localName === 'year')?.range).toBe(
+      'gYear',
+    );
+    expect(store().history.past).toHaveLength(before + 1);
+    // Selecting would open the inspector and shift the canvas under the open list.
+    expect(store().selection).toBeNull();
+    expect(store().focusRequest).toBeNull();
+  });
+
+  it('offers every datatype, grouped, with the current one chosen', () => {
+    const car = seed();
+    renderNode(car);
+
+    const list = picker('make');
+    expect(list).toHaveValue('string');
+    expect(list.querySelectorAll('optgroup')).toHaveLength(7);
+    expect(list.querySelectorAll('option')).toHaveLength(39);
+  });
+
+  it('says how many other classes the change reaches when the attribute is shared', () => {
+    const car = seed();
+    const van = store().createClass({ localName: 'Van' });
+    const lorry = store().createClass({ localName: 'Lorry' });
+    const make = ontology().attributes[0]!.id;
+    store().attachPropertyToClass(make, van);
+    store().attachPropertyToClass(make, lorry);
+    renderNode(car);
+
+    expect(picker('make')).toHaveAttribute('title', 'Also changes the type on 2 other classes');
+    expect(picker('year')).toHaveAttribute('title', 'Change the type');
+  });
+
+  it('offers no list in a row whose name is being edited, so a row has one editor at a time', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+
+    await user.dblClick(screen.getByText('make'));
+
+    expect(screen.queryByRole('combobox', { name: 'Type of make' })).not.toBeInTheDocument();
+    expect(picker('year')).toBeInTheDocument();
+  });
+});
