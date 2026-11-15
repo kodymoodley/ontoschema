@@ -149,8 +149,8 @@ export function createAvoidRouter(avoid: AvoidApi): AvoidRouter {
   /*
    * Off, and it is the setting that decides whether this is usable on a crowded schema. The
    * pre-pass lines up segments before they are spaced apart, and its cost climbs steeply as lines
-   * crowd together: on 60 classes joined by 132 relations it took routing from 32 ms to over a
-   * second. The spacing still happens without it.
+   * crowd together: 60 classes joined by 132 relations, routed between plain end points, took over
+   * a second with it and 32 ms without. The spacing still happens without it.
    */
   router.setRoutingOption(avoid.RoutingOption.performUnifyingNudgingPreprocessingStep, false);
 

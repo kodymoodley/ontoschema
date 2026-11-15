@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
@@ -10,6 +11,22 @@ import react from '@vitejs/plugin-react';
  */
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: [
+      /*
+       * libavoid's WebAssembly, by a name the routing worker can import. The package exports only
+       * its JavaScript, and that looks for the binary under its original file name, which the
+       * build fingerprints; so the worker imports this with `?url` and hands libavoid the real one.
+       * A pattern rather than a name, so the `?url` after it is kept.
+       */
+      {
+        find: /^libavoid-js\/libavoid\.wasm/,
+        replacement: fileURLToPath(
+          new URL('./node_modules/libavoid-js/dist/libavoid.wasm', import.meta.url),
+        ),
+      },
+    ],
+  },
   server: { port: 5173 },
   /*
    * Relative asset URLs, so one build works wherever it is served from. GitHub Pages puts a

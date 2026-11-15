@@ -89,6 +89,12 @@ export interface RelationEdgeData extends Record<string, unknown> {
    * everything, and down into the other. Absent on the schema canvas, which routes its own.
    */
   route?: { path: string; label: { x: number; y: number } };
+  /**
+   * The schema canvas's route around the classes, from libavoid: corners from the first end to
+   * the second. The edge fits its ends to where it is drawn; see `useAvoidedEdges`. Absent until
+   * the router has answered, when the edge is drawn as a plain step.
+   */
+  detour?: { x: number; y: number }[];
 }
 
 /* ------------------------------------------------------------ schema view */
