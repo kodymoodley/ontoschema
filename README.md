@@ -164,8 +164,9 @@ you are already working on is left alone.
    (string), `model` (string), `year` (integer), `engine` (string), `price` (decimal). They appear as
    typed rows inside the class box. (Dragging **Attribute** from the palette onto a class does the
    same; onto empty canvas it is refused, because an attribute has to belong to a class.)
-3. Drag from the dot on `Car`'s right edge to the dot on `Dealership`'s left edge, then pick which
-   relation this is — an existing one, or a new one called `offeredBy`.
+3. Drag from the dot on `Car`'s right edge onto `Dealership`, then say which relation this is: the
+   dialog lists the relations there are and narrows as you type, so pick one, or type `offeredBy`
+   and press **+ New**.
 4. Under **Documentation**, fill in **Label** twice, with language `en` and `nl`. Every other term
    in the vocabulary is under **Other properties**, and **Show RDF terms** names the term each box
    writes.
