@@ -9,8 +9,8 @@ import type { Direction } from './layeredlayout';
 /**
  * The Shuffle button and the one that turns the layout on its side, as a hook for the toolbar.
  *
- * A press works out a new layout in the background (`backgroundshuffle`), glides the classes
- * there, then commits the new places as one step, so a single undo puts back what was there.
+ * A press works out a new layout in the background (`backgroundshuffle`), then commits the new
+ * places as one step, so a single undo puts back what was there, and glides the classes there.
  *
  * Top to bottom unless turned. The turn is remembered in this browser, like the theme: it is how
  * this person likes to read a schema, not part of the schema.
@@ -50,10 +50,11 @@ export function useShuffle() {
           budgetMs: BUDGET_MS,
         });
         if (!result.changed) return;
-        await glideClasses(result.positions);
-        placeClassesById(result.positions);
-        // As Tidy up does: the new layout is a different shape, and the camera follows it.
-        window.setTimeout(frameAll, 0);
+        await glideClasses(() => {
+          placeClassesById(result.positions);
+          // As Tidy up does: the new layout is a different shape, and the camera follows it.
+          window.setTimeout(frameAll, 0);
+        });
       } finally {
         running.current = false;
         setBusy(false);

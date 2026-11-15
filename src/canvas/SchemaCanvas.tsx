@@ -126,8 +126,8 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes, connectionLine }: SchemaCanva
   const [nodes, setNodes, onNodesChange] = useNodesState(derivedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(derivedEdges);
   const [adopted, setAdopted] = useState({ nodes: derivedNodes, edges: derivedEdges });
-  // A shuffle glides the classes to their new places before committing them; see `glide`.
-  useProvideGlide(setNodes);
+  // A shuffle glides the classes to their new places; see `glide`.
+  useProvideGlide(surface);
 
   const selectedId = selection?.id ?? null;
 

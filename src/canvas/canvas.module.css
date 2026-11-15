@@ -335,3 +335,22 @@
   outline: 2px dashed var(--accent-attribute);
   outline-offset: 3px;
 }
+
+/*
+ * A shuffle landing (see `glide.ts`): each class slides from where it was drawn to where it now
+ * is, and the lines, which cannot slide with them, wait out of sight until the classes arrive.
+ * The duration matches `GLIDE_MS`.
+ */
+.canvas[data-gliding] :global(.react-flow__node) {
+  transition: transform 450ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.canvas :global(.react-flow__edges),
+.canvas :global(.react-flow__edgelabel-renderer) {
+  transition: opacity 150ms ease;
+}
+
+.canvas[data-gliding] :global(.react-flow__edges),
+.canvas[data-gliding] :global(.react-flow__edgelabel-renderer) {
+  opacity: 0;
+}
