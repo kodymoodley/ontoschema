@@ -146,3 +146,76 @@
 .dragging {
   opacity: 0.5;
 }
+
+/* A relation hidden on the canvas: still listed, so it can be found and shown again, but quieter. */
+.rowHidden .label {
+  color: var(--text-tertiary);
+}
+
+/*
+ * The eye that hides a relation, at the end of its row. Not drawn until it is wanted: it fades in
+ * a moment after the pointer arrives, so running down the list does not make every row flicker,
+ * and out as soon as it leaves. Kept in the layout while invisible, so the row does not shift.
+ */
+.eye {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.eye:hover {
+  color: var(--accent-relation);
+  background: var(--surface-base);
+}
+
+.eye:disabled {
+  cursor: default;
+  color: var(--text-tertiary);
+  background: none;
+}
+
+/* Pointing at the row, with something that can point. */
+@media (hover: hover) {
+  .row:hover .eye {
+    opacity: 1;
+    pointer-events: auto;
+    transition-delay: 150ms;
+  }
+}
+
+/* Where nothing can be pointed at, the selected row stands in for the pointed-at one. */
+@media (hover: none) {
+  .rowSelected .eye {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* From the keyboard: the focused row shows its eye, and so does the eye itself once tabbed to. */
+.row:focus-visible .eye,
+.eye:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eye {
+    transition: none;
+  }
+
+  .row:hover .eye {
+    transition-delay: 0s;
+  }
+}

@@ -12,12 +12,15 @@ import type { Relation, OntologyClass, TaxonomyNode } from '../ontologymodel';
 import {
   DRAG_MIME,
   encodeDragPayload,
+  setRelationHidden,
+  useActiveProjectId,
+  useHiddenRelations,
   useOntology,
   useProjectStore,
   useSelection,
 } from '../projectstore';
 import { Button, DeleteIcon, EmptyState, Tabs } from '../designsystem';
-import { AddChildIcon, AddRootIcon } from './icons';
+import { AddChildIcon, AddRootIcon, EyeIcon, EyeOffIcon } from './icons';
 import styles from './taxonomytree.module.css';
 
 /**
@@ -63,6 +66,8 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'relations' }) {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   const select = useProjectStore((state) => state.select);
+  const projectId = useActiveProjectId();
+  const { chosen, hidden } = useHiddenRelations(ontology, projectId);
   const createClass = useProjectStore((state) => state.createClass);
   const createRelation = useProjectStore((state) => state.createRelation);
   const reparentClass = useProjectStore((state) => state.reparentClass);
@@ -130,6 +135,9 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'relations' }) {
     const isCollapsed = collapsed.has(entity.id);
     const isSelected = selection?.kind === selectableKind && selection.id === entity.id;
     const uses = isClasses ? null : usagesOfProperty(ontology, entity.id).length;
+    // Hidden by its own eye, or with a relation above it, whose eye is the one to press.
+    const isHidden = !isClasses && hidden.has(entity.id);
+    const hiddenWithParent = isHidden && !chosen.has(entity.id);
 
     return (
       <div className={styles.node} key={`${entity.id}:${node.depth}`}>
@@ -139,6 +147,7 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'relations' }) {
             isSelected ? styles.rowSelected : '',
             dropTarget === entity.id ? styles.rowDropTarget : '',
             dragging === entity.id ? styles.dragging : '',
+            isHidden ? styles.rowHidden : '',
           ]
             .filter(Boolean)
             .join(' ')}
@@ -147,6 +156,7 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'relations' }) {
           aria-expanded={children.length > 0 ? !isCollapsed : undefined}
           tabIndex={0}
           data-tree-item={entity.localName}
+          data-hidden={isHidden || undefined}
           draggable
           onClick={() => select({ kind: selectableKind, id: entity.id })}
           onKeyDown={(event) => {
@@ -203,6 +213,42 @@ function HierarchyFor({ kind }: { kind: 'classes' | 'relations' }) {
             </span>
           ) : null}
           {children.length > 0 ? <span className={styles.count}>{children.length}</span> : null}
+          {/*
+            Drawn only on the row being pointed at, focused, or -- on a touch screen -- selected,
+            so the list is as clean as it was until an eye is wanted. A hidden row is dimmed
+            instead, so the list still says what is hidden while no eye is showing.
+          */}
+          {!isClasses && projectId ? (
+            <button
+              type="button"
+              className={styles.eye}
+              aria-pressed={isHidden}
+              aria-label={
+                hiddenWithParent
+                  ? `${entity.localName} is hidden with the relation above it`
+                  : isHidden
+                    ? `Show ${entity.localName}`
+                    : `Hide ${entity.localName}`
+              }
+              title={
+                hiddenWithParent
+                  ? 'Hidden with the relation above it'
+                  : isHidden
+                    ? 'Show on the canvas'
+                    : 'Hide on the canvas'
+              }
+              disabled={hiddenWithParent}
+              draggable={false}
+              onClick={(event) => {
+                // Hiding is not choosing: the row stays as selected, or not, as it was.
+                event.stopPropagation();
+                setRelationHidden(projectId, entity.id, !isHidden);
+              }}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              {isHidden ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+          ) : null}
         </div>
 
         {children.length > 0 && !isCollapsed ? (
