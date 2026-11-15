@@ -6,6 +6,7 @@ export { UNTITLED } from './workspace';
 
 export { createPreference } from './preference';
 export { toggleShowTerms, useShowTerms } from './showterms';
+export { setRelationHidden, showAllRelations, useHiddenRelations } from './hiddenrelations';
 export type { Preference } from './preference';
 
 export { useProjectStore, activeOntology } from './store';

@@ -66,6 +66,7 @@ export {
   classWithDescendants,
   attributeList,
   relationForest,
+  relationsAtOrBelow,
   rootClasses,
   subClassEdges,
   taxonomyModules,

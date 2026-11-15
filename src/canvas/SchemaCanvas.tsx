@@ -23,6 +23,8 @@ import '@xyflow/react/dist/style.css';
 import {
   DRAG_MIME,
   decodeDragPayload,
+  useActiveProjectId,
+  useHiddenRelations,
   useOntology,
   useProjectStore,
   useSelection,
@@ -117,7 +119,8 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes, connectionLine }: SchemaCanva
    * and multi-click gestures survive.
    */
   const derivedNodes = useMemo(() => schemaNodes(ontology), [ontology]);
-  const derivedEdges = useMemo(() => schemaEdges(ontology), [ontology]);
+  const { hidden } = useHiddenRelations(ontology, useActiveProjectId());
+  const derivedEdges = useMemo(() => schemaEdges(ontology, hidden), [ontology, hidden]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(derivedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(derivedEdges);

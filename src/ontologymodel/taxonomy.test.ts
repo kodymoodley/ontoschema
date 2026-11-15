@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { buildAutoOntology } from '../../tests/fixtures/autoOntology';
-import { addClass, addAttribute, addSubClassOf, setSuperRelation } from './mutations';
+import { addClass, addAttribute, addRelation, addSubClassOf, setSuperRelation } from './mutations';
+import { createEmptyOntology } from './ontology';
 import {
   canSubclass,
   classForest,
   classWithDescendants,
   attributeList,
   relationForest,
+  relationsAtOrBelow,
   rootClasses,
   subClassEdges,
   taxonomyModules,
@@ -190,5 +192,39 @@ describe('attribute pool', () => {
     const { ontology } = buildAutoOntology();
     const added = addAttribute(ontology, { localName: 'vin' });
     expect(attributeList(added.ontology).map((p) => p.localName)).toContain('vin');
+  });
+});
+
+describe('relationsAtOrBelow', () => {
+  /* participant > driver > chauffeur, with passenger beside driver. */
+  function family() {
+    let ontology = createEmptyOntology();
+    const add = (localName: string, parent?: string) => {
+      const created = addRelation(ontology, { localName });
+      ontology = parent ? setSuperRelation(created.ontology, created.id, parent) : created.ontology;
+      return created.id;
+    };
+    const participant = add('hasParticipant');
+    const driver = add('hasDriver', participant);
+    const chauffeur = add('hasChauffeur', driver);
+    const passenger = add('hasPassenger', participant);
+    const owner = add('hasOwner');
+    return { ontology, ids: { participant, driver, chauffeur, passenger, owner } };
+  }
+
+  it('takes a relation and every relation under it, at any depth', () => {
+    const { ontology, ids } = family();
+    expect(relationsAtOrBelow(ontology, [ids.driver])).toEqual(
+      new Set([ids.driver, ids.chauffeur]),
+    );
+    expect(relationsAtOrBelow(ontology, [ids.participant])).toEqual(
+      new Set([ids.participant, ids.driver, ids.chauffeur, ids.passenger]),
+    );
+  });
+
+  it('leaves out relations that no longer exist, and takes nothing for nothing', () => {
+    const { ontology, ids } = family();
+    expect(relationsAtOrBelow(ontology, ['gone', ids.owner])).toEqual(new Set([ids.owner]));
+    expect(relationsAtOrBelow(ontology, [])).toEqual(new Set());
   });
 });
