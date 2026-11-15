@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { openApp, settledViewport } from './ontoschema';
-import { STORAGE_KEY } from '../../src/projectstore';
+import { savedPositions } from './seedWorkspace';
 
 /**
  * Laying the schema out when nobody has.
@@ -61,39 +61,6 @@ const collisions = (found: Awaited<ReturnType<typeof boxes>>) =>
     .map(([a, b]) => `${a.name}/${b.name}`);
 
 /**
- * Where the classes are in the model, read back out of the persisted workspace.
- *
- * Not from the screen. Arranging frames the camera on the new drawing, so a screen coordinate
- * after an arrange is a fact about the camera as much as about the layout — which is exactly
- * what the two tests below must not measure. Overlap is safe to read from the screen because
- * pan and zoom apply to every box equally; a coordinate is not.
- *
- * The workspace is written on a queue with a 500ms debounce, so a read taken straight after a
- * gesture is usually still showing the state before it. Every caller below waits for the value
- * it expects rather than for the writing to stop — waiting for it to stop is not enough at this
- * sampling rate, because two reads 100ms apart are both stale while one write is pending.
- */
-async function placed(page: Page): Promise<Record<string, string>> {
-  return page.evaluate((key) => {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return {};
-    const workspace = JSON.parse(raw) as {
-      activeProjectId: string;
-      projects: {
-        id: string;
-        ontology: { classes: { localName: string; position: { x: number; y: number } }[] };
-      }[];
-    };
-    const project = workspace.projects.find((one) => one.id === workspace.activeProjectId);
-    const out: Record<string, string> = {};
-    for (const entity of project?.ontology.classes ?? []) {
-      out[entity.localName] = `${Math.round(entity.position.x)},${Math.round(entity.position.y)}`;
-    }
-    return out;
-  }, STORAGE_KEY);
-}
-
-/**
  * The saved positions, once they are a real arrangement rather than the pile an import starts
  * as. Distinctness is the tell, and it is the property the unit tests hold the layout to.
  */
@@ -101,13 +68,13 @@ async function arranged(page: Page): Promise<Record<string, string>> {
   await expect
     .poll(
       async () => {
-        const at = Object.values(await placed(page));
+        const at = Object.values(await savedPositions(page));
         return at.length > 0 && new Set(at).size === at.length;
       },
       { message: 'the saved workspace never took an arrangement' },
     )
     .toBe(true);
-  return placed(page);
+  return savedPositions(page);
 }
 
 /** Drags a class by its header, the way the other canvas tests do. */
@@ -210,10 +177,10 @@ test('gives the same arrangement every time it is pressed', async ({ page }) => 
   expect(Object.keys(once)).toHaveLength(CLASS_NAMES.length);
 
   await dragBy(page, 'Book', 180, 120);
-  await expect.poll(async () => (await placed(page))['Book']).not.toBe(once['Book']);
+  await expect.poll(async () => (await savedPositions(page))['Book']).not.toBe(once['Book']);
 
   await page.getByTestId('arrange').click();
-  await expect.poll(() => placed(page)).toEqual(once);
+  await expect.poll(() => savedPositions(page)).toEqual(once);
 });
 
 test('is one undo away, unlike the arrangement an import arrives with', async ({ page }) => {
@@ -227,11 +194,11 @@ test('is one undo away, unlike the arrangement an import arrives with', async ({
 
   // Move it somewhere of its own, then tidy, then take the tidy back.
   await dragBy(page, 'Book', 260, 190);
-  await expect.poll(async () => (await placed(page))['Book']).not.toBe(tidy);
-  const dragged = (await placed(page))['Book'];
+  await expect.poll(async () => (await savedPositions(page))['Book']).not.toBe(tidy);
+  const dragged = (await savedPositions(page))['Book'];
 
   await page.getByTestId('arrange').click();
-  await expect.poll(async () => (await placed(page))['Book']).toBe(tidy);
+  await expect.poll(async () => (await savedPositions(page))['Book']).toBe(tidy);
 
   /*
    * The arrangement an import arrives with is not in the history -- an undo that puts every
@@ -239,7 +206,7 @@ test('is one undo away, unlike the arrangement an import arrives with', async ({
    * the button press and nothing else.
    */
   await page.keyboard.press('Control+z');
-  await expect.poll(async () => (await placed(page))['Book']).toBe(dragged);
+  await expect.poll(async () => (await savedPositions(page))['Book']).toBe(dragged);
 });
 
 test('offers the button on the schema view only', async ({ page }) => {

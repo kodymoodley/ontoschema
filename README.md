@@ -192,6 +192,14 @@ the row stays in the list, dimmed. The status bar then reads `11 relations · 3 
 that shows them all again. Hiding belongs to this browser, per project: it changes nothing in the
 schema, its files or its undo history. Drawing a line with a hidden relation shows it again.
 
+To lay the schema out afresh, the canvas toolbar has two buttons. **Tidy up** (`Shift`+`A`) ranks
+the classes left to right along their relations and gives the same layout every time. **Shuffle**
+(`Shift`+`S`) gives a different one on every press. It tries a dozen or so layouts in the
+background, keeps the one with the fewest lines crossing each other or running through classes, and
+never picks one that scores worse than Tidy up would. The classes glide to their new places, and one
+undo puts them back. Shuffle lays the schema out top to bottom; the button beside it turns that to
+left to right and back, and this browser remembers which. On a phone it stays top to bottom.
+
 ### Gestures on the canvas
 
 | Gesture                                        | What it does                                                       |
@@ -248,15 +256,16 @@ Runtime dependencies are kept to seven. Everything else is a dev tool.
 
 ### Runtime
 
-| Library                      | The specific job it does here                                                                                                                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `react` + `react-dom`        | Renders the whole UI.                                                                                                                                                                                                           |
-| `@xyflow/react` (React Flow) | The canvas engine behind `canvas/`: pan, zoom, marquee select, node dragging, handle-to-handle connection gestures, and custom node/edge renderers. It replaces roughly two thousand lines of hand-rolled SVG interaction code. |
-| `zustand`                    | The app-state container in `projectstore/`. Holds the project list, the active ontology, the current selection, and the undo/redo stack, and notifies React on change.                                                          |
-| `n3`                         | Writes Turtle in `serialization/turtle.ts` — prefix folding, literal forms and escaping. Also used as the Turtle **parser** in the test suites.                                                                                 |
-| `@dagrejs/dagre`             | Lays out each taxonomy module in `canvas/layout.ts`. Used rather than a simple tree walk because a class may have two superclasses inside one module, making it a DAG that dagre ranks and centres correctly.                   |
-| `browser-fs-access`          | The file pickers in `filelink/` that hand back a handle on the file, so a schema can be saved into the file it came from. From Google Chrome Labs, and what Excalidraw uses.                                                    |
-| `idb-keyval`                 | Keeps those file handles in IndexedDB, so a linked file stays linked across a reload.                                                                                                                                           |
+| Library                      | The specific job it does here                                                                                                                                                                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `react` + `react-dom`        | Renders the whole UI.                                                                                                                                                                                                                                                                   |
+| `@xyflow/react` (React Flow) | The canvas engine behind `canvas/`: pan, zoom, marquee select, node dragging, handle-to-handle connection gestures, and custom node/edge renderers. It replaces roughly two thousand lines of hand-rolled SVG interaction code.                                                         |
+| `zustand`                    | The app-state container in `projectstore/`. Holds the project list, the active ontology, the current selection, and the undo/redo stack, and notifies React on change.                                                                                                                  |
+| `n3`                         | Writes Turtle in `serialization/turtle.ts` — prefix folding, literal forms and escaping. Also used as the Turtle **parser** in the test suites.                                                                                                                                         |
+| `@dagrejs/dagre`             | Lays out each taxonomy module in `canvas/layout.ts`, and the schema view for Tidy up and Shuffle in `canvas/layeredlayout.ts`. Used rather than a simple tree walk because a class may have two superclasses inside one module, making it a DAG that dagre ranks and centres correctly. |
+| `d3-dag`                     | Shuffle's second layout engine, in `canvas/d3daglayout.ts`. It untangles schemas of the size people draw that dagre leaves crossed. It runs only in the shuffle's Web Worker, which loads on the first press, so it is not in the bundle the app opens with.                            |
+| `browser-fs-access`          | The file pickers in `filelink/` that hand back a handle on the file, so a schema can be saved into the file it came from. From Google Chrome Labs, and what Excalidraw uses.                                                                                                            |
+| `idb-keyval`                 | Keeps those file handles in IndexedDB, so a linked file stays linked across a reload.                                                                                                                                                                                                   |
 
 **No CSS framework.** Styling is plain CSS Modules (built into Vite, zero dependencies) over a
 design-token layer in `designsystem/tokens.css`, with a system font stack so nothing is fetched from

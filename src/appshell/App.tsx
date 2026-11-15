@@ -8,6 +8,7 @@ import {
   frameAll,
   unplaced,
   usePaletteCreate,
+  useShuffle,
 } from '../canvas';
 import { HierarchyTree } from '../taxonomytree';
 import { ProjectNameField, ProjectSwitcher, SaveStatus } from '../projectswitcher';
@@ -53,6 +54,8 @@ import {
   PanelsBackIcon,
   RedoIcon,
   SearchIcon,
+  ShuffleIcon,
+  TurnLayoutIcon,
   UndoIcon,
 } from './icons';
 import styles from './appshell.module.css';
@@ -173,6 +176,9 @@ export function App() {
     // camera has to follow it. After the state has been committed, not with it.
     window.setTimeout(frameAll, 0);
   };
+  // Tidy up's restless sibling: a different layout each press, and never a worse one.
+  const shuffler = useShuffle();
+  const turnLabel = shuffler.direction === 'TB' ? 'Shuffle left to right' : 'Shuffle top to bottom';
 
   /*
    * A file written anywhere but here has no `ontoschema:position` on its classes, so every class
@@ -260,6 +266,7 @@ export function App() {
     find: () => finding.setOpen(true),
     frame: toggleBothPanels,
     arrange: view === 'schema' ? arrange : null,
+    shuffle: view === 'schema' ? shuffler.shuffle : null,
   });
 
   const attributeCount = ontology.attributes.length;
@@ -462,6 +469,39 @@ export function App() {
                 <ArrangeIcon />
               </Button>
             ) : null}
+            {view === 'schema' ? (
+              <>
+                <Button
+                  size="small"
+                  variant="subtle"
+                  iconOnly
+                  onClick={shuffler.shuffle}
+                  aria-label="Shuffle the layout"
+                  title="Shuffle the layout (Shift+S)"
+                  aria-busy={shuffler.busy}
+                  className={shuffler.busy ? styles.busy : undefined}
+                  data-testid="shuffle"
+                >
+                  <ShuffleIcon />
+                </Button>
+                {/*
+                  Turns the ranks the other way and shuffles: top to bottom by default, left to
+                  right when turned. Named for what pressing it does, the opposite of what shows.
+                */}
+                <Button
+                  size="small"
+                  variant="subtle"
+                  iconOnly
+                  onClick={shuffler.turn}
+                  aria-label={turnLabel}
+                  title={turnLabel}
+                  className={styles.turnLayout}
+                  data-testid="turn-layout"
+                >
+                  <TurnLayoutIcon />
+                </Button>
+              </>
+            ) : null}
             <Button
               size="small"
               variant="subtle"
@@ -643,8 +683,9 @@ function useGlobalShortcuts(actions: {
   find: () => void;
   frame: () => void;
   arrange: (() => void) | null;
+  shuffle: (() => void) | null;
 }) {
-  const { undo, redo, save, deleteSelection, find, frame, arrange } = actions;
+  const { undo, redo, save, deleteSelection, find, frame, arrange, shuffle } = actions;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -713,6 +754,19 @@ function useGlobalShortcuts(actions: {
         arrange();
         return;
       }
+      // Shift+S, beside Shift+A: the same family, and the same absence on the taxonomy view.
+      if (
+        shuffle !== null &&
+        event.shiftKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        event.key.toLowerCase() === 's'
+      ) {
+        if (typing) return;
+        event.preventDefault();
+        shuffle();
+        return;
+      }
       if ((event.key === 'Delete' || event.key === 'Backspace') && !typing) {
         event.preventDefault();
         deleteSelection();
@@ -721,5 +775,5 @@ function useGlobalShortcuts(actions: {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, save, deleteSelection, find, frame, arrange]);
+  }, [undo, redo, save, deleteSelection, find, frame, arrange, shuffle]);
 }

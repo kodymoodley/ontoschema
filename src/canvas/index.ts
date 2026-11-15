@@ -19,3 +19,4 @@ export type {
 export { layoutTaxonomyModule, nextFreePosition } from './layout';
 export { frameAll } from './framing';
 export { arrangeSchema, unplaced } from './arrange';
+export { useShuffle } from './useShuffle';

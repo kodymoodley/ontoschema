@@ -171,6 +171,32 @@ export function PanelsBackIcon() {
   return <PanelsAsideGlyph inward />;
 }
 
+/** Shuffle the layout: two paths that cross and come out the other way round. */
+export function ShuffleIcon() {
+  return (
+    <svg {...common}>
+      <path d="M1.75 4.5h2.5c3.5 0 4 7 7.5 7h2.5" />
+      <path d="M1.75 11.5h2.5c1.4 0 2.3-1.1 3-2.4" />
+      <path d="M9.4 6.4c.6-1 1.3-1.9 2.35-1.9h2.5" />
+      <path d="m12.5 2.75 1.75 1.75-1.75 1.75" />
+      <path d="m12.5 9.75 1.75 1.75-1.75 1.75" />
+    </svg>
+  );
+}
+
+/**
+ * Turn the layout on its side: an arrow bending a quarter turn, as the ranks do. Not a full
+ * circle, which beside Shuffle would read as reload.
+ */
+export function TurnLayoutIcon() {
+  return (
+    <svg {...common}>
+      <path d="M2.5 3.75h4a5.25 5.25 0 0 1 5.25 5.25v4.25" />
+      <path d="m9.5 11 2.25 2.25L14 11" />
+    </svg>
+  );
+}
+
 /**
  * Tidy the schema: three boxes in ranks with a line running through them, which is what the
  * arrangement produces. Not a magic wand and not a pair of arrows — this button rearranges

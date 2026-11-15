@@ -44,6 +44,7 @@ import { CLASS_NODE_WIDTH, focusZoom, nextFreePosition, sideOfHandle } from './l
 import { provideViewCentre, viewCentre } from './viewcentre';
 import { provideFraming } from './framing';
 import { useFramingCorrection } from './framingcorrection';
+import { useProvideGlide } from './glide';
 
 /** How far the viewport may be pushed, including by a focus request. */
 const MIN_ZOOM = 0.2;
@@ -125,6 +126,8 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes, connectionLine }: SchemaCanva
   const [nodes, setNodes, onNodesChange] = useNodesState(derivedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(derivedEdges);
   const [adopted, setAdopted] = useState({ nodes: derivedNodes, edges: derivedEdges });
+  // A shuffle glides the classes to their new places; see `glide`.
+  useProvideGlide(surface);
 
   const selectedId = selection?.id ?? null;
 
