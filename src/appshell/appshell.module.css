@@ -517,3 +517,31 @@
   color: var(--accent-relation);
   text-decoration-style: solid;
 }
+
+/* A shuffle working in the background: the button's icon breathes until the classes move. */
+.busy svg {
+  animation: busy-breathe 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes busy-breathe {
+  to {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .busy svg {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
+/*
+ * Not on a phone. Its toolbar has room for the view tabs and six icons, not seven, and a portrait
+ * screen is what top to bottom suits anyway. Shuffle still follows a turn made earlier.
+ */
+@media (max-width: 480px) {
+  .turnLayout {
+    display: none;
+  }
+}
