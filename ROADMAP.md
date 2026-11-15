@@ -48,13 +48,10 @@ a schema opened from a git repository saves itself into its file, so editing end
 place_). Drawing a relation now lands anywhere on a class, and the side a line meets can be
 pinned and is saved (todo 39; see the README's _Gestures on the canvas_). A name typed that a
 term already has is reused or refused, never numbered (todo 41). A relation's lines can be hidden
-from its row in the entities panel and shown again from the status bar (todo 38). What is left is
-the item that has to be measured before it can be designed:
-
-1. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
-   tidy layout, fanned out left to right or top to bottom, and animates the classes there. A
-   different arrangement on every press, none of them worse than _Tidy up_. The engine is chosen
-   by benchmark, and this reverses the earlier decision to keep the layout button deterministic.
+from its row in the entities panel and shown again from the status bar (todo 38). Shuffle lays
+the schema out afresh on every press, never worse than _Tidy up_ (todo 40; the benchmark is under
+[Canvas and readability](#canvas-and-readability)). That finishes the wishlist. Its one leftover,
+routing lines around classes, is filed as todo 46 and waits to be ranked.
 
 **Parked by the owner** on 2026-11-02, in favour of the list above. None is a commitment until it
 appears there again:
@@ -407,80 +404,81 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 | **Subschema filter** — the first thing that bites past about thirty classes, and cheaper than any amount of auto-layout, because hiding is the only thing that scales. Do it before the layout and grouping items below; it may make them unnecessary. Narrow the canvas to a chosen set of classes and relations, or to one class and what it touches, and hide the rest. The answer to a spaghetti diagram that no amount of layout fixes, and the only thing that actually scales. _Was listed twice: also appeared under Editing workflow as "filter schema for subschemas"._ | M    |
 | **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | M    |
 
-### Shuffle the layout (todo 40)
+### Shuffle the layout (todo 40, shipped)
 
-**Size L.** _Tidy up_ (Shift+A) ranks the classes with dagre, left to right by relation, and gives
-the same answer every time. On a dense schema that answer still has relations crossing one
-another, lines passing through classes, and labels piling up where lines converge, and there is
-no way to ask for a different one.
+**What shipped.** A **Shuffle** button beside _Tidy up_, on Shift+S. Each press lays the schema out
+again, different every time, and the classes glide to their new places; one undo puts them back.
+It runs top to bottom, and a second button turns it to left to right and back, remembered in the
+browser. That button is left off phones, where the toolbar has no room and top to bottom suits the
+screen. _Tidy up_ is unchanged.
 
-**What it should do.** A **Shuffle** button in the canvas toolbar, with a keyboard shortcut. One
-press rearranges the whole schema into a clean layered layout, fanned out **left to right** or
-**top to bottom**, and the classes glide to their new places rather than jumping, so you can
-follow where everything went. Each press gives a different arrangement. Press again until one
-reads well; undo goes back to the one before.
+**How it chooses.** Each press lays every joined group of classes out a dozen times or so, from
+random starting orders, with two engines: dagre (already shipped for _Tidy up_) and d3-dag. Every
+layout is scored on straight lines between class centres: one point per crossing, three per line
+passing through a class it does not belong to, and total line length to break ties. It shows the
+best layout that is not already on screen. _Tidy up_'s own layout, in the same direction, is
+always a candidate and sets the bar, so a shuffle never scores worse than it.
 
-**Random, and tidy every time.** The randomness goes into the search, not into the result.
-Minimising crossings is a heuristic, and where it starts decides where it ends. Shuffle runs it
-from several random starting points at once, scores each result on crossings, lines through
-classes and total line length, and shows the best one not already shown. So every press is
-different, and no press is a scrambled mess: a shuffle never has more crossings than _Tidy up_
-has on the same schema.
+The bar is the combined score, not crossings alone. On the University example, _Tidy up_ top to
+bottom has no crossings but three lines through classes; the shuffle shows one crossing and none
+through. This item was first written as "never more crossings than _Tidy up_"; the score is the
+better test of what reads well, so that was changed deliberately.
 
-**This reverses an earlier decision**, made by the owner on 2026-11-02. _Tidy up_ was built
-deterministic on the grounds that a second random roll had no reason to beat the first. Scoring
-answers that objection, because a roll is only shown if it is at least as tidy. _Tidy up_ stays
-exactly as it is, for when you want the same answer twice.
+**Choosing the engines.** Benchmarked on the examples, the 200-class timing schema, and a dense
+60-class graph (132 links). Best of eight runs, crossings / lines through classes, counting the
+hierarchy's links as well as the relations:
 
-**What current tools use**, researched on 2026-11-02:
+| Schema     | dagre, as _Tidy up_ | dagre, shuffled order | ELK    | d3-dag  |
+| ---------- | ------------------- | --------------------- | ------ | ------- |
+| Music      | 7/2                 | 5/1                   | 0/0    | 0/0     |
+| Automotive | 13/5                | 13/8                  | 7/6    | 7/6     |
+| Insurance  | 13/11               | 8/5                   | 12/5   | 7/5     |
+| 200-class  | 0/80                | —                     | 0/60   | 55/594  |
+| Dense 60   | 563/64              | —                     | 513/84 | 449/130 |
 
-- **Placing the classes.** ELK's layered algorithm (`elkjs`) is the standard. Mermaid 12 made it
-  its default, and D2 bundles it beside its own port of dagre. It takes a random seed, which is
-  exactly what a shuffle needs. Its cost is size: React Flow's comparison lists it at about 36
-  times dagre's.
-- **Drawing the lines.** libavoid, compiled to WebAssembly as `libavoid-js` and run in a Web
-  Worker, routes right-angle lines around boxes. React Flow's own example and JointJS's router
-  both use it. That would also settle most of **edge label collision avoidance** above.
-- **Faster placement.** d3-dag's fast preset claims about four times dagre's speed. There are
-  Sugiyama engines written in Rust and compiled to WebAssembly, and AntV ships dagre and force
-  layouts the same way. None of these has an independent benchmark, so the choice is measured
-  here rather than taken on trust.
+ELK matched d3-dag on quality but is 471 kB gzipped and was ruled out on size. d3-dag is 31 kB
+and dagre 17 kB. d3-dag is the one that untangles the examples, but its cost follows the number of
+links: about 160 ms at 96 links, nearly two seconds at 132. So it runs only on groups of up to 100
+links, and dagre does the rest.
 
-**How fast, as targets the benchmark has to confirm.** On the 200-class schema the timing suite
-already uses:
+**How fast, as shipped.** The work runs in a Web Worker, fetched on the first press as its own
+43.7 kB chunk, so the startup bundle grew only by the buttons, the glide and the worker client
+(212.8 to 213.8 kB). The classes glide with a CSS transition, in one render: moving them frame by
+frame re-rendered every class and line each frame, about 150 ms a frame at 200 classes.
 
-- A new arrangement is computed in under 50 ms, and the glide to it takes about 300 ms, so a press
-  is settled in about a third of a second.
-- Layout and routing run in a Web Worker, so the canvas never stops responding while they work.
-- The engine is downloaded on first use, as its own lazy chunk with its own budget, and fetched
-  ahead when the pointer reaches the button. The startup bundle does not grow, and nothing needs
-  the network.
+| Schema     | Layout time (Node) | Before / after (crossings / through) |
+| ---------- | ------------------ | ------------------------------------ |
+| Music      | 100 ms             | 4/1 → 0/0                            |
+| Recipes    | 98 ms              | 1/1 → 0/0                            |
+| Automotive | 203 ms             | 3/6 → 1/3                            |
+| University | 148 ms             | 0/3 → 1/0                            |
+| Insurance  | 218 ms             | 2/4 → 1/2                            |
+| 200-class  | 730 ms             | 0/0 → 0/0                            |
+| Dense 60   | 600 ms             | 612/82 → 612/82                      |
 
-**Choosing the engine.** Benchmark ELK, d3-dag's fast preset and a WebAssembly Sugiyama engine on
-the five example schemas, the 200-class schema and two or three real imported schemas. Record
-time, crossings and lines through classes for each, here, and take the fastest engine that meets
-the quality bar.
+"Before" is _Tidy up_ top to bottom, judged on drawn relations only. In the browser, a shuffle of
+the 200-class schema lands in about 1,050 ms, with no stall on the page longer than about 65 ms;
+the timing suite holds it under 2,500 and 400 ms. The examples land in 0.51 to 0.65 s from the
+press, most of it the 450 ms glide; the first press of a session is the slowest, since it starts
+the worker. That misses the third of a second first hoped for, which assumed a 300 ms glide and
+no search.
 
-**Done when:**
+**Not done here: lines that route around classes.** Moved to its own item, todo 46 below.
 
-- One press, by button or shortcut, produces a new arrangement and animates to it within the
-  targets above.
-- A switch chooses left to right or top to bottom.
-- Two presses in a row never give the same arrangement, and no shuffle has more crossings than
-  _Tidy up_ on the same schema.
-- Relations route around classes, and fan apart where several meet the same class.
-- Each shuffle is one step on the undo stack.
-- The timing suite has a test for a shuffle on the 200-class schema, and the benchmark numbers
-  are written down here.
+### Route lines around classes (todo 46)
 
-**To decide first:**
+**Size M.** Split out of todo 40. A shuffle places classes so that straight lines between them
+cross as little as possible, but the canvas draws right-angled lines, and those can still run
+through a class or under another line's label. Routing them around boxes would also settle most of
+**edge label collision avoidance** above.
 
-1. **One button or two.** The recommendation is two: _Tidy up_ stays on Shift+A, and Shuffle gets
-   its own button and shortcut.
-2. **Classes placed by hand.** The recommendation is that a shuffle moves everything, and undo is
-   the way back. Pinning a class in place can come later if it is missed.
-3. **The default direction.** The recommendation is left to right, which is what the canvas does
-   today.
+**What current tools use**, researched on 2026-11-02: libavoid, compiled to WebAssembly as
+`libavoid-js` and run in a Web Worker, routes right-angle lines around boxes. React Flow's own
+example and JointJS's router both use it.
+
+**To decide first:** whether it is worth a WebAssembly dependency, measured the same way as the
+shuffle: time and bundle size on the 200-class schema, and how many lines through classes it
+removes on the examples.
 
 ## Editing workflow
 
@@ -654,10 +652,10 @@ list as originally written is in the git history; ask and it comes back.
 | 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project      | L    |
 | 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29            | L    |
 | 20  | Export and interop     | Harden the old layout reader — parked to the back of the queue           | S    |
-| 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                          | L    |
 | 44  | Export and interop     | Open a cloned repository as a folder; open `.ttl` files from the desktop | M    |
 | 45  | Modelling power        | Any datatype as an attribute's range                                     | M    |
+| 46  | Canvas and readability | Route lines around classes — split out of todo 40                        | M    |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43, 39, 41, 38 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43, 39, 41, 38, 40 — kept as numbers so a commit message naming one can still be resolved.
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
