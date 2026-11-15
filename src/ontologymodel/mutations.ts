@@ -14,6 +14,7 @@ import {
   uniqueLocalName,
   headerIri,
 } from './identifier';
+import { holderOfName } from './naming';
 import { canSubclass, canSubproperty } from './taxonomy';
 import type {
   Annotation,
@@ -55,14 +56,16 @@ export function addClass(
   return { ontology: { ...ontology, classes: [...ontology.classes, entity] }, id: entity.id };
 }
 
+/*
+ * A rename to a name some other term holds changes nothing. It used to take the name with a number
+ * on the end, which nobody meant; the field that asked says why instead (see `naming.ts`).
+ */
 export function renameClass(ontology: Ontology, id: string, localName: string): Ontology {
   const cleaned = toClassLocalName(localName);
-  if (!cleaned) return ontology;
-  const taken = ontology.classes.filter((e) => e.id !== id).map((e) => e.localName);
-  const unique = uniqueLocalName(cleaned, taken);
+  if (!cleaned || holderOfName(ontology, cleaned, id)) return ontology;
   return {
     ...ontology,
-    classes: mapById(ontology.classes, id, (e) => ({ ...e, localName: unique })),
+    classes: mapById(ontology.classes, id, (e) => ({ ...e, localName: cleaned })),
   };
 }
 
@@ -175,18 +178,10 @@ export function addAttribute(
 
 export function renameAttribute(ontology: Ontology, id: string, localName: string): Ontology {
   const cleaned = toPropertyLocalName(localName);
-  if (!cleaned) return ontology;
-  const taken = [
-    ...ontology.relations.map((e) => e.localName),
-    ...ontology.attributes.filter((e) => e.id !== id).map((e) => e.localName),
-  ];
-  const unique = uniqueLocalName(cleaned, taken);
+  if (!cleaned || holderOfName(ontology, cleaned, id)) return ontology;
   return {
     ...ontology,
-    attributes: mapById(ontology.attributes, id, (e) => ({
-      ...e,
-      localName: unique,
-    })),
+    attributes: mapById(ontology.attributes, id, (e) => ({ ...e, localName: cleaned })),
   };
 }
 
@@ -231,15 +226,10 @@ export function addRelation(
 
 export function renameRelation(ontology: Ontology, id: string, localName: string): Ontology {
   const cleaned = toPropertyLocalName(localName);
-  if (!cleaned) return ontology;
-  const taken = [
-    ...ontology.relations.filter((e) => e.id !== id).map((e) => e.localName),
-    ...ontology.attributes.map((e) => e.localName),
-  ];
-  const unique = uniqueLocalName(cleaned, taken);
+  if (!cleaned || holderOfName(ontology, cleaned, id)) return ontology;
   return {
     ...ontology,
-    relations: mapById(ontology.relations, id, (e) => ({ ...e, localName: unique })),
+    relations: mapById(ontology.relations, id, (e) => ({ ...e, localName: cleaned })),
   };
 }
 
@@ -366,6 +356,22 @@ export function addAttributeToClass(
   ontology: Ontology,
   options: { classId: string; localName?: string; range?: XsdDatatype },
 ): { ontology: Ontology; propertyId: string; usageId: string } {
+  /*
+   * A name someone typed that an attribute already has means that attribute: it is used here as
+   * well, as dragging it from the pool would, and keeps its own range. A name another kind of term
+   * holds adds nothing. Only a name nobody typed is made free with a number.
+   */
+  if (options.localName !== undefined) {
+    const holder = holderOfName(ontology, toPropertyLocalName(options.localName));
+    if (holder?.kind === 'attribute') {
+      const attached = attachProperty(ontology, {
+        propertyId: holder.id,
+        subjectClassId: options.classId,
+      });
+      return { ontology: attached.ontology, propertyId: holder.id, usageId: attached.id };
+    }
+    if (holder) return { ontology, propertyId: '', usageId: '' };
+  }
   const created = addAttribute(ontology, {
     ...(options.localName !== undefined ? { localName: options.localName } : {}),
     ...(options.range !== undefined ? { range: options.range } : {}),
@@ -385,6 +391,19 @@ export function addRelationBetween(
   ontology: Ontology,
   options: { localName?: string; subjectClassId: string; objectClassId: string },
 ): { ontology: Ontology; propertyId: string; usageId: string } {
+  // As for an attribute: a typed relation's name means that relation, and another kind's adds nothing.
+  if (options.localName !== undefined) {
+    const holder = holderOfName(ontology, toPropertyLocalName(options.localName));
+    if (holder?.kind === 'relation') {
+      const attached = attachProperty(ontology, {
+        propertyId: holder.id,
+        subjectClassId: options.subjectClassId,
+        objectClassId: options.objectClassId,
+      });
+      return { ontology: attached.ontology, propertyId: holder.id, usageId: attached.id };
+    }
+    if (holder) return { ontology, propertyId: '', usageId: '' };
+  }
   const created = addRelation(
     ontology,
     options.localName !== undefined ? { localName: options.localName } : {},

@@ -316,10 +316,10 @@ describe('destructive edits stay consistent all the way to the export', () => {
     expect(serialize(ontology(), 'turtle').content).toContain('auto:UsedCarModel');
   });
 
-  it('keeps a rename that would collide unique', () => {
+  it('refuses a rename onto a name another class holds, rather than numbering it', () => {
     const ids = buildAutomotiveProject();
     store().renameClassById(ids.truck, 'Car');
-    expect(findClass(ontology(), ids.truck)?.localName).toBe('Car2');
+    expect(findClass(ontology(), ids.truck)?.localName).toBe('Truck');
     expect(findClass(ontology(), ids.car)?.localName).toBe('Car');
   });
 
