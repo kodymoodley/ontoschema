@@ -103,6 +103,10 @@ const BUDGETS = {
  *
  * `shuffle.worker.js` is the shuffle's layout engines, in the worker `canvas/backgroundshuffle.ts`
  * starts, and is downloaded only by someone who presses Shuffle.
+ *
+ * `libavoid.wasm` and `avoid.worker.js` route relation lines around the classes, in the worker
+ * `canvas/backgroundrouting.ts` starts. WebAssembly is measured like any other asset: the check
+ * once looked only at `.js` and `.css`, and would not have seen it.
  */
 const LAZY_BUDGETS = {
   /**
@@ -123,11 +127,19 @@ const LAZY_BUDGETS = {
    * A worker cannot share the page's chunks, so it carries its own dagre. 43.7 when it was added.
    */
   'shuffle.worker.js': 48,
+  /*
+   * Routing relation lines around the classes: libavoid, compiled to WebAssembly, and the worker
+   * that runs it. Fetched once the schema canvas has lines to route, which is most visits, but
+   * after the app has drawn; until they arrive the lines are drawn as plain steps. 178.2 and 17.5
+   * when they were added.
+   */
+  'libavoid.wasm': 190,
+  'avoid.worker.js': 20,
 };
 
 /** `index-DgDSQNvl.js` and `index.js` are the same chunk; compare on the stable part. */
 function chunkName(file) {
-  const match = /^(.*?)-[A-Za-z0-9_-]{8,}\.(js|css)$/.exec(file);
+  const match = /^(.*?)-[A-Za-z0-9_-]{8,}\.(js|css|wasm)$/.exec(file);
   return match ? `${match[1]}.${match[2]}` : file;
 }
 
@@ -136,7 +148,7 @@ async function measure() {
   const sizes = new Map();
 
   for (const file of files) {
-    if (!/\.(js|css)$/.test(file)) continue;
+    if (!/\.(js|css|wasm)$/.test(file)) continue;
     const gzipped = gzipSync(await readFile(join(ASSETS, file))).byteLength / 1024;
     sizes.set(chunkName(file), (sizes.get(chunkName(file)) ?? 0) + gzipped);
   }
