@@ -58,8 +58,8 @@ test('build the Car/Dealership schema and export it as Turtle', async ({ page })
 
   const carNode = page.locator('[data-class-name="Car"]');
   await expect(carNode.locator('[data-attribute-name]')).toHaveCount(5);
-  await expect(carNode.getByText('integer', { exact: true })).toBeVisible();
-  await expect(carNode.getByText('decimal', { exact: true })).toBeVisible();
+  await expect(carNode.getByRole('combobox', { name: 'Type of year' })).toHaveValue('integer');
+  await expect(carNode.getByRole('combobox', { name: 'Type of price' })).toHaveValue('decimal');
 
   // 5. Connect Car -> Dealership and name the property.
   await relate(page, 'Car', 'Dealership', 'offeredBy');
@@ -228,9 +228,10 @@ test('a attribute must be dropped onto a class, not onto empty canvas', async ({
   // Dropping onto the class attaches it.
   await dragFromPalette(page, 'attribute', { onClass: 'Car' });
   await expect(page.locator('[data-class-name="Car"] [data-attribute-name]')).toHaveCount(1);
+  // A new attribute is a string until someone says otherwise.
   await expect(
-    page.locator('[data-class-name="Car"]').getByText('string', { exact: true }),
-  ).toBeVisible();
+    page.locator('[data-class-name="Car"]').getByRole('combobox', { name: /^Type of / }),
+  ).toHaveValue('string');
 });
 
 test('a attribute is reused on a second class by dragging it from the list', async ({ page }) => {
