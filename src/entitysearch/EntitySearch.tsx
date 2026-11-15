@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { usagesOfProperty } from '../ontologymodel';
 import type { EntityRef } from '../ontologymodel';
 import { searchEntities } from '../search';
+import type { EntityMatch } from '../search';
 import { useOntology, useProjectStore } from '../projectstore';
-import { Badge, EmptyState, TextInput } from '../designsystem';
-import styles from './entitysearch.module.css';
+import { EmptyState, SearchPicker } from '../designsystem';
 
 /**
  * Finding a class, relation or attribute by name or description.
@@ -19,7 +19,8 @@ import styles from './entitysearch.module.css';
  *
  * Choosing a result selects the entity, and selecting is what opens the inspector, so the
  * result lands with its details already showing. That fell out of the rule rather than needing
- * arranging, which is a sign the rule was the right one.
+ * arranging, which is a sign the rule was the right one. The best match is highlighted, so
+ * Enter goes to it, and the arrows to any other.
  */
 
 interface EntitySearchProps {
@@ -53,49 +54,45 @@ export function EntitySearch({ onChoose }: EntitySearchProps) {
   };
 
   const results = query.trim() ? searchEntities(ontology, query) : [];
+  const byKey = new Map(results.map((result) => [keyOf(result), result]));
 
   return (
-    <div className={styles.panel}>
-      <TextInput
-        value={query}
-        data-autofocus
-        placeholder="Find a class, relation or attribute…"
-        // Distinct from the dialog's own name and the trigger's, or all three answer to one.
-        aria-label="Search by name or description"
-        onChange={(event) => setQuery(event.target.value)}
-      />
-
-      {query.trim() === '' ? (
-        <EmptyState>
-          Type a name, or a word from a label or description. Both halves of a name work on their
-          own, so <code>wheel</code> finds <code>hasWheel</code>.
-        </EmptyState>
-      ) : results.length === 0 ? (
-        <EmptyState>Nothing matches {query.trim()}.</EmptyState>
-      ) : (
-        <ul className={styles.results} aria-label="Search results">
-          {results.map((result) => (
-            <li key={`${result.kind}:${result.ref.id}`}>
-              <button
-                type="button"
-                className={styles.result}
-                data-result={result.localName}
-                onClick={() => {
-                  reveal(result.ref);
-                  onChoose();
-                }}
-              >
-                <Badge tone={result.kind}>{KIND_LABEL[result.kind]}</Badge>
-                <span className={styles.name}>{result.localName}</span>
-                {result.context ? <span className={styles.context}>{result.context}</span> : null}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <SearchPicker
+      query={query}
+      onQueryChange={setQuery}
+      placeholder="Find a class, relation or attribute…"
+      // Distinct from the dialog's own name and the trigger's, or all three answer to one.
+      inputLabel="Search by name or description"
+      rowsLabel="Search results"
+      rows={results.map((result) => ({
+        key: keyOf(result),
+        name: result.localName,
+        tone: result.kind,
+        badge: KIND_LABEL[result.kind],
+        detail: result.context,
+      }))}
+      highlight={0}
+      onPick={(row) => {
+        const result = byKey.get(row.key);
+        if (!result) return;
+        reveal(result.ref);
+        onChoose();
+      }}
+      empty={
+        query.trim() === '' ? (
+          <EmptyState>
+            Type a name, or a word from a label or description. Both halves of a name work on their
+            own, so <code>wheel</code> finds <code>hasWheel</code>.
+          </EmptyState>
+        ) : (
+          <EmptyState>Nothing matches {query.trim()}.</EmptyState>
+        )
+      }
+    />
   );
 }
+
+const keyOf = (result: EntityMatch) => `${result.kind}:${result.ref.id}`;
 
 const KIND_LABEL = {
   class: 'Class',

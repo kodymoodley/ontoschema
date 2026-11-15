@@ -34,6 +34,8 @@ export interface EntityMatch {
   context: string | null;
 }
 
+const ALL_KINDS: readonly EntityMatch['kind'][] = ['class', 'relation', 'attribute'];
+
 const LABEL_TERMS = ['rdfs:label', 'skos:prefLabel', 'skos:altLabel'];
 const PROSE_TERMS = ['skos:definition', 'dcterms:description', 'rdfs:comment'];
 
@@ -43,20 +45,33 @@ const textOf = (annotations: readonly Annotation[], terms: readonly string[]) =>
     .map((annotation) => annotation.value)
     .join(' ');
 
-export function searchEntities(ontology: Ontology, query: string, limit = 20): EntityMatch[] {
+/**
+ * `kinds` narrows the search to those kinds of entity: choosing which relation a drawn line is
+ * searches relations alone. `limit` is how many come back at most.
+ */
+export function searchEntities(
+  ontology: Ontology,
+  query: string,
+  {
+    limit = 20,
+    kinds = ALL_KINDS,
+  }: { limit?: number; kinds?: readonly EntityMatch['kind'][] } = {},
+): EntityMatch[] {
   const documents = [
     ...ontology.classes.map((entity) => ({ entity, kind: 'class' as const })),
     ...ontology.relations.map((entity) => ({ entity, kind: 'relation' as const })),
     ...ontology.attributes.map((entity) => ({ entity, kind: 'attribute' as const })),
-  ].map(({ entity, kind }) => ({
-    id: entity.id,
-    fields: [
-      { text: entity.localName, weight: 3 },
-      { text: textOf(entity.annotations, LABEL_TERMS), weight: 2 },
-      { text: textOf(entity.annotations, PROSE_TERMS), weight: 1 },
-    ],
-    value: { entity, kind },
-  }));
+  ]
+    .filter(({ kind }) => kinds.includes(kind))
+    .map(({ entity, kind }) => ({
+      id: entity.id,
+      fields: [
+        { text: entity.localName, weight: 3 },
+        { text: textOf(entity.annotations, LABEL_TERMS), weight: 2 },
+        { text: textOf(entity.annotations, PROSE_TERMS), weight: 1 },
+      ],
+      value: { entity, kind },
+    }));
 
   return exactNameFirst(
     search(documents, query, limit).map((hit) => toMatch(hit)),

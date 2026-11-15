@@ -234,12 +234,11 @@ describe('adversarial names', () => {
     expect(subjects).not.toContain(entityIri(ontology.iri, 'CarShape'));
   });
 
-  it('folds a case-only difference into the property naming convention, then deduplicates', () => {
-    // Properties are lower-camel by convention, so `Label` and `label` are the same name.
-    // Rather than silently overwriting, the second becomes a distinct `label2`.
+  it('folds a case-only difference into the property naming convention, and so into one term', () => {
+    // Properties are lower-camel by convention, so `Label` and `label` are the same name, and
+    // typing the second means the attribute the first created, rather than a `label2`.
     const names = ontology.attributes.map((entity) => entity.localName);
-    expect(names).toEqual(['label', 'label2']);
-    expect(new Set(names).size).toBe(names.length);
+    expect(names).toEqual(['label']);
   });
 
   it('keeps a case-only difference between classes, which are upper-camel', () => {

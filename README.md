@@ -164,8 +164,9 @@ you are already working on is left alone.
    (string), `model` (string), `year` (integer), `engine` (string), `price` (decimal). They appear as
    typed rows inside the class box. (Dragging **Attribute** from the palette onto a class does the
    same; onto empty canvas it is refused, because an attribute has to belong to a class.)
-3. Drag from the dot on `Car`'s right edge to the dot on `Dealership`'s left edge, then pick which
-   relation this is — an existing one, or a new one called `offeredBy`.
+3. Drag from the dot on `Car`'s right edge onto `Dealership`, then say which relation this is: the
+   dialog lists the relations there are and narrows as you type, so pick one, or type `offeredBy`
+   and press **+ New**.
 4. Under **Documentation**, fill in **Label** twice, with language `en` and `nl`. Every other term
    in the vocabulary is under **Other properties**, and **Show RDF terms** names the term each box
    writes.
@@ -174,9 +175,13 @@ you are already working on is left alone.
 6. **File › Save as…** downloads `.ttl`, `.rdf` or `.owl` — a document this app can open again.
    **File › Export…** downloads the SHACL shapes alone, JSON-LD or a Mermaid diagram.
 
-To see reuse: open the **Attribute** tab in the left panel and drag `price` onto another class. The
+To see reuse: open the **Attribute** tab in the left panel and drag `price` onto another class, or
+select the other class and type `price` as a new attribute, which offers the existing one. The
 list shows it used `2×`, and the saved file drops its `rdfs:domain` while gaining a second SHACL
-shape.
+shape. A name a term already has is never made free with a number: typed for a relation in the
+connection dialog it chooses that relation, and anywhere else it is refused, with the field saying
+which term holds it. Only names nobody typed, like a second `NewClass` from the palette, are
+numbered.
 
 Past about thirty classes, `Ctrl`+`K` finds anything by name or description.
 

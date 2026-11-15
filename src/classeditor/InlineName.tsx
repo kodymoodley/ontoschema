@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import styles from './classeditor.module.css';
 
 /**
@@ -6,8 +6,8 @@ import styles from './classeditor.module.css';
  *
  * Two things on a class node are renamed this way — the class in the header, and each datatype
  * property row — and both want the same rules: Enter and blur commit, Escape abandons, and a
- * name the model would reject is flagged rather than silently reverted, so the field can be
- * cleared and retyped.
+ * name the model would reject is flagged, with the reason under it, rather than silently
+ * reverted, so the field can be cleared and retyped.
  *
  * Validation is passed in rather than imported, because a class name and a property name are
  * sanitised differently and this component has no business knowing which is which.
@@ -15,8 +15,8 @@ import styles from './classeditor.module.css';
 
 interface InlineNameProps {
   value: string;
-  /** True when the text would survive the model's sanitiser. */
-  isValid: (draft: string) => boolean;
+  /** Why the text cannot be the name -- empty, or another term's -- or nothing when it can. */
+  validate: (draft: string) => string | undefined;
   onCommit: (draft: string) => void;
   label: string;
   /** Applied to the text when it is not being edited, so each caller keeps its own type. */
@@ -63,7 +63,7 @@ type NameFieldProps = Omit<InlineNameProps, 'textClassName' | 'editing'>;
 
 function NameField({
   value,
-  isValid,
+  validate,
   onCommit,
   label,
   hint,
@@ -78,7 +78,9 @@ function NameField({
     input.current?.select();
   }, []);
 
-  const valid = isValid(draft);
+  const problem = validate(draft);
+  const valid = problem === undefined;
+  const problemId = useId();
   const commit = () => {
     if (!valid) return;
     onEditingChange(false);
@@ -93,6 +95,7 @@ function NameField({
         value={draft}
         aria-label={label}
         aria-invalid={valid ? undefined : true}
+        aria-describedby={valid ? undefined : problemId}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => (valid ? commit() : onEditingChange(false))}
         onKeyDown={(event) => {
@@ -100,7 +103,13 @@ function NameField({
           if (event.key === 'Escape') onEditingChange(false);
         }}
       />
-      {hint ? <span className={styles.renameHint}>{hint}</span> : null}
+      {problem ? (
+        <span id={problemId} className={styles.renameProblem}>
+          {problem}
+        </span>
+      ) : hint ? (
+        <span className={styles.renameHint}>{hint}</span>
+      ) : null}
     </>
   );
 }

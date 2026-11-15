@@ -108,3 +108,6 @@ export { decodeLayout, decodePosition, encodePosition } from './layout';
 export type { Layout } from './layout';
 export { ontologyToTriples, blank, blankLabel, iri, isBlankNode, literal } from './triples';
 export type { Triple, TripleObject, SerializationOptions } from './triples';
+
+export { cleanName, holderOfName, nameProblem } from './naming';
+export type { NameHolder, NamedKind } from './naming';

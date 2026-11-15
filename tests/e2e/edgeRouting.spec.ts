@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import {
+  chooseNewProperty,
   doubleClickClass,
   dragFromPalette,
   freePointOnClass,
@@ -259,8 +260,7 @@ test('a relation can be drawn by hand from any side', async ({ page }) => {
   await page.mouse.up();
 
   await expect(page.getByRole('dialog', { name: 'Which relation?' })).toBeVisible();
-  await page.getByLabel('New relation name').fill('hasEngine');
-  await page.getByTestId('confirm-connection').click();
+  await chooseNewProperty(page, 'hasEngine');
   await expect(page.locator('[data-relation-name="hasEngine"]')).toBeVisible();
 });
 

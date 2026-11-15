@@ -78,12 +78,20 @@ describe('class mutations', () => {
     expect(findClass(renameClass(ontology, id, 'car'), id)?.localName).toBe('Car');
   });
 
-  it('still suffixes a name another class already holds', () => {
+  /* Not `Car2`: nobody typed that. The field that asked says why instead. */
+  it('changes nothing when renamed to a name another term holds', () => {
     const first = addClass(createEmptyOntology(), { localName: 'Car' });
     const second = addClass(first.ontology, { localName: 'Truck' });
-    const renamed = renameClass(second.ontology, second.id, 'Car');
 
-    expect(findClass(renamed, second.id)?.localName).toBe('Car2');
+    expect(renameClass(second.ontology, second.id, 'Car')).toBe(second.ontology);
+    expect(renameClass(second.ontology, second.id, 'car')).toBe(second.ontology);
+  });
+
+  /* Names nobody typed still need to be free, and the palette's `NewClass` is one. */
+  it('still numbers a name nobody typed', () => {
+    const first = addClass(createEmptyOntology());
+    const second = addClass(first.ontology);
+    expect(second.ontology.classes.map((c) => c.localName)).toEqual(['NewClass', 'NewClass2']);
   });
 
   it('is immutable — the input ontology is never modified', () => {
@@ -215,10 +223,41 @@ describe('attributes', () => {
     expect(after.attributes.find((p) => p.id === ids.year)?.range).toBe('dateTime');
   });
 
-  it('shares one namespace with relations when deduplicating names', () => {
+  /* What dragging it from the pool does: the same attribute, used on one more class. */
+  it('uses an existing attribute when its name is typed for a class, keeping its range', () => {
+    const { ontology, ids } = buildAutoOntology();
+
+    const added = addAttributeToClass(ontology, {
+      classId: ids.truck,
+      localName: 'price',
+      range: 'string',
+    });
+
+    expect(added.propertyId).toBe(ids.price);
+    expect(added.ontology.attributes).toHaveLength(ontology.attributes.length);
+    expect(findAttribute(added.ontology, ids.price)?.range).toBe('decimal');
+    expect(attributeUsagesOfClass(added.ontology, ids.truck).map((u) => u.propertyId)).toContain(
+      ids.price,
+    );
+  });
+
+  /* Attributes and relations share one namespace, and an attribute cannot reuse a relation. */
+  it('adds nothing when the typed name is a relation', () => {
     const { ontology, ids } = buildAutoOntology();
     const added = addAttributeToClass(ontology, { classId: ids.truck, localName: 'offeredBy' });
-    expect(added.ontology.attributes.at(-1)?.localName).toBe('offeredBy2');
+
+    expect(added.ontology).toBe(ontology);
+    expect(added.propertyId).toBe('');
+  });
+
+  it('still numbers an attribute nobody named', () => {
+    const { ontology, ids } = buildAutoOntology();
+    const first = addAttributeToClass(ontology, { classId: ids.truck });
+    const second = addAttributeToClass(first.ontology, { classId: ids.truck });
+    expect(second.ontology.attributes.slice(-2).map((a) => a.localName)).toEqual([
+      'newAttribute',
+      'newAttribute2',
+    ]);
   });
 
   it('deleting a property removes every usage of it', () => {
@@ -260,9 +299,40 @@ describe('relations', () => {
   it('will not rename an attribute onto a name a relation holds', () => {
     const withRelation = addRelation(createEmptyOntology(), { localName: 'offeredBy' });
     const withAttribute = addAttribute(withRelation.ontology, { localName: 'price' });
-    const renamed = renameAttribute(withAttribute.ontology, withAttribute.id, 'offeredBy');
 
-    expect(findAttribute(renamed, withAttribute.id)?.localName).toBe('offeredBy2');
+    expect(renameAttribute(withAttribute.ontology, withAttribute.id, 'offeredBy')).toBe(
+      withAttribute.ontology,
+    );
+    expect(renameRelation(withAttribute.ontology, withRelation.id, 'price')).toBe(
+      withAttribute.ontology,
+    );
+  });
+
+  /* The connection dialog's new name, when a relation already has it, is that relation. */
+  it('uses an existing relation when its name is typed between two classes', () => {
+    const { ontology, ids } = buildAutoOntology();
+
+    const added = addRelationBetween(ontology, {
+      localName: 'offered by',
+      subjectClassId: ids.truck,
+      objectClassId: ids.dealership,
+    });
+
+    expect(added.propertyId).toBe(ids.offeredBy);
+    expect(added.ontology.relations).toHaveLength(ontology.relations.length);
+    expect(usagesOfProperty(added.ontology, ids.offeredBy)).toHaveLength(2);
+  });
+
+  it('draws nothing when the typed relation name is an attribute', () => {
+    const { ontology, ids } = buildAutoOntology();
+    const added = addRelationBetween(ontology, {
+      localName: 'price',
+      subjectClassId: ids.truck,
+      objectClassId: ids.dealership,
+    });
+
+    expect(added.ontology).toBe(ontology);
+    expect(added.propertyId).toBe('');
   });
 
   it('takes a deleted attribute out of its children as well as out of the list', () => {
