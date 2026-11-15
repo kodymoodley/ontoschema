@@ -69,6 +69,12 @@
   --band: 28px;
 
   position: absolute;
+  /*
+   * Above what the class holds, whose header and rows are positioned to place a refused name's
+   * message: otherwise they would take the pointer from a band while a relation is drawn. Below
+   * nothing that matters the rest of the time, since a zone takes no pointer until then.
+   */
+  z-index: 2;
   inset: 0;
   width: auto;
   height: auto;
