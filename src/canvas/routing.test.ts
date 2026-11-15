@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { orthogonalPath, routeEdges } from './routing';
+import { routeEdges } from './routing';
 import type { Rect } from './routing';
 
 /**
@@ -99,48 +99,6 @@ describe('routing along lanes', () => {
 
     expect(route!.label.y).toBe(route!.points[1]!.y);
     expect(route!.label.x).toBe(250);
-  });
-});
-
-describe('drawing the path', () => {
-  it('describes nothing for no points', () => {
-    expect(orthogonalPath([])).toBe('');
-  });
-
-  it('draws a straight line for two', () => {
-    expect(
-      orthogonalPath([
-        { x: 0, y: 0 },
-        { x: 10, y: 0 },
-      ]),
-    ).toBe('M 0,0 L 10,0');
-  });
-
-  it('rounds the corners, so a turn does not read as two separate lines', () => {
-    const path = orthogonalPath([
-      { x: 0, y: 100 },
-      { x: 0, y: 0 },
-      { x: 100, y: 0 },
-    ]);
-    expect(path).toContain('Q');
-  });
-
-  /*
-   * A corner rounded by more than half its own leg turns the line inside out, which happens
-   * whenever two points are closer together than the radius.
-   */
-  it('never rounds a corner by more than half the segment it is on', () => {
-    const path = orthogonalPath(
-      [
-        { x: 0, y: 4 },
-        { x: 0, y: 0 },
-        { x: 4, y: 0 },
-      ],
-      8,
-    );
-    const numbers = [...path.matchAll(/-?\d+(\.\d+)?/g)].map((match) => Number(match[0]));
-    expect(Math.min(...numbers)).toBeGreaterThanOrEqual(0);
-    expect(Math.max(...numbers)).toBeLessThanOrEqual(4);
   });
 });
 

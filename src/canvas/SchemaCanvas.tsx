@@ -45,6 +45,7 @@ import { provideViewCentre, viewCentre } from './viewcentre';
 import { provideFraming } from './framing';
 import { useFramingCorrection } from './framingcorrection';
 import { useProvideGlide } from './glide';
+import { useAvoidedEdges } from './useAvoidedEdges';
 
 /** How far the viewport may be pushed, including by a focus request. */
 const MIN_ZOOM = 0.2;
@@ -128,6 +129,8 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes, connectionLine }: SchemaCanva
   const [adopted, setAdopted] = useState({ nodes: derivedNodes, edges: derivedEdges });
   // A shuffle glides the classes to their new places; see `glide`.
   useProvideGlide(surface);
+  // What is drawn: the same edges, each with its route around the classes once there is one.
+  const routedEdges = useAvoidedEdges(nodes, edges);
 
   const selectedId = selection?.id ?? null;
 
@@ -460,7 +463,7 @@ function SchemaCanvasInner({ nodeTypes, edgeTypes, connectionLine }: SchemaCanva
     >
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={routedEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}

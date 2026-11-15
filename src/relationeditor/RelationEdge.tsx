@@ -1,5 +1,7 @@
 import { BaseEdge, EdgeLabelRenderer, Position, getSmoothStepPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
+import { fitToEnds, labelPoint, orthogonalPath } from '../designsystem';
+import type { Point, Side } from '../designsystem';
 import type { Relation, PropertyUsage } from '../ontologymodel';
 import { useProjectStore } from '../projectstore';
 import styles from './relationeditor.module.css';
@@ -44,6 +46,7 @@ export function RelationEdge({
     sourceOffset?: number;
     targetOffset?: number;
     route?: { path: string; label: { x: number; y: number } };
+    detour?: Point[];
   };
   const select = useProjectStore((state) => state.select);
   const detachUsage = useProjectStore((state) => state.detachUsageById);
@@ -79,17 +82,24 @@ export function RelationEdge({
    * every node, and down into the other. It arrives drawn rather than as points, because the
    * geometry belongs to the canvas and this module may not reach into it.
    *
-   * Only the taxonomy view supplies one, and only because it can. Its layout is derived and its
-   * nodes cannot be dragged, so there is a known top and bottom to the diagram and lanes can be
-   * handed out for every visible edge at once. Schema classes are placed by hand, anywhere, and
-   * moved while you watch; lanes there would have to be re-found on every frame of a drag. So
-   * the schema view steps between the facing sides instead, which follows a class as it moves
-   * and costs nothing to work out.
+   * Only the taxonomy view supplies one. Its layout is derived and its nodes cannot be dragged,
+   * so there is a known top and bottom to the diagram and lanes can be handed out for every
+   * visible edge at once.
+   *
+   * The schema view supplies a detour instead: the corners of a route libavoid found around the
+   * classes, worked out in the background for where the classes were when it was asked. It is
+   * fitted to where this edge's ends are now, which differs by the width of a handle at rest and
+   * by more while a class is dragged ahead of the router. Until the first one arrives the edge
+   * is the plain step between its sides.
    */
   const route = payload.route;
-  const path = route ? route.path : stepped;
-  const labelX = route ? route.label.x : steppedLabelX;
-  const labelY = route ? route.label.y : steppedLabelY;
+  const detour = payload.detour
+    ? fitToEnds(payload.detour, from, sourcePosition as Side, to, targetPosition as Side)
+    : null;
+  const detourLabel = detour ? labelPoint(detour) : null;
+  const path = route ? route.path : detour ? orthogonalPath(detour) : stepped;
+  const labelX = route ? route.label.x : (detourLabel?.x ?? steppedLabelX);
+  const labelY = route ? route.label.y : (detourLabel?.y ?? steppedLabelY);
 
   return (
     <>
@@ -115,6 +125,8 @@ export function RelationEdge({
             // The sides the line meets its classes at, which is what pinning one decides.
             data-from-side={sourcePosition}
             data-to-side={targetPosition}
+            // Whether the line has been routed around the classes yet, or is still a plain step.
+            data-routed={detour ? 'true' : undefined}
             title={
               payload.shared
                 ? `${payload.property?.localName} is also used elsewhere`

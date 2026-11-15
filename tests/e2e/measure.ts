@@ -71,6 +71,31 @@ export async function stopRecordingFrames(page: Page): Promise<FrameReport> {
 }
 
 /**
+ * Waits until the page has drawn ten frames in a row within budget.
+ *
+ * Something on screen does not mean the work behind it has finished: a canvas of 200 classes is
+ * still measuring, routing and redrawing its lines for a while after it first appears. A frame
+ * recording started then charges that to whatever the test does next.
+ */
+export async function quietFrames(page: Page): Promise<void> {
+  await page.evaluate(
+    (budget) =>
+      new Promise<void>((resolve) => {
+        let previous = performance.now();
+        let calm = 0;
+        const tick = (now: number) => {
+          calm = now - previous <= budget ? calm + 1 : 0;
+          previous = now;
+          if (calm >= 10) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    FRAME_BUDGET_MS,
+  );
+}
+
+/**
  * Records every `localStorage` write from before the app boots. Installed as an init script,
  * so it has to be called before navigating.
  */
