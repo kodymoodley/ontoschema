@@ -206,30 +206,21 @@ export async function connectClasses(page: Page, sourceName: string, targetName:
 }
 
 /**
- * Completes the connection picker. Passing a name creates a new property; passing an
- * existing property's label reuses it.
+ * Completes the connection picker, which is a search over the relations there are. Passing a new
+ * name types it and creates it with the button beside the box; passing an existing relation's
+ * name finds it in the list and picks it.
  */
 export async function chooseNewProperty(page: Page, localName: string) {
-  await page.getByLabel('New relation name').fill(localName);
-  await page.getByTestId('confirm-connection').click();
+  const dialog = page.getByRole('dialog', { name: 'Which relation?' });
+  await dialog.getByRole('combobox', { name: 'Relation name' }).fill(localName);
+  await dialog.getByTestId('new-relation').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
 export async function chooseExistingProperty(page: Page, propertyName: string) {
-  const picker = page.getByLabel('Relation to use');
-  // Options read "hasPart (unused)" / "offeredBy (used 2×)", so match on the name and
-  // select by value rather than trying to reproduce the whole label.
-  const value = await picker.evaluate(
-    (element, name) =>
-      [...(element as HTMLSelectElement).options].find((option) =>
-        option.textContent?.trim().startsWith(name),
-      )?.value ?? '',
-    propertyName,
-  );
-  if (!value) throw new Error(`no relation named ${propertyName} in the picker`);
-
-  await picker.selectOption(value);
-  await page.getByTestId('confirm-connection').click();
+  const dialog = page.getByRole('dialog', { name: 'Which relation?' });
+  await dialog.getByRole('combobox', { name: 'Relation name' }).fill(propertyName);
+  await dialog.locator(`[data-result="${propertyName}"]`).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
