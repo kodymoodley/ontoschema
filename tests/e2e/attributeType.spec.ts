@@ -125,3 +125,18 @@ test.describe('on a touch screen', () => {
     await expect(carBox(page).locator('[data-attribute-name="make"]')).toContainText('token');
   });
 });
+
+/*
+ * The browser draws the open list itself, from the page's colour scheme. That scheme has to follow
+ * the theme the app chose, not the computer's, or a dark theme opens a white list.
+ */
+test('opens its list in the colours of the theme the app is in', async ({ page }) => {
+  const scheme = () => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+  const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
+
+  const first = await theme();
+  expect(await scheme()).toBe(first);
+  await page.getByRole('button', { name: 'Toggle colour theme' }).click();
+  await expect.poll(theme).not.toBe(first);
+  expect(await scheme()).toBe(await theme());
+});

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { xsdDatatypeLabel } from '../annotationvocabulary';
+import { xsdDatatypeDescription, xsdDatatypeLabel } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import {
   attributeUsagesOfClass,
@@ -214,6 +214,7 @@ export function ClassDetails({ classId }: { classId: string }) {
             value={existing?.range ?? attributeRange}
             disabled={existing !== undefined}
             aria-label="New attribute range"
+            title={xsdDatatypeDescription(existing?.range ?? attributeRange)}
             onChange={(event) => setAttributeRange(event.target.value as XsdDatatype)}
           >
             <DatatypeOptions />

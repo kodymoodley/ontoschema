@@ -76,6 +76,66 @@ export function xsdDatatypeLabel(datatype: XsdDatatype): string {
   return datatype;
 }
 
+/**
+ * What each datatype holds, in a line, with an example of a value: shown as a tooltip wherever a
+ * type is chosen. The names stay as they are (see `xsdDatatypeLabel`); this is what lets someone
+ * who does not know `gMonthDay` or `NCName` choose one anyway. Examples are written the way the
+ * value appears in a file.
+ */
+const DESCRIPTIONS: Record<XsdDatatype, string> = {
+  string: 'Any text, such as "Hello".',
+  boolean: 'true or false.',
+  decimal:
+    'An exact decimal number, such as 12.50. Use it for money and other values that must not be rounded.',
+  integer: 'A whole number of any size, positive or negative, such as -3 or 42.',
+
+  double: 'A 64-bit floating-point number, such as 6.022E23. Approximate, so not for money.',
+  float: 'A 32-bit floating-point number, such as 3.14. Less precise than double.',
+
+  date: 'A calendar date, such as 2026-11-15, with an optional time zone.',
+  time: 'A time of day, such as 14:30:00, with an optional time zone.',
+  dateTime: 'A date and time, such as 2026-11-15T14:30:00, with an optional time zone.',
+  dateTimeStamp: 'A date and time that must include its time zone, such as 2026-11-15T14:30:00Z.',
+
+  gYear: 'A year, such as 2026.',
+  gMonth: 'A month of any year, such as --11 for November.',
+  gDay: 'A day of any month, such as ---15 for the 15th.',
+  gYearMonth: 'A month of a particular year, such as 2026-11.',
+  gMonthDay: 'A day of a month in any year, such as --11-15 for 15 November.',
+  duration:
+    'A length of time in years, months, days, hours, minutes and seconds, such as P1Y2M3DT4H.',
+  yearMonthDuration: 'A length of time in years and months only, such as P1Y6M.',
+  dayTimeDuration: 'A length of time in days, hours, minutes and seconds only, such as P2DT3H.',
+
+  byte: 'A whole number from -128 to 127.',
+  short: 'A whole number from -32,768 to 32,767.',
+  int: 'A whole number from -2,147,483,648 to 2,147,483,647.',
+  long: 'A whole number from -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807.',
+  unsignedByte: 'A whole number from 0 to 255.',
+  unsignedShort: 'A whole number from 0 to 65,535.',
+  unsignedInt: 'A whole number from 0 to 4,294,967,295.',
+  unsignedLong: 'A whole number from 0 to 18,446,744,073,709,551,615.',
+  positiveInteger: 'A whole number of 1 or more.',
+  nonNegativeInteger: 'A whole number of 0 or more.',
+  negativeInteger: 'A whole number of -1 or less.',
+  nonPositiveInteger: 'A whole number of 0 or less.',
+
+  hexBinary: 'Binary data written in hexadecimal, such as 0FB7.',
+  base64Binary: 'Binary data written in Base64, such as R0lGODlh.',
+
+  anyURI: 'A web address or other URI, such as https://example.org/page.',
+  language: 'A language tag, such as en, nl or pt-BR.',
+  normalizedString: 'Text with no line breaks or tabs.',
+  token: 'Text with no line breaks or tabs, no spaces at either end, and no double spaces.',
+  NMTOKEN: 'A single word of letters, digits and . - _ : with no spaces, such as ISO-9001.',
+  Name: 'A name that starts with a letter, _ or :, followed by letters, digits and . - _ :, such as xml:lang.',
+  NCName: 'A name like Name but without colons, such as productCode.',
+};
+
+export function xsdDatatypeDescription(datatype: XsdDatatype): string {
+  return DESCRIPTIONS[datatype];
+}
+
 export function isXsdDatatype(value: string): value is XsdDatatype {
   return (XSD_DATATYPES as readonly string[]).includes(value);
 }

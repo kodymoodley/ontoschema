@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react';
 import { Handle, Position, useConnection } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { xsdDatatypeLabel } from '../annotationvocabulary';
+import { xsdDatatypeDescription, xsdDatatypeLabel } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import { nameProblem } from '../ontologymodel';
 import type { Attribute, NamedKind, OntologyClass } from '../ontologymodel';
@@ -302,12 +302,13 @@ function AttributeRange({ property, elsewhere }: { property: Attribute; elsewher
         className={`${styles.attributeRangePicker} nodrag`}
         value={property.range}
         aria-label={`Type of ${property.localName}`}
-        // The type belongs to the attribute, so it changes wherever the attribute is used; the
-        // other classes are usually not on screen to be seen changing.
+        // What the type holds, and how far a change reaches: the type belongs to the attribute, so
+        // it changes wherever the attribute is used, and the other classes are usually not on screen
+        // to be seen changing.
         title={
           elsewhere > 0
-            ? `Also changes the type on ${elsewhere} other ${elsewhere === 1 ? 'class' : 'classes'}`
-            : 'Change the type'
+            ? `${xsdDatatypeDescription(property.range)} Changing it also changes ${elsewhere} other ${elsewhere === 1 ? 'class' : 'classes'}.`
+            : xsdDatatypeDescription(property.range)
         }
         onChange={(event) => setRange(property.id, event.target.value as XsdDatatype)}
         onClick={(event) => event.stopPropagation()}
