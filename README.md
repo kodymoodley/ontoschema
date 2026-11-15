@@ -174,9 +174,13 @@ you are already working on is left alone.
 6. **File › Save as…** downloads `.ttl`, `.rdf` or `.owl` — a document this app can open again.
    **File › Export…** downloads the SHACL shapes alone, JSON-LD or a Mermaid diagram.
 
-To see reuse: open the **Attribute** tab in the left panel and drag `price` onto another class. The
+To see reuse: open the **Attribute** tab in the left panel and drag `price` onto another class, or
+select the other class and type `price` as a new attribute, which offers the existing one. The
 list shows it used `2×`, and the saved file drops its `rdfs:domain` while gaining a second SHACL
-shape.
+shape. A name a term already has is never made free with a number: typed for a relation in the
+connection dialog it chooses that relation, and anywhere else it is refused, with the field saying
+which term holds it. Only names nobody typed, like a second `NewClass` from the palette, are
+numbered.
 
 Past about thirty classes, `Ctrl`+`K` finds anything by name or description.
 

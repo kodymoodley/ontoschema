@@ -46,16 +46,15 @@ side panels fold away. The audit is done and every finding in [AUDIT.md](AUDIT.m
 a schema opened from a git repository saves itself into its file, so editing ends in
 `git commit` with no download (todos 43 and 42; see the README's _Editing a schema file in
 place_). Drawing a relation now lands anywhere on a class, and the side a line meets can be
-pinned and is saved (todo 39; see the README's _Gestures on the canvas_). The rest is specified
+pinned and is saved (todo 39; see the README's _Gestures on the canvas_). A name typed that a
+term already has is reused or refused, never numbered (todo 41). The rest is specified
 in full in its theme section below, smallest and most self-contained first, and the item that has
 to be measured before it can be designed last:
 
-1. **Reuse a term instead of minting `name2`** (todo 41, **S–M**) — the number is never what was
-   meant, and reuse already exists; this offers it at the moment a name collides.
-2. **Hide and show relations** (todo 38, **M**) — an eye on each row of the entities panel's
+1. **Hide and show relations** (todo 38, **M**) — an eye on each row of the entities panel's
    Relation tab, appearing on hover, that hides every line drawn with that relation. On touch
    screens the eye appears on the selected row instead. Three decisions first, listed with it.
-3. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
+2. **Shuffle the layout** (todo 40, **L**) — one press rearranges the whole schema into a fresh,
    tidy layout, fanned out left to right or top to bottom, and animates the classes there. A
    different arrangement on every press, none of them worse than _Tidy up_. The engine is chosen
    by benchmark, and this reverses the earlier decision to keep the layout button deterministic.
@@ -550,45 +549,6 @@ the quality bar.
 | **Duplicate a class** — with its attributes, as a starting point for a sibling.                                                                                                                                                                                                                                                          | S    |
 | **Schema diffing (given two loaded schemas) to compute and generate changelog entries using the Keep a Changelog standard** — governance for a vocabulary that other teams depend on. Sized up from S: it needs two ontologies loaded at once, a structural diff that survives renames, and a mapping from diff to changelog categories. | L    |
 
-### Reuse a term instead of minting `name2` (todo 41)
-
-**Size S–M.** Type a name that is already taken and the app quietly appends a number. Adding an
-attribute `name` to a second class creates `name2`. Creating a relation `hasOwner` in the
-connection dialog when one exists creates `hasOwner2`. Renaming a class to `Vehicle` when there is
-one already gives `Vehicle2`. The number is almost never what was meant. The person usually wanted
-the existing term, and the schema now has two properties where it should have one, with two sets
-of SHACL shapes and data that will be mapped against either.
-
-Reuse already exists: dragging an attribute from the pool onto a class, or picking a relation from
-the list in the connection dialog. It is just not offered at the moment a name is typed, which is
-when the collision happens.
-
-**What it should do.** When a typed name matches an existing term, say so before anything is
-created, and offer the existing term:
-
-- **Adding an attribute** with an existing attribute's name offers "Use the existing `name`", and
-  that is the default. It does exactly what dragging it from the pool does.
-- **Creating a relation** with an existing relation's name selects that relation in the dialog's
-  list, which is already how reuse is offered there.
-- **Renaming** to a name already in use is refused with a message that names the term holding it
-  ("`Vehicle` is already a class"), and the field stays open. Merging two terms into one is a
-  different and larger feature.
-- **A name held by the other kind of property** is refused and explained. Attributes and
-  relations share one namespace, and an attribute cannot reuse a relation.
-
-**Done when:**
-
-- No path where a person typed the name produces a numbered name.
-- Typing an existing attribute's name on a class reuses it, and the inspector shows it as reused.
-- Typing an existing relation's name in the connection dialog switches the dialog to reuse.
-- Renaming to a taken name shows an inline error and changes nothing.
-- Each reuse is a single step on the undo stack.
-
-**To decide first:** whether names nobody typed keep their numbers. Dropping a second fresh
-**Class** from the palette, or adding an attribute without naming it, still needs a free name.
-The recommendation is to keep `Class2` and `newAttribute2` there, because no one chose those names,
-and to stop numbering everywhere else.
-
 ### Small screens
 
 Three changes were ordered by the owner and built: a full-screen button to be rid of the address
@@ -755,10 +715,9 @@ list as originally written is in the git history; ask and it comes back.
 | 20  | Export and interop     | Harden the old layout reader — parked to the back of the queue           | S    |
 | 38  | Canvas and readability | Hide and show relations, from the entities panel                         | M    |
 | 40  | Canvas and readability | Shuffle the layout — engine chosen by benchmark                          | L    |
-| 41  | Editing workflow       | Reuse a term instead of minting `name2`                                  | S–M  |
 | 44  | Export and interop     | Open a cloned repository as a folder; open `.ttl` files from the desktop | M    |
 | 45  | Modelling power        | Any datatype as an attribute's range                                     | M    |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43, 39 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43, 39, 41 — kept as numbers so a commit message naming one can still be resolved.
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
