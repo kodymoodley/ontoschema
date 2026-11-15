@@ -2,6 +2,8 @@ import { addRelationBetween, attachProperty, pinUsageEnd } from '../ontologymode
 import type { ClassSide, EntityRef, Ontology } from '../ontologymodel';
 import type { Editor, SetState } from './editing';
 import type { ProjectStoreState } from './store';
+import { activeOntologyOf } from './workspace';
+import { revealRelation } from './hiddenrelations';
 
 /**
  * Transient interaction state: what is selected, which canvas is showing, and a connection
@@ -51,6 +53,14 @@ export interface InteractionActions {
   cancelConnection(): void;
   completeConnectionWith(propertyId: string): void;
   completeConnectionWithNewProperty(localName: string): void;
+}
+
+/** A line just drawn is never left out of sight: its relation is shown, if it was hidden. */
+function revealDrawn(get: () => ProjectStoreState, relationId: string): void {
+  const state = get();
+  const ontology = activeOntologyOf(state);
+  if (ontology && state.activeProjectId)
+    revealRelation(ontology, state.activeProjectId, relationId);
 }
 
 /** Pins the end of a just-drawn line to the side it was let go near, when it was. */
@@ -126,6 +136,7 @@ export function createInteractionActions(
         });
         return pinDrawnEnd(attached.ontology, attached.id, pending);
       });
+      revealDrawn(get, propertyId);
       set((state) => ({
         ...state,
         pendingConnection: null,
@@ -147,6 +158,7 @@ export function createInteractionActions(
           id: result.propertyId,
         };
       });
+      if (propertyId) revealDrawn(get, propertyId);
       set((state) => ({
         ...state,
         pendingConnection: null,

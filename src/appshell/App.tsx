@@ -14,7 +14,9 @@ import { ProjectNameField, ProjectSwitcher, SaveStatus } from '../projectswitche
 import { fileLinks, startFileLinks } from '../filelink';
 import { ConnectionLine, ConnectionPicker, RelationMarkers } from '../relationeditor';
 import {
+  showAllRelations,
   useActiveProjectId,
+  useHiddenRelations,
   useCanvasView,
   useOntology,
   useProjectStore,
@@ -184,6 +186,7 @@ export function App() {
    * nothing arranges twice.
    */
   const activeProjectId = useActiveProjectId();
+  const { hidden: hiddenRelations } = useHiddenRelations(ontology, activeProjectId);
   const arrangedProject = useRef<string | null>(null);
   useEffect(() => {
     if (activeProjectId === null || arrangedProject.current === activeProjectId) return;
@@ -261,6 +264,7 @@ export function App() {
 
   const attributeCount = ontology.attributes.length;
   const relationCount = ontology.relations.length;
+  const hiddenRelationCount = hiddenRelations.size;
 
   return (
     <div
@@ -529,6 +533,25 @@ export function App() {
             <span className={styles.statusItem}>
               <span className={`${styles.statusDot} ${styles.dotRelation}`} />
               {relationCount} relations
+              {/*
+                Said where the relations are already counted rather than in a control of its own,
+                and only while something is hidden: a hidden relation is never lost behind a panel
+                folded away, and with nothing hidden the bar reads as it always has.
+              */}
+              {hiddenRelationCount > 0 && activeProjectId ? (
+                <>
+                  {' · '}
+                  <button
+                    type="button"
+                    className={styles.statusAction}
+                    title="Show every hidden relation"
+                    aria-label={`Show the ${hiddenRelationCount} hidden ${hiddenRelationCount === 1 ? 'relation' : 'relations'}`}
+                    onClick={() => showAllRelations(activeProjectId)}
+                  >
+                    {hiddenRelationCount} hidden
+                  </button>
+                </>
+              ) : null}
             </span>
             <span className={styles.statusItem}>
               <span className={`${styles.statusDot} ${styles.dotAttribute}`} />

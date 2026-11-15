@@ -143,6 +143,25 @@ export function classWithDescendants(ontology: Ontology, classId: string): Ontol
 }
 
 /**
+ * The ids of the relations at or below any of `relationIds`: those relations and every
+ * subrelation under them, at any depth. Ids of relations that no longer exist are left out.
+ * Cycle-safe.
+ */
+export function relationsAtOrBelow(ontology: Ontology, relationIds: Iterable<string>): Set<string> {
+  const known = new Set(ontology.relations.map((relation) => relation.id));
+  const found = new Set<string>();
+  const stack = [...relationIds].filter((id) => known.has(id));
+  for (let current = stack.pop(); current !== undefined; current = stack.pop()) {
+    if (found.has(current)) continue;
+    found.add(current);
+    for (const child of ontology.relations) {
+      if (child.superPropertyIds.includes(current)) stack.push(child.id);
+    }
+  }
+  return found;
+}
+
+/**
  * Assigns each class to a taxonomy module, keyed by the root it descends from.
  * A class reachable from several roots is listed under each, which is what keeps
  * multiple inheritance visible without drawing edges across module boundaries.

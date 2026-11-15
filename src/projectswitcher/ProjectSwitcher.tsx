@@ -15,7 +15,7 @@ import {
 } from '../designsystem';
 import { canLinkFiles, fileLinks, pickFileToOpen, writableFormat } from '../filelink';
 import type { LinkedFileHandle } from '../filelink';
-import { formatForFilename, readOntology } from '../serialization';
+import { formatForFilename } from '../serialization';
 import {
   projectNameFromFilename,
   savingWouldChange,
@@ -130,6 +130,12 @@ export function ProjectSwitcher({ extraActions }: ProjectSwitcherProps = {}) {
     }
 
     try {
+      /*
+       * The reader is fetched when a file is opened, not when the app is: what this app models,
+       * what it keeps beside the model, and how it reports the difference only matter to someone
+       * opening a file, and they were three kilobytes of every visit.
+       */
+      const { readOntology } = await import('../serialization/read');
       const { ontology, report } = await readOntology(content, format);
       const projectId = openAsNewProject(projectNameFromFilename(file.name), ontology);
       const summary = summariseImport(ontology, report);

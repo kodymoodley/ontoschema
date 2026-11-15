@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalize, parseJsonLd, parseRdfXml, parseTurtle } from '../../tests/fixtures/parseRdf';
-import { DOCUMENT_OPTIONS, readOntology, serialize } from './index';
+import { DOCUMENT_OPTIONS, serialize } from './index';
+import { readOntology } from './read';
 import { renameClass } from '../ontologymodel';
 
 /**

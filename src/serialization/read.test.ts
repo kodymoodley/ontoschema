@@ -3,7 +3,8 @@ import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/aut
 import { allScenarios } from '../../tests/fixtures/scenarios';
 import type { Ontology } from '../ontologymodel';
 import { serialize } from './index';
-import { formatForFilename, parseDocument, readOntology } from './read';
+import { formatForFilename } from './formats';
+import { parseDocument, readOntology } from './read';
 
 /**
  * Reading a document from text, in both syntaxes the app writes.

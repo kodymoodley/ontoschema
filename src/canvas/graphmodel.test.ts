@@ -129,6 +129,28 @@ describe('schemaEdges', () => {
     expect(edge?.targetHandle).toBe('target-top');
   });
 
+  it('leaves out the lines of hidden relations, and only those', () => {
+    const { ontology, source, target } = twoClasses({ x: 0, y: 0 }, { x: 600, y: 0 });
+    const owns = addRelationBetween(ontology, {
+      localName: 'owns',
+      subjectClassId: source,
+      objectClassId: target,
+    });
+    const uses = addRelationBetween(owns.ontology, {
+      localName: 'uses',
+      subjectClassId: source,
+      objectClassId: target,
+    });
+
+    const drawn = (hidden: Set<string>) =>
+      schemaEdges(uses.ontology, hidden)
+        .filter((item) => item.type === EDGE_TYPE.relation)
+        .map((item) => item.id);
+
+    expect(drawn(new Set())).toEqual([owns.usageId, uses.usageId]);
+    expect(drawn(new Set([owns.propertyId]))).toEqual([uses.usageId]);
+  });
+
   it('keeps a pinned end on its side wherever the classes go, and lets the other follow', () => {
     const { ontology, source, target } = twoClasses({ x: 0, y: 0 }, { x: 600, y: 0 });
     const related = addRelationBetween(ontology, { subjectClassId: source, objectClassId: target });

@@ -227,3 +227,57 @@ describe('telling the two delete buttons apart', () => {
     expect(screen.getByRole('button', { name: 'Delete selected attribute' })).toBeInTheDocument();
   });
 });
+
+describe('HierarchyTree — hiding relations', () => {
+  const projectId = () => store().activeProjectId!;
+  const eye = (name: RegExp | string) => screen.getByRole('button', { name });
+
+  async function relationTab(user: ReturnType<typeof userEvent.setup>) {
+    render(<HierarchyTree />);
+    await user.click(screen.getByRole('tab', { name: 'Relation' }));
+  }
+
+  it('hides a relation with its eye, and shows it again, without selecting it', async () => {
+    const user = userEvent.setup();
+    store().createRelation({ localName: 'hasOwner' });
+    store().select(null);
+    await relationTab(user);
+
+    await user.click(eye('Hide hasOwner'));
+    expect(eye('Show hasOwner')).toHaveAttribute('aria-pressed', 'true');
+    // Dimmed in the list, so it reads as hidden without the eye showing.
+    expect(item('hasOwner')).toHaveAttribute('data-hidden', 'true');
+    expect(store().selection).toBeNull();
+
+    await user.click(eye('Show hasOwner'));
+    expect(eye('Hide hasOwner')).toHaveAttribute('aria-pressed', 'false');
+    expect(item('hasOwner')).not.toHaveAttribute('data-hidden');
+  });
+
+  it('hides the relations under a hidden one, whose own eyes say why', async () => {
+    const user = userEvent.setup();
+    const participant = store().createRelation({ localName: 'hasParticipant' });
+    const driver = store().createRelation({ localName: 'hasDriver' });
+    store().reparentRelation(driver, participant);
+    await relationTab(user);
+
+    await user.click(eye('Hide hasParticipant'));
+
+    expect(item('hasDriver')).toHaveAttribute('data-hidden', 'true');
+    expect(eye('hasDriver is hidden with the relation above it')).toBeDisabled();
+  });
+
+  it('is kept per project, in this browser, and not in the schema', async () => {
+    const user = userEvent.setup();
+    const owner = store().createRelation({ localName: 'hasOwner' });
+    const before = ontology();
+    await relationTab(user);
+
+    await user.click(eye('Hide hasOwner'));
+
+    expect(ontology()).toBe(before);
+    expect(store().history.past).toHaveLength(1); // creating it, and nothing for hiding it
+    const stored = JSON.parse(localStorage.getItem('ontoschema.hiddenRelations') ?? '{}');
+    expect(stored[projectId()]).toEqual([owner]);
+  });
+});

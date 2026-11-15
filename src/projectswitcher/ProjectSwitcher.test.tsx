@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useProjectStore } from '../projectstore';
 import { projectToFile } from '../projectstore/persistence';
@@ -216,12 +216,22 @@ describe('restoring a backup', () => {
  * browser does: a File with a name on it.
  */
 describe('opening an RDF document', () => {
+  /*
+   * Opens a file and waits until it has been dealt with: a project made from it, or an error
+   * saying why not. The reader is fetched when the first file is opened, so that can take a
+   * moment the store does not show.
+   */
   async function open(user: ReturnType<typeof userEvent.setup>, name: string, content: string) {
+    const before = store().projects.length;
     await openFileMenu(user);
     await user.upload(
       screen.getByLabelText('Open project file'),
       new File([content], name, { type: 'text/turtle' }),
     );
+    await waitFor(() => {
+      const refused = screen.queryByRole('dialog', { name: /Could not open/ });
+      if (store().projects.length === before && !refused) throw new Error('still reading');
+    });
   }
 
   const TURTLE = `

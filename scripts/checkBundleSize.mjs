@@ -105,6 +105,11 @@ const LAZY_BUDGETS = {
   'rdfxml.js': 48,
   'examplelibrary.js': 32,
   'filelinking.js': 6, // 4.1 when it was split out
+  /*
+   * Reading a document: the syntax half and the rules about what the model takes, fetched when a
+   * file is opened. Split out of the eager bundle to make room: 3.6 here, and 213.9 to 211.5 in total.
+   */
+  'read.js': 6,
 };
 
 /** `index-DgDSQNvl.js` and `index.js` are the same chunk; compare on the stable part. */

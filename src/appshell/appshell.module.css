@@ -499,3 +499,21 @@
 .dotAttribute {
   background: var(--accent-attribute);
 }
+
+/* What the status bar offers to do about what it reports: quiet until pointed at. */
+.statusAction {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text-secondary);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.statusAction:hover,
+.statusAction:focus-visible {
+  color: var(--accent-relation);
+  text-decoration-style: solid;
+}

@@ -23,16 +23,11 @@ import {
   moveClass,
   pinUsageEnd,
 } from '../ontologymodel';
-import {
-  DOCUMENT_OPTIONS,
-  SERIALIZATION_FORMATS,
-  readOntology,
-  sanitizeFilename,
-  serialize,
-} from './index';
+import { DOCUMENT_OPTIONS, SERIALIZATION_FORMATS, sanitizeFilename, serialize } from './index';
 import { serializeJsonLd } from './jsonld';
 import { serializeRdfXml } from './rdfxml';
 import { serializeTurtle } from './turtle';
+import { readOntology } from './read';
 
 const { ontology: auto, ids } = buildAutoOntology();
 

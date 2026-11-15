@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, renderHook, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useProjectStore } from '../projectstore';
+import { setRelationHidden, useHiddenRelations, useProjectStore } from '../projectstore';
 import { usagesOfProperty } from '../ontologymodel';
 import { ConnectionPicker } from './ConnectionPicker';
 
@@ -234,6 +234,23 @@ describe('ConnectionPicker', () => {
     drawnConnection();
     rerender(<ConnectionPicker />);
     expect(box()).toHaveValue('');
+  });
+
+  /* A line drawn with a hidden relation would be drawn out of sight; it shows it instead. */
+  it('shows a hidden relation again when a line is drawn with it', async () => {
+    const user = userEvent.setup();
+    drawnConnection();
+    const participant = store().createRelation({ localName: 'hasParticipant' });
+    const driver = store().createRelation({ localName: 'hasDriver' });
+    store().reparentRelation(driver, participant);
+    setRelationHidden(store().activeProjectId!, participant, true);
+    render(<ConnectionPicker />);
+
+    await user.click(screen.getByText('hasDriver'));
+
+    const { result } = renderHook(() => useHiddenRelations(ontology(), store().activeProjectId));
+    expect(result.current.hidden.has(driver)).toBe(false);
+    expect(result.current.hidden.has(participant)).toBe(false);
   });
 
   it('records the whole connection as a single undo step', async () => {

@@ -185,6 +185,13 @@ numbered.
 
 Past about thirty classes, `Ctrl`+`K` finds anything by name or description.
 
+When the lines get in the way, put some away. Point at a relation in the entities panel's
+**Relation** tab and an eye appears at the end of its row (on a touch screen, select the row).
+Clicking it hides that relation's lines on the schema canvas, and those of the relations under it;
+the row stays in the list, dimmed. The status bar then reads `11 relations · 3 hidden`, and clicking
+that shows them all again. Hiding belongs to this browser, per project: it changes nothing in the
+schema, its files or its undo history. Drawing a line with a hidden relation shows it again.
+
 ### Gestures on the canvas
 
 | Gesture                                        | What it does                                                       |

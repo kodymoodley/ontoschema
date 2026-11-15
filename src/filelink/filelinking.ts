@@ -1,6 +1,8 @@
 import type { StoreApi } from 'zustand/vanilla';
 import { useProjectStore } from '../projectstore';
-import { DOCUMENT_OPTIONS, readOntology, serialize } from '../serialization';
+import { DOCUMENT_OPTIONS, serialize } from '../serialization';
+// Not through the module's index, which leaves the reader out; this chunk is loaded on demand.
+import { readOntology } from '../serialization/read';
 import { createFileLinks } from './engine';
 import type { LinkStatus } from './engine';
 import { watchWithObserver } from './platform';

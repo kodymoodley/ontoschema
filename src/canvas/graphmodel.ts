@@ -214,7 +214,12 @@ function sameNames(before: string[], after: string[]): boolean {
  */
 const selfLoop = (usage: PropertyUsage) => usage.subjectClassId === usage.objectClassId;
 
-export function schemaEdges(ontology: Ontology): Edge[] {
+/**
+ * The relation lines the schema view draws: one per usage, less those of `hidden` relations.
+ * Leaving them out here rather than hiding them afterwards is what lets the lines still drawn fan
+ * out as if the hidden ones were not there.
+ */
+export function schemaEdges(ontology: Ontology, hidden: ReadonlySet<string> = new Set()): Edge[] {
   const index = indexOntology(ontology);
 
   /** Where each class sits and roughly how big it is, so edges can pick facing sides. */
@@ -237,6 +242,7 @@ export function schemaEdges(ontology: Ontology): Edge[] {
   const drawable = ontology.usages.filter(
     (usage) =>
       usage.objectClassId !== null &&
+      !hidden.has(usage.propertyId) &&
       index.relationById.has(usage.propertyId) &&
       index.classById.has(usage.subjectClassId) &&
       index.classById.has(usage.objectClassId),

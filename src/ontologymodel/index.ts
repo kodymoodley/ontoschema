@@ -66,6 +66,7 @@ export {
   classWithDescendants,
   attributeList,
   relationForest,
+  relationsAtOrBelow,
   rootClasses,
   subClassEdges,
   taxonomyModules,
@@ -102,7 +103,11 @@ export {
   updateAnnotation,
 } from './mutations';
 
-export { ontologyFromTriples } from './fromTriples';
+/*
+ * `ontologyFromTriples` is not exported here. Reading a document is only needed when one is
+ * opened, so the reader that uses it is loaded then; exported from this file, which every visit
+ * loads, it would come with every visit. Import it from `./fromTriples`.
+ */
 export type { ImportReport, ImportResult } from './fromTriples';
 export { decodeLayout, decodePosition, encodePosition } from './layout';
 export type { Layout } from './layout';
