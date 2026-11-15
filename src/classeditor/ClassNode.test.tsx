@@ -318,6 +318,11 @@ describe('changing an attribute’s type on the class box', () => {
     expect(list).toHaveValue('string');
     expect(list.querySelectorAll('optgroup')).toHaveLength(7);
     expect(list.querySelectorAll('option')).toHaveLength(39);
+    // Each option explains itself when pointed at.
+    expect(list.querySelector('option[value="gYear"]')).toHaveAttribute(
+      'title',
+      'A year, such as 2026.',
+    );
   });
 
   it('says how many other classes the change reaches when the attribute is shared', () => {
@@ -329,8 +334,14 @@ describe('changing an attribute’s type on the class box', () => {
     store().attachPropertyToClass(make, lorry);
     renderNode(car);
 
-    expect(picker('make')).toHaveAttribute('title', 'Also changes the type on 2 other classes');
-    expect(picker('year')).toHaveAttribute('title', 'Change the type');
+    expect(picker('make')).toHaveAttribute(
+      'title',
+      'Any text, such as "Hello". Changing it also changes 2 other classes.',
+    );
+    expect(picker('year')).toHaveAttribute(
+      'title',
+      'A whole number of any size, positive or negative, such as -3 or 42.',
+    );
   });
 
   it('offers no list in a row whose name is being edited, so a row has one editor at a time', async () => {

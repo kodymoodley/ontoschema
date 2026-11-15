@@ -3,6 +3,7 @@ import {
   XSD_DATATYPES,
   XSD_DATATYPE_GROUPS,
   isXsdDatatype,
+  xsdDatatypeDescription,
   xsdDatatypeIri,
   xsdDatatypeLabel,
 } from './datatypes';
@@ -68,5 +69,21 @@ describe('the datatypes an attribute can have', () => {
       'http://www.w3.org/2001/XMLSchema#nonNegativeInteger',
     );
     expect(xsdDatatypeLabel('gYearMonth')).toBe('gYearMonth');
+  });
+});
+
+describe('what each datatype says about itself', () => {
+  it('describes every datatype on offer, in a sentence of its own', () => {
+    const descriptions = XSD_DATATYPES.map((datatype) => xsdDatatypeDescription(datatype));
+    for (const [index, description] of descriptions.entries()) {
+      expect(description, XSD_DATATYPES[index]).toMatch(/^\S.*\.$/);
+    }
+    // Copied text would tell two types apart by nothing.
+    expect(new Set(descriptions).size).toBe(descriptions.length);
+  });
+
+  it('gives an example written as it appears in a file', () => {
+    expect(xsdDatatypeDescription('gMonthDay')).toContain('--11-15');
+    expect(xsdDatatypeDescription('dayTimeDuration')).toContain('P2DT3H');
   });
 });

@@ -1,3 +1,4 @@
+import { xsdDatatypeDescription } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import {
   entityIri,
@@ -68,6 +69,7 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
         <Select
           value={entity.range}
           aria-label="Attribute range"
+          title={xsdDatatypeDescription(entity.range)}
           onChange={(event) => setRange(propertyId, event.target.value as XsdDatatype)}
         >
           <DatatypeOptions />

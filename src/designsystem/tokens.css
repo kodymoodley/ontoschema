@@ -4,6 +4,11 @@
  */
 
 :root {
+  /*
+   * Which palette the browser's own parts use: dropdown lists, scrollbars, date pickers. Both until
+   * the app has chosen, then whichever it chose (below), so a dark theme gets a dark list even on a
+   * computer set to light, and the other way round.
+   */
   color-scheme: light dark;
 
   /* Neutral ramp — slate, slightly cool */
@@ -87,7 +92,12 @@
   --header-height: 48px;
 }
 
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --surface-canvas: #14171d;
   --surface-base: #1a1e26;
   --surface-raised: #212630;
