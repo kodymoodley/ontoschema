@@ -59,6 +59,26 @@ function towards(from: Point, to: Point, by: number): Point {
 const horizontal = (side: Side) => side === 'left' || side === 'right';
 
 /**
+ * The ends and the corners of a route, without repeated points or points partway along a straight
+ * run. A router can leave either behind; drawn, each would be rounded as if the line turned there.
+ */
+function corners(points: readonly Point[]): Point[] {
+  const kept: Point[] = [];
+  for (const point of points) {
+    const last = kept.at(-1);
+    if (last && last.x === point.x && last.y === point.y) continue;
+    const before = kept.at(-2);
+    const onTheRun =
+      before &&
+      last &&
+      ((before.x === last.x && last.x === point.x) || (before.y === last.y && last.y === point.y));
+    if (onTheRun) kept.pop();
+    kept.push(point);
+  }
+  return kept;
+}
+
+/**
  * A route moved to start at `from` and end at `to`, every segment still square.
  *
  * A route is worked out for where the classes were when it was asked for, and drawn for where
@@ -69,8 +89,8 @@ const horizontal = (side: Side) => side === 'left' || side === 'right';
  * the part that goes around the classes, is untouched.
  *
  * The sides say which way each end leaves its box, which is what decides how its first corner
- * moves. A route with no corners at all gets a pair, so a straight line that is no longer straight
- * becomes a step rather than a slant.
+ * moves. A route with no corners stays straight while its ends still line up, and otherwise gets a
+ * pair, so a straight line that is no longer straight becomes a step rather than a slant.
  */
 export function fitToEnds(
   points: readonly Point[],
@@ -79,11 +99,11 @@ export function fitToEnds(
   to: Point,
   toSide: Side,
 ): Point[] {
-  const route = points.filter(
-    (point, index) =>
-      index === 0 || point.x !== points[index - 1]!.x || point.y !== points[index - 1]!.y,
-  );
-  if (route.length < 3) return stepBetween(from, fromSide, to);
+  const route = corners(points);
+  if (route.length < 3) {
+    const linedUp = horizontal(fromSide) ? from.y === to.y : from.x === to.x;
+    return linedUp ? [{ ...from }, { ...to }] : stepBetween(from, fromSide, to);
+  }
   // Moving the first and last corners keeps the route square only if its first and last segments
   // run the way their sides face. One that does not is drawn as a plain step instead.
   const runsAcross = (a: Point, b: Point) => a.y === b.y;

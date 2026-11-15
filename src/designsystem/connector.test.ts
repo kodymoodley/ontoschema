@@ -94,6 +94,35 @@ describe('fitting a route to where its ends are drawn', () => {
     ]);
   });
 
+  it('drops points partway along a straight run, which would otherwise be fitted as corners', () => {
+    const withStops = [
+      { x: 100, y: 50 },
+      { x: 120, y: 50 },
+      { x: 150, y: 50 },
+      { x: 150, y: 120 },
+      { x: 150, y: 200 },
+      { x: 300, y: 200 },
+    ];
+    const fitted = fitToEnds(withStops, { x: 104, y: 60 }, 'right', { x: 296, y: 190 }, 'left');
+    expect(fitted).toEqual([
+      { x: 104, y: 60 },
+      { x: 150, y: 60 },
+      { x: 150, y: 190 },
+      { x: 296, y: 190 },
+    ]);
+  });
+
+  it('keeps a straight line straight while its ends still line up', () => {
+    const straight = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ];
+    expect(fitToEnds(straight, { x: 4, y: 0 }, 'right', { x: 96, y: 0 }, 'left')).toEqual([
+      { x: 4, y: 0 },
+      { x: 96, y: 0 },
+    ]);
+  });
+
   it('turns a straight line that no longer lines up into a step, not a slant', () => {
     const fitted = fitToEnds(
       [
