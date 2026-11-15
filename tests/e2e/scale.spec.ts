@@ -4,6 +4,7 @@ import { SAVE_DELAY_MS } from '../../src/projectstore/savequeue';
 import { openApp, selectClass, settledViewport } from './ontoschema';
 import { savedPositions, seedWorkspace } from './seedWorkspace';
 import {
+  quietFrames,
   recordStorageWrites,
   startRecordingFrames,
   stopRecordingFrames,
@@ -220,4 +221,46 @@ test('shuffles in the background, without stalling the canvas', async ({ page })
   );
   expect(landedMs).toBeLessThan(2500);
   expect(worstStallMs).toBeLessThan(400);
+});
+
+/*
+ * Lines are routed around the classes by libavoid in a worker, and re-routed on every frame of a
+ * drag. What must not happen is the drag itself waiting for them.
+ *
+ * Measured by frames, as panning and zooming are. A 10ms interval timer was tried first and
+ * misleads here: it counts every frame over 17ms as blocked time, and each frame of a drag at
+ * 200 classes takes 20-30ms with or without routing, so it reported the routing as doubling the
+ * cost when the frames were no longer.
+ *
+ * Measured on this machine, once the page has gone quiet: a median frame of 16.7ms, a 95th
+ * percentile of 33-50ms and a worst frame of 67-83ms, across three runs.
+ */
+test('drags a class while its lines are routed around the rest, without stalling', async ({
+  page,
+}) => {
+  await openApp(page);
+  await expect(page.locator('[data-class-node-id]')).toHaveCount(CLASS_COUNT);
+  await settledViewport(page);
+  // The first routes redraw every line once, which is opening the schema, not dragging in it.
+  await expect(page.locator('[data-relation-name]:not([data-routed])')).toHaveCount(0);
+  await quietFrames(page);
+
+  const header = await page.locator('[data-class-name="Class0"] header').boundingBox();
+  if (!header) throw new Error('Class0 not on canvas');
+  const x = header.x + header.width / 2;
+  const y = header.y + header.height / 2;
+
+  await startRecordingFrames(page);
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 400, y + 250, { steps: 40 });
+  await page.mouse.up();
+  const report = await stopRecordingFrames(page);
+
+  console.log(
+    `drag with routing: ${report.frames} frames, median ${report.median.toFixed(1)}ms, ` +
+      `p95 ${report.p95.toFixed(1)}ms, worst ${report.worst.toFixed(1)}ms`,
+  );
+  expect(report.frames).toBeGreaterThan(10);
+  expect(report.p95).toBeLessThan(80);
 });
