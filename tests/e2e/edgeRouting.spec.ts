@@ -404,6 +404,13 @@ test('double-clicking an edge label still opens it rather than fitting the view'
  * be lifted above every node, so it covered that class and swallowed gestures aimed at it.
  */
 test('a relation label passing over a class does not cover it', async ({ page }) => {
+  /*
+   * Lines are routed around the classes now, so a label lands on one only while the routes are
+   * on their way, or where the router could not start. The second is the one a test can hold
+   * still: with the routing worker refused, every line stays the plain step it was before there
+   * was a router -- which is also the fallback this checks is drawn.
+   */
+  await page.route('**/avoid.worker*', (route) => route.abort());
   await openApp(page);
   // Kept well inside the canvas: a node past its edge is still in the DOM, and the drag that
   // draws the relation would silently miss the handle.
