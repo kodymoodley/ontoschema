@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { buildLarge } from '../fixtures/scenarios';
 import { SAVE_DELAY_MS } from '../../src/projectstore/savequeue';
-import { openApp, selectClass } from './ontoschema';
-import { seedWorkspace } from './seedWorkspace';
+import { openApp, selectClass, settledViewport } from './ontoschema';
+import { savedPositions, seedWorkspace } from './seedWorkspace';
 import {
   recordStorageWrites,
   startRecordingFrames,
@@ -166,4 +166,58 @@ test('batches storage writes instead of one per keystroke', async ({ page }) => 
   expect(writes).toHaveLength(1);
   expect(bytes).toBeLessThan(512 * 1024);
   expect(await page.evaluate(() => window.localStorage.length)).toBeGreaterThan(0);
+});
+
+/*
+ * A shuffle at this size is about half a second of layout in a worker, then one render that
+ * commits the new places while the browser glides the classes there. What the person feels is
+ * how long until it has landed, and the longest the page went without answering.
+ *
+ * Stalls are timed with a 10ms interval rather than with frames. While the worker runs nothing
+ * on screen changes, and headless Chromium then draws no frames at all, so a frame-gap reading
+ * reports the whole wait as one stall that never happened.
+ *
+ * Measured on this machine: landed in about 1050ms, and no stall longer than about 65ms, the one
+ * render that moves 200 classes. Moving the classes a frame at a time instead cost 150ms on every
+ * frame of the glide.
+ */
+test('shuffles in the background, without stalling the canvas', async ({ page }) => {
+  await openApp(page);
+  await expect(page.locator('[data-class-node-id]')).toHaveCount(CLASS_COUNT);
+  const before = await savedPositions(page);
+  // Opening 200 classes keeps the main thread busy for a while after they are on screen.
+  await settledViewport(page);
+
+  // Timed in the page, from the click to the button saying it is done: polling from here would
+  // add its own backoff to the number.
+  const { landedMs, worstStallMs } = await page.evaluate(
+    () =>
+      new Promise<{ landedMs: number; worstStallMs: number }>((resolve) => {
+        const button = document.querySelector<HTMLElement>('[data-testid="shuffle"]');
+        if (!button) throw new Error('no Shuffle button');
+        const started = performance.now();
+        let last = started;
+        let worst = 0;
+        const timer = window.setInterval(() => {
+          const now = performance.now();
+          worst = Math.max(worst, now - last);
+          last = now;
+        }, 10);
+        new MutationObserver((_records, observer) => {
+          if (button.getAttribute('aria-busy') !== 'false') return;
+          observer.disconnect();
+          const landed = performance.now() - started;
+          window.clearInterval(timer);
+          resolve({ landedMs: landed, worstStallMs: worst });
+        }).observe(button, { attributes: true, attributeFilter: ['aria-busy'] });
+        button.click();
+      }),
+  );
+  await expect.poll(() => savedPositions(page)).not.toEqual(before);
+
+  console.log(
+    `shuffle: landed in ${landedMs.toFixed(0)}ms, longest stall ${worstStallMs.toFixed(0)}ms`,
+  );
+  expect(landedMs).toBeLessThan(2500);
+  expect(worstStallMs).toBeLessThan(400);
 });
