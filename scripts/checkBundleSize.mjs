@@ -70,8 +70,13 @@ const BUDGETS = {
    * a file merged, 209.9 with the kept statements, their shape names and prefixes, and 210.3 once
    * that met the version IRI work. Application code, no new dependency. The way back under 210 is
    * loading the importer only when a file is opened, which is its own piece of work.
+   *
+   * That work took it to 211.5, and hiding relations to 212.8. Raised to 218 for the shuffle,
+   * whose buttons, glide and worker client took it to 213.8: 0.2 kB of headroom, the gate that
+   * fails the next change for no reason of its own. The layout engines it runs are not in this
+   * number; see `shuffle.worker.js` below.
    */
-  total: 214,
+  total: 218,
 };
 
 /**
@@ -95,6 +100,9 @@ const BUDGETS = {
  * store and the file pickers, behind the dynamic import in `filelink/index.ts`. It loads the first
  * time a file is opened or saved, or at startup in a browser that has linked one before, so
  * someone who never links a file never downloads it.
+ *
+ * `shuffle.worker.js` is the shuffle's layout engines, in the worker `canvas/backgroundshuffle.ts`
+ * starts, and is downloaded only by someone who presses Shuffle.
  */
 const LAZY_BUDGETS = {
   /**
@@ -110,6 +118,11 @@ const LAZY_BUDGETS = {
    * file is opened. Split out of the eager bundle to make room: 3.6 here, and 213.9 to 211.5 in total.
    */
   'read.js': 6,
+  /*
+   * The shuffle's worker: dagre and d3-dag with the scoring, fetched on the first press of Shuffle.
+   * A worker cannot share the page's chunks, so it carries its own dagre. 43.7 when it was added.
+   */
+  'shuffle.worker.js': 48,
 };
 
 /** `index-DgDSQNvl.js` and `index.js` are the same chunk; compare on the stable part. */
