@@ -278,4 +278,16 @@ describe('finding something in the open schema', () => {
     const empty = createEmptyOntology('https://example.org/x/', 'x');
     expect(searchEntities(empty, 'car')).toEqual([]);
   });
+
+  it('searches only the kinds it is asked to', () => {
+    // `offered` finds the relation; asked for attributes alone, it finds nothing.
+    expect(searchEntities(schema(), 'offered', { kinds: ['attribute'] })).toEqual([]);
+    expect(
+      searchEntities(schema(), 'offered', { kinds: ['relation'] }).map((hit) => hit.localName),
+    ).toEqual(['offeredBy']);
+  });
+
+  it('returns no more than it is asked for', () => {
+    expect(searchEntities(schema(), 'car', { limit: 1 })).toHaveLength(1);
+  });
 });
