@@ -14,7 +14,8 @@ import {
 } from './layout';
 import type { Box, Side } from './layout';
 import { atSide, endpointOffsets, sourceEnd, targetEnd } from './bundles';
-import { orthogonalPath, routeEdges } from './routing';
+import { routeEdges } from './routing';
+import { orthogonalPath } from '../designsystem';
 import type { EdgeEnds, Rect } from './routing';
 
 /**

@@ -31,3 +31,6 @@ export { Switch } from './Switch';
 export { downloadFile } from './download';
 
 export { DOUBLE_TAP_MS, TAP_SLOP_PX, useDoubleTap } from './doubletap';
+
+export { fitToEnds, labelPoint, orthogonalPath } from './connector';
+export type { Point, Side } from './connector';
