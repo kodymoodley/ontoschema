@@ -8,8 +8,11 @@ import {
   findClass,
   findAttribute,
   findRelation,
+  cleanName,
+  holderOfName,
+  nameProblem,
   relationUsagesTouchingClass,
-  toClassLocalName,
+  usageCount,
 } from '../ontologymodel';
 import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
@@ -43,10 +46,25 @@ export function ClassDetails({ classId }: { classId: string }) {
     .map((id) => findClass(ontology, id))
     .filter((parent): parent is NonNullable<typeof parent> => parent !== undefined);
 
+  /*
+   * A typed name an attribute already has means that attribute, used here as well -- what
+   * dragging it from the pool does -- so the button offers that instead of adding a new one. Any
+   * other name another term holds is refused, and says whose it is.
+   */
+  const typedName = attributeName.trim();
+  const holder = typedName ? holderOfName(ontology, cleanName('attribute', typedName)) : undefined;
+  const existing = holder?.kind === 'attribute' ? findAttribute(ontology, holder.id) : undefined;
+  const addProblem = !typedName
+    ? undefined
+    : existing
+      ? attributeUsages.some((usage) => usage.propertyId === existing.id)
+        ? `${existing.localName} is already on this class.`
+        : undefined
+      : nameProblem(ontology, 'attribute', typedName);
+
   const addAttribute = () => {
-    const name = attributeName.trim();
-    if (!name) return;
-    createAttributeOn(classId, { localName: name, range: attributeRange });
+    if (!typedName || addProblem) return;
+    createAttributeOn(classId, { localName: typedName, range: attributeRange });
     setAttributeName('');
   };
 
@@ -63,9 +81,7 @@ export function ClassDetails({ classId }: { classId: string }) {
           value={entity.localName}
           aria-label="Class local name"
           onCommit={(value) => renameClass(classId, value)}
-          validate={(value) =>
-            toClassLocalName(value) === '' ? 'A class needs a name.' : undefined
-          }
+          validate={(value) => nameProblem(ontology, 'class', value, classId)}
         />
       </Field>
 
@@ -137,7 +153,15 @@ export function ClassDetails({ classId }: { classId: string }) {
         </Select>
       </Field>
 
-      <Field label={`Attributes (${attributeUsages.length})`}>
+      <Field
+        label={`Attributes (${attributeUsages.length})`}
+        error={addProblem}
+        hint={
+          existing && !addProblem
+            ? `${existing.localName} already exists, so this class will use it too.`
+            : undefined
+        }
+      >
         {attributeUsages.length > 0 ? (
           <ul className={styles.list}>
             {attributeUsages.map((usage) => {
@@ -152,7 +176,13 @@ export function ClassDetails({ classId }: { classId: string }) {
                   >
                     {property.localName}
                   </button>
-                  <span className={styles.rowMeta}>{xsdDatatypeLabel(property.range)}</span>
+                  <span className={styles.rowMeta}>
+                    {xsdDatatypeLabel(property.range)}
+                    {/* The same mark the canvas row carries when the attribute is reused. */}
+                    {usageCount(ontology, property.id) > 1
+                      ? ` · ↗ ${usageCount(ontology, property.id) - 1} more`
+                      : null}
+                  </span>
                   <button
                     type="button"
                     className={styles.removeButton}
@@ -179,7 +209,9 @@ export function ClassDetails({ classId }: { classId: string }) {
             }}
           />
           <Select
-            value={attributeRange}
+            // An existing attribute keeps its own range, the same on every class.
+            value={existing?.range ?? attributeRange}
+            disabled={existing !== undefined}
             aria-label="New attribute range"
             onChange={(event) => setAttributeRange(event.target.value as XsdDatatype)}
           >
@@ -191,12 +223,16 @@ export function ClassDetails({ classId }: { classId: string }) {
           </Select>
           <Button
             onClick={addAttribute}
-            disabled={!attributeName.trim()}
+            disabled={!typedName || addProblem !== undefined}
             /* The palette has an "Add Attribute" of its own, and role names match without
                regard to case. This one says which class it adds to, which it should anyway. */
-            aria-label="Add attribute to this class"
+            aria-label={
+              existing
+                ? `Use the existing attribute ${existing.localName} on this class`
+                : 'Add attribute to this class'
+            }
           >
-            Add
+            {existing ? 'Use existing' : 'Add'}
           </Button>
         </div>
       </Field>

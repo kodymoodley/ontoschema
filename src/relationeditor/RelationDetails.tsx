@@ -5,7 +5,7 @@ import {
   findClass,
   findRelation,
   isClassSide,
-  toPropertyLocalName,
+  nameProblem,
   usagesOfProperty,
 } from '../ontologymodel';
 import type { ClassSide } from '../ontologymodel';
@@ -111,9 +111,7 @@ export function RelationDetails({ propertyId }: { propertyId: string }) {
           value={entity.localName}
           aria-label="Relation local name"
           onCommit={(value) => rename(propertyId, value)}
-          validate={(value) =>
-            toPropertyLocalName(value) === '' ? 'A relation needs a name.' : undefined
-          }
+          validate={(value) => nameProblem(ontology, 'relation', value, propertyId)}
         />
       </Field>
 

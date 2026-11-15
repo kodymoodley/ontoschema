@@ -121,6 +121,11 @@ export function TextArea({ invalid, className, ...rest }: TextAreaProps) {
  * broken — deleting the last character silently snaps the old name back, so the name can
  * never be replaced by typing. Instead the field holds its own draft, marks itself invalid
  * the way a required form field would, and only commits once the value is acceptable.
+ *
+ * It commits as it goes, so typing `Vehicle` over `Car` has renamed the class `Vehicl` by the
+ * time the last letter is refused as another class's name. Left there or abandoned with Escape,
+ * a refused draft puts back the name the field had when typing began, so a refused name changes
+ * nothing rather than leaving the last name that passed on the way.
  */
 interface NameInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
   value: string;
@@ -136,10 +141,12 @@ export function NameInput({
   mono,
   className,
   onBlur,
+  onFocus,
   onKeyDown,
   ...rest
 }: NameInputProps) {
   const [draft, setDraft] = useState<string | null>(null);
+  const before = useRef<string | null>(null);
   const shown = draft ?? value;
   const error = draft === null ? undefined : validate?.(draft);
 
@@ -147,6 +154,10 @@ export function NameInput({
     if (validate?.(next)) return;
     setDraft(null);
     if (next !== value) onCommit(next);
+  };
+  const abandon = () => {
+    setDraft(null);
+    if (error && before.current !== null && before.current !== value) onCommit(before.current);
   };
 
   return (
@@ -161,15 +172,19 @@ export function NameInput({
           // Commit as you type while the value is usable, so the canvas stays in step.
           if (!validate?.(next)) onCommit(next);
         }}
+        onFocus={(event) => {
+          before.current = value;
+          onFocus?.(event);
+        }}
         onBlur={(event) => {
           // Leaving an unusable value behind would strand the field; fall back to the model.
-          if (error) setDraft(null);
+          if (error) abandon();
           else commit(event.target.value);
           onBlur?.(event);
         }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') commit(event.currentTarget.value);
-          if (event.key === 'Escape') setDraft(null);
+          if (event.key === 'Escape') abandon();
           onKeyDown?.(event);
         }}
         {...rest}

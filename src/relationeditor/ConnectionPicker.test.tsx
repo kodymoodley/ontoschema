@@ -134,7 +134,44 @@ describe('ConnectionPicker', () => {
     expect(screen.getByTestId('confirm-connection')).toBeDisabled();
     await user.type(screen.getByLabelText('New relation name'), '///');
     expect(screen.getByTestId('confirm-connection')).toBeDisabled();
-    expect(screen.getByText('That name cannot be used.')).toBeInTheDocument();
+    expect(screen.getByText('A relation needs a name.')).toBeInTheDocument();
+  });
+
+  /* Not `offeredBy2`: the name was the relation that already has it. */
+  it('switches to reusing a relation whose name is typed, and back on typing past it', async () => {
+    const user = userEvent.setup();
+    const { car, dealership } = drawnConnection();
+    const offeredBy = store().createRelation({ localName: 'offeredBy' });
+    render(<ConnectionPicker />);
+    const name = screen.getByLabelText('New relation name');
+
+    await user.type(name, 'offered by');
+    expect(screen.getByLabelText('Relation to use')).toHaveValue(offeredBy);
+    expect(screen.getByText('offeredBy already exists, so this will use it.')).toBeInTheDocument();
+
+    await user.type(name, 'X');
+    expect(screen.getByLabelText('Relation to use')).toHaveValue('');
+    await user.type(name, '{Backspace}{Enter}');
+
+    expect(ontology().relations.map((relation) => relation.localName)).toEqual(['offeredBy']);
+    expect(usagesOfProperty(ontology(), offeredBy)[0]).toMatchObject({
+      subjectClassId: car,
+      objectClassId: dealership,
+    });
+  });
+
+  it('refuses a name an attribute holds, since the two share one namespace', async () => {
+    const user = userEvent.setup();
+    const { car } = drawnConnection();
+    store().createAttributeOn(car, { localName: 'price' });
+    render(<ConnectionPicker />);
+
+    await user.type(screen.getByLabelText('New relation name'), 'price');
+
+    expect(
+      screen.getByText('price is already an attribute, so a relation cannot be called that too.'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('confirm-connection')).toBeDisabled();
   });
 
   it('creates nothing when cancelled', async () => {

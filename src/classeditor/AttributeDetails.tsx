@@ -4,7 +4,7 @@ import {
   entityIri,
   findClass,
   findAttribute,
-  toPropertyLocalName,
+  nameProblem,
   usagesOfProperty,
 } from '../ontologymodel';
 import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
@@ -48,9 +48,7 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
           value={entity.localName}
           aria-label="Attribute local name"
           onCommit={(value) => rename(propertyId, value)}
-          validate={(value) =>
-            toPropertyLocalName(value) === '' ? 'An attribute needs a name.' : undefined
-          }
+          validate={(value) => nameProblem(ontology, 'attribute', value, propertyId)}
         />
       </Field>
 

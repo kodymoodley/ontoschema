@@ -2,10 +2,10 @@ import { Fragment, useState } from 'react';
 import { Handle, Position, useConnection } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { xsdDatatypeLabel } from '../annotationvocabulary';
-import { toClassLocalName, toPropertyLocalName } from '../ontologymodel';
-import type { Attribute, OntologyClass } from '../ontologymodel';
+import { nameProblem } from '../ontologymodel';
+import type { Attribute, NamedKind, OntologyClass } from '../ontologymodel';
 import { useDoubleTap } from '../designsystem';
-import { useProjectStore } from '../projectstore';
+import { activeOntology, useProjectStore } from '../projectstore';
 import { InlineName } from './InlineName';
 import styles from './classeditor.module.css';
 
@@ -21,6 +21,15 @@ interface AttributeRow {
   property: Attribute;
   /** How many other classes carry this same property. */
   usedOnOtherClasses: number;
+}
+
+/*
+ * Why a name typed on the canvas cannot be had. The schema is read when the question is asked
+ * rather than subscribed to, so a class does not re-render for every edit anywhere else.
+ */
+function problemWith(kind: NamedKind, draft: string, except: string): string | undefined {
+  const ontology = activeOntology(useProjectStore.getState());
+  return ontology ? nameProblem(ontology, kind, draft, except) : undefined;
 }
 
 interface ClassNodeData {
@@ -105,7 +114,7 @@ export function ClassNode({ data, selected }: NodeProps) {
         <span className={styles.marker} aria-hidden="true" />
         <InlineName
           value={entity.localName}
-          isValid={(draft) => toClassLocalName(draft) !== ''}
+          validate={(draft) => problemWith('class', draft, entity.id)}
           onCommit={(draft) => renameClass(entity.id, draft)}
           label="Class name"
           textClassName={styles.name}
@@ -195,7 +204,7 @@ function AttributeItem({ row, editing, onEditingChange }: AttributeItemProps) {
         <span className={styles.attributeMarker} aria-hidden="true" />
         <InlineName
           value={row.property.localName}
-          isValid={(draft) => toPropertyLocalName(draft) !== ''}
+          validate={(draft) => problemWith('attribute', draft, row.property.id)}
           onCommit={(draft) => renameProperty(row.property.id, draft)}
           label="Attribute name"
           textClassName={styles.attributeName}

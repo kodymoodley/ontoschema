@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { findClass, toPropertyLocalName, usagesOfProperty } from '../ontologymodel';
+import {
+  findClass,
+  holderOfName,
+  nameProblem,
+  toPropertyLocalName,
+  usagesOfProperty,
+} from '../ontologymodel';
 import { useOntology, useProjectStore } from '../projectstore';
 import { Button, Field, Modal, Select } from '../designsystem';
 import styles from './relationeditor.module.css';
@@ -27,9 +33,20 @@ export function ConnectionPicker() {
   const object = findClass(ontology, pending.objectClassId);
   if (!subject || !object) return null;
 
+  /*
+   * A typed name a relation already has means that relation: the list shows it chosen, and
+   * confirming uses it. Typing on past it -- `hasOwner` into `hasOwnerOf` -- goes back to
+   * creating. A name another kind of term holds is refused.
+   */
   const creatingNew = choice === '';
   const cleanedNewName = toPropertyLocalName(newName);
-  const canConfirm = creatingNew ? cleanedNewName !== '' : true;
+  const holder = creatingNew && cleanedNewName ? holderOfName(ontology, cleanedNewName) : undefined;
+  const existing = holder?.kind === 'relation' ? holder : undefined;
+  const newNameProblem =
+    newName.trim() && !existing ? nameProblem(ontology, 'relation', newName) : undefined;
+  const canConfirm = creatingNew
+    ? existing !== undefined || (cleanedNewName !== '' && !newNameProblem)
+    : true;
 
   const close = () => {
     setChoice('');
@@ -39,7 +56,8 @@ export function ConnectionPicker() {
 
   const confirm = () => {
     if (!canConfirm) return;
-    if (creatingNew) completeWithNew(newName);
+    if (existing) completeWith(existing.id);
+    else if (creatingNew) completeWithNew(newName);
     else completeWith(choice);
     setChoice('');
     setNewName('');
@@ -73,7 +91,7 @@ export function ConnectionPicker() {
 
       <Field label="Relation" hint="Reuse one you already have, or create a new one.">
         <Select
-          value={choice}
+          value={existing?.id ?? choice}
           aria-label="Relation to use"
           onChange={(event) => setChoice(event.target.value)}
         >
@@ -93,12 +111,11 @@ export function ConnectionPicker() {
       {creatingNew ? (
         <Field
           label="New relation name"
-          error={newName.trim() && cleanedNewName === '' ? 'That name cannot be used.' : undefined}
+          error={newNameProblem}
+          hint={existing ? `${existing.localName} already exists, so this will use it.` : undefined}
         >
           <input
-            className={`${styles.nameField} ${
-              newName.trim() && cleanedNewName === '' ? styles.nameFieldInvalid : ''
-            }`}
+            className={`${styles.nameField} ${newNameProblem ? styles.nameFieldInvalid : ''}`}
             value={newName}
             // The dialog owns initial focus; this marks the field it should land on.
             data-autofocus

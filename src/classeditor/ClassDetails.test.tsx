@@ -15,6 +15,83 @@ const ontology = () => {
   return project.ontology;
 };
 
+describe('adding an attribute by a name that is taken', () => {
+  /* What dragging it from the pool does, offered at the moment the name is typed. */
+  it('offers the existing attribute, and uses it in one undoable step', async () => {
+    const user = userEvent.setup();
+    const car = store().createClass({ localName: 'Car' });
+    const truck = store().createClass({ localName: 'Truck' });
+    const price = store().createAttributeOn(car, { localName: 'price', range: 'decimal' });
+    render(<ClassDetails classId={truck} />);
+
+    await user.type(screen.getByLabelText('New attribute name'), 'price');
+    expect(screen.getByText('price already exists, so this class will use it too.')).toBeVisible();
+    expect(screen.getByLabelText('New attribute range')).toHaveValue('decimal');
+    expect(screen.getByLabelText('New attribute range')).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', { name: 'Use the existing attribute price on this class' }),
+    );
+
+    expect(ontology().attributes).toHaveLength(1);
+    expect(attributeUsagesOfClass(ontology(), truck).map((usage) => usage.propertyId)).toEqual([
+      price,
+    ]);
+    // And shown as reused, as the canvas row shows it.
+    expect(screen.getByText(/↗ 1 more/)).toBeInTheDocument();
+
+    store().undo();
+    expect(attributeUsagesOfClass(ontology(), truck)).toEqual([]);
+    expect(attributeUsagesOfClass(ontology(), car)).toHaveLength(1);
+  });
+
+  it('says so when the attribute is already on this class, and adds nothing', async () => {
+    const user = userEvent.setup();
+    const car = store().createClass({ localName: 'Car' });
+    store().createAttributeOn(car, { localName: 'price' });
+    render(<ClassDetails classId={car} />);
+
+    await user.type(screen.getByLabelText('New attribute name'), 'price');
+
+    expect(screen.getByText('price is already on this class.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Use the existing attribute price on this class' }),
+    ).toBeDisabled();
+  });
+
+  it('refuses a name a relation holds', async () => {
+    const user = userEvent.setup();
+    const car = store().createClass({ localName: 'Car' });
+    store().createRelation({ localName: 'ownedBy' });
+    render(<ClassDetails classId={car} />);
+
+    await user.type(screen.getByLabelText('New attribute name'), 'ownedBy');
+
+    expect(
+      screen.getByText('ownedBy is already a relation, so an attribute cannot be called that too.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add attribute to this class' })).toBeDisabled();
+  });
+});
+
+describe('renaming a class to a name that is taken', () => {
+  /* Typed over the old name letter by letter, which renames as it goes until the last letter. */
+  it('says whose name it is, and leaves the class as it was', async () => {
+    const user = userEvent.setup();
+    store().createClass({ localName: 'Vehicle' });
+    const car = store().createClass({ localName: 'Car' });
+    render(<ClassDetails classId={car} />);
+
+    const field = screen.getByLabelText('Class local name');
+    await user.clear(field);
+    await user.type(field, 'Vehicle');
+    expect(screen.getByText('Vehicle is already a class.')).toBeInTheDocument();
+
+    await user.tab();
+    expect(findClass(ontology(), car)?.localName).toBe('Car');
+    expect(field).toHaveValue('Car');
+  });
+});
+
 describe('ClassDetails', () => {
   /*
    * The IRI is behind the switch that reveals the RDF underneath, with the terms. It is derived

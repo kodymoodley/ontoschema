@@ -194,6 +194,22 @@ describe('renaming an attribute in place', () => {
     expect(screen.queryByLabelText('Attribute name')).not.toBeInTheDocument();
   });
 
+  it('says whose a taken name is, and stays open to be retyped', async () => {
+    const user = userEvent.setup();
+    const car = seed();
+    renderNode(car);
+    const property = ontology().attributes[0]!.id;
+
+    const field = await openRename(user, 'make');
+    await user.clear(field);
+    await user.type(field, 'year{Enter}');
+
+    expect(screen.getByText('year is already an attribute.')).toBeInTheDocument();
+    expect(field).toHaveAccessibleDescription('year is already an attribute.');
+    expect(screen.getByLabelText('Attribute name')).toBeInTheDocument();
+    expect(nameOf(property)).toBe('make');
+  });
+
   it('flags a name the model would reject instead of reverting it', async () => {
     const user = userEvent.setup();
     const car = seed();
