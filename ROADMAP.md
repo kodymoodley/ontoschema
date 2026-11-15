@@ -36,34 +36,16 @@ editor for building RDF/OWL vocabularies that a semantic data engineering workfl
 
 ## Next up
 
-**Everything sequenced is done.** A schema saves and opens as ordinary RDF — Turtle or RDF/XML,
-axioms and SHACL shapes and the canvas layout in one file, and a file written elsewhere keeps
-everything it said through a save. The inspector is one scrolling panel that opens on selection
-at every width, its metadata is an ordinary form with the vocabulary behind a switch, and both
-side panels fold away. The audit is done and every finding in [AUDIT.md](AUDIT.md) is closed.
+**Nothing is sequenced.** The owner's November wishlist is done: todos 38–43, and 46, which grew
+out of 40. One filed item waits to be ranked: any datatype as an attribute's range (todo 45).
 
-**The owner's November wishlist comes first** (todos 38–43). Its most urgent item has shipped:
-a schema opened from a git repository saves itself into its file, so editing ends in
-`git commit` with no download (todos 43 and 42; see the README's _Editing a schema file in
-place_). Drawing a relation now lands anywhere on a class, and the side a line meets can be
-pinned and is saved (todo 39; see the README's _Gestures on the canvas_). A name typed that a
-term already has is reused or refused, never numbered (todo 41). A relation's lines can be hidden
-from its row in the entities panel and shown again from the status bar (todo 38). Shuffle lays
-the schema out afresh on every press, never worse than _Tidy up_ (todo 40; the benchmark is under
-[Canvas and readability](#canvas-and-readability)). Its one leftover has shipped too: relation lines
-go around the classes they do not belong to rather than behind them (todo 46). That finishes the
-wishlist.
-
-**Parked by the owner** on 2026-11-02, in favour of the list above. None is a commitment until it
-appears there again:
+**Parked by the owner** on 2026-11-02, in favour of the wishlist. None is a commitment until it
+appears here again:
 
 - **`owl:imports`, term reuse and read-only imported terms** (todo 10) — the largest new
   dependency surface on the list and the only item that makes this tool depend on vocabularies it
   does not control. It wants a design note before any code; most of that note is already written,
   under [Resolving external vocabularies](#resolving-external-vocabularies).
-- **Harden the old layout reader** (todo 20) — owed work rather than wanted work, and smaller
-  since each class carries its own position: what is left is the reader kept for files saved in
-  the old form, against hostile input. Parked at the back of the queue by the owner.
 - **Nine, three times over** (todo 9) — a project rather than an item, decided in principle: nine
   classes to a module, nine modules to a group, nine groups to a file, so 729 classes and the app
   refuses more. A design note comes first and it has five things to answer, listed under
@@ -72,81 +54,6 @@ appears there again:
 Why the order is what it is: [How work is ranked](#how-work-is-ranked) at the foot of the file.
 
 ---
-
-## Hardening the core
-
-The tool should do one thing completely rather than several things adequately. Before any new
-surface area, schema editing itself had to be robust, stable and responsive at the sizes real
-work reaches.
-
-**This phase is finished.** Every bar below is met and stays met, because each is a test in
-`npm run verify` rather than a judgement anyone has to make again. Kept here as the standard a
-later phase is held to, not as work outstanding:
-
-| Bar                                                                                        | How it is proved                                           |
-| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| A 200-class schema opens, pans and zooms without a dropped frame                           | `scale.spec.ts` — **met**: a steady 16.7ms frame           |
-| No edit blocks the main thread for more than one frame                                     | `scale.spec.ts` — **met**: a typical run misses no frame   |
-| A long random editing session leaves the model self-consistent, and undo returns it intact | `editingStress.test.ts` — **met**, including typing bursts |
-| Every outcome is reachable by keyboard                                                     | `keyboardRoutes.spec.ts` — **met**, walking by Tab alone   |
-| A crash loses no work                                                                      | `ErrorBoundary.test.tsx` — **met**: queued writes flushed  |
-| The suite passes on all three engines without a retry                                      | **met** — 25 consecutive parallel runs, no retry           |
-
-## What the end-to-end suite has taught us
-
-Two findings that outlived the work that produced them, and that would otherwise have to be
-rediscovered: what the WebKit flake was and was not, and what a mutation score on this codebase
-actually means.
-
-### What was known about the WebKit flake
-
-Kept in full although the flake has stopped appearing, because nothing here was disproved — it was
-never explained, only outlived. If it comes back, this is the ground already covered, and none of
-it is a cause.
-
-**Why it is considered gone.** Twenty-five consecutive full parallel runs with no failure and no
-retry, in batches of three, ten and twelve on 2026-08-16. At the rate recorded below — about one
-run in three or four — a streak that long lands somewhere between one chance in a thousand and one
-in twenty thousand, depending which end of that rate is real. Either way it is evidence the flake
-stopped, and no evidence whatever about why.
-
-**Measured.** Six failures across roughly ten full parallel runs, in two specs: the Export tab in
-`stressWorkflows`, and four at once in the narrow-viewport drawer block of `responsive`. Always
-WebKit. Always the same message — waiting for an element to be visible, enabled and _stable_.
-
-**Ruled out.** WebKit alone is clean: three full runs, and `stressWorkflows` at eight workers
-repeated three times. `responsive` alone is clean at six repeats. It has never appeared except in a
-full run across all three engines, which is what makes it expensive to chase.
-
-**Not the load, or not only the load.** Halving the workers did not remove it, and the one failing
-run at half parallelism failed four tests in the same describe block at once. Starvation would
-scatter failures across unrelated specs, which is what the eight-worker runs did. Two different
-shapes of failure are probably being counted as one thing here.
-
-**One element measured directly.** The Export tab's bounding box is identical across thirty
-consecutive frames, and its only transition is `background` and `colour`, neither of which moves
-it. So at least that instance is not the app animating. The drawer tests are a different case: the
-drawer has a real `transform 180ms` transition, which does move a box, and a stability check has
-something genuine to wait for there.
-
-**Untried.** Playwright can emulate `prefers-reduced-motion: reduce`, which the shell already
-honours by dropping the drawer transition. That would remove one known source of movement from the
-suite, at the cost of no longer exercising the animated path. It is a trade rather than a fix, and
-it would not explain the Export tab at all.
-
-### Mutation testing, and the number to compare against
-
-Coverage says which lines ran. Mutation testing changes the code on purpose and asks whether any
-test notices, which is a different and harder question. It covers the two pure layers —
-`src/ontologymodel` and `src/serialization` — and runs by hand with `npm run mutation`, about six
-minutes, because its answer changes slowly.
-
-**80.5% combined**, held by a `break` threshold of 79 in `stryker.config.json`, where the
-reasoning sits next to the number. It is a ratchet against regression, not a target: what still
-survives is mostly the text inside an error message or a default behind a lookup that cannot miss,
-and writing assertions for those would couple tests to how the code is written rather than to what
-it must do. The audit took the model from 77.2% to 84.0% by killing the ones that stood for
-something real; [AUDIT.md](AUDIT.md) lists what they turned out to be.
 
 ## Modelling power
 
@@ -198,59 +105,10 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 
 ## Export and interop
 
-<!-- prettier-ignore -->
-> **What a saved file is, and why.** Axioms, the SHACL shapes, and the canvas layout, in one
-> document that opens again here and reads as ordinary RDF anywhere else.
->
-> The shapes are in it because the axioms cannot carry the schema on their own. `rdfs:domain` and
-> `rdfs:range` name both ends of a relation but not which end went with which, so a relation drawn
-> between two pairs used to be saved as a union and read back as all four — the insurance example
-> returned `MotorPolicy insures Dwelling`, which nobody had drawn. A shape is per class, so it
-> says exactly what was drawn. With the shapes present the union has nothing left to do and is not
-> written, which is what takes every blank node and `rdf:first` cell out of a saved file.
->
-> Each end is judged on its own: a relation drawn from one class to three still states its domain,
-> because that end is exact. A document written *without* shapes — a foreign file, or a request
-> for axioms alone — still gets the union, because then it is the best that file can do, and it
-> has to be an **anonymous** class: a named one carrying `owl:unionOf` is discarded by real OWL
-> parsers, measured with owlready2 rather than assumed.
->
-> The cost is size: the insurance schema roughly doubles, 10.2 kB to 21.5 kB. Files saved by
-> earlier versions still open, cross product and all.
-
-| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Size |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S    |
-| **Open a cloned repository as a folder, and open `.ttl` files from the desktop** — what editing a file in place left for later. A folder opened once, the way vscode.dev opens one, would list every schema in the repository and see new ones arrive with a `git pull`. Installing the app would let double-clicking a `.ttl` open it here, through the File Handling API. Both are Chromium-only, like the linking they build on. _(todo 44)_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | M    |
-| **Harden the old layout reader** — _parked to the back of the queue._ Each class now carries its own `ontoschema:position`, so the scale worry is gone — there is no longer one literal of tens of kilobytes on one line — and the reader of a position is tested against malformed values, including a merge-conflict marker left in the file. The round trip is tested end to end, and `layout.ts` is inside Stryker's scope with the rest of `src/ontologymodel/`. What is still owed is the **old ontology-wide `ontoschema:layout` reader**, kept so earlier files open, against real hostility: `__proto__` and `constructor` as keys, coordinates that are `NaN`, `Infinity`, `1e308` or a string that parses as a number, an entry whose key is not an IRI at all, a value nested arbitrarily deep. _(todo 20)_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | S    |
-| **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. **The ranking is already built**: `src/search/` ranks the open schema for todo 29, and its BM25 half knows about documents with weighted fields rather than about classes, so this item brings a corpus to it rather than writing a second one. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. _Design settled: no proxy, and no fetch on the critical path — see [Resolving external vocabularies](#resolving-external-vocabularies) below._ **Imported terms are read-only**: an axiom or definition that came from PROV-O, PAV or DCAT cannot be edited or redefined here, or the schema quietly disagrees with the vocabulary it claims to import. Note the tension to settle first — SKOS appears on the todo list as something to import, and is excluded above as a modelling vocabulary. _(todo 10)_ | L    |
-
-> **Where the layout goes.** One `ontoschema:position` on each class, `"40,120"`, written as the
-> last line of that class's own block, and declared once as an `owl:AnnotationProperty` in this
-> app's own namespace. A class with no position is placed the way a new one is. Per class because
-> a saved schema lives in git: moving a class changes one line, and two people moving different
-> classes merge without a conflict, which a test checks with git's own three-way merge. Files
-> saved before this carry every position in one `ontoschema:layout` literal on the ontology; they
-> still open, and that form is never written again. Checked against a real OWL parser, when it was
-> one annotation: the term reads as an annotation property and the classes and unions are
-> untouched.
->
-> **What "schema-level" means on import.** Classes and their `rdfs:subClassOf` hierarchy, with
-> annotations. Attributes, whatever their range — an `xsd` datatype is kept and anything else
-> becomes `xsd:string`, so the attribute arrives with its name and its class rather than being
-> dropped over a detail this tool does not model. That is the one import rule that **rewrites**
-> rather than discards, so a foreign ontology opened and saved here comes back changed, and the
-> report says so. Relations all go into the pool, and are drawn where both ends are known: a
-> subproperty has them itself or inherits them from an ancestor. The ontology IRI and prefix if
-> stated. Only terms in the document's own namespace are modelled. Everything else — individuals,
-> restrictions, property chains, terms from other vocabularies — is kept as written and saved back
-> unchanged, referring to modelled terms by id so that it follows a rename. The report counts it.
->
-> **One project per file, and the answer to it: a workspace backup.** A Turtle document is one
-> ontology, so saving as RDF is per project by construction. _Back up everything_ and _Restore a
-> backup_ carry the whole workspace, which is the one thing RDF cannot: several projects, exact
-> state, no lossy import rules. Restoring replaces rather than merges, behind a confirmation that
-> names what is about to go. _(todos 21, 22)_
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Size |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **PlantUML diagram export** — the same walk over the model, a second grammar. Worth doing only if Mermaid proves the demand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | S    |
+| **Specify owl:imports for external vocabs from URL** — OntoSchema does not need to load the entire vocabulary into the canvas. Just maintain a cache or memory or localStorage where you load the external ontologies and in the interface all I want is a way to reuse terms that I WANT from those vocabs. I want terms that I don't use to be completely hidden and invisible. But then I would need a way to find or discover terms I need. Perhaps dropdown or search box with BM25 or something like that. **The ranking is already built**: `src/search/` ranks the open schema for todo 29, and its BM25 half knows about documents with weighted fields rather than about classes, so this item brings a corpus to it rather than writing a second one. Be clever and elegant with this in the interface and use your ontology engineering expertise to judge the best method. _Design settled: no proxy, and no fetch on the critical path — see [Resolving external vocabularies](#resolving-external-vocabularies) below._ **Imported terms are read-only**: an axiom or definition that came from PROV-O, PAV or DCAT cannot be edited or redefined here, or the schema quietly disagrees with the vocabulary it claims to import. SKOS is settled: it is not offered as a modelling vocabulary, and its documentation properties stay; see [Which vocabularies ship](#which-vocabularies-ship). _(todo 10)_ | L    |
 
 > **Decided: deferred, not rejected.** A richer SHACL constraint vocabulary — `sh:minCount`,
 > `sh:maxCount`, `sh:pattern`, `sh:in`, datatype facets — is real and would be useful, but adding
@@ -258,8 +116,7 @@ Everything here stays inside the TBox, which is the line the project has drawn f
 > first: polished, robust, stable, responsive, properly tested. Constraint authoring is a second
 > job, and doing both adequately is worse than doing one completely.
 >
-> Revisit only once [Hardening the core](#hardening-the-core) is done, and then as an explicit
-> choice between a **SHACL submodule** inside OntoSchema and a **separate tool** that consumes the
+> Revisit as an explicit choice between a **SHACL submodule** inside OntoSchema and a **separate tool** that consumes the
 > exported vocabulary. The second is likelier to be right: the two have different users and
 > different cadences, and the export format is already the seam between them.
 >
@@ -351,6 +208,11 @@ Three further things fall out of moving the fetch to build time:
 An optional refresh-at-runtime button could be layered on later for the hosts that allow it, but
 it would be a convenience over a working offline path, never the path itself.
 
+**Keeping the desktop option cheap.** The codebase already has the right pattern:
+`projectstore/persistence.ts` is the only file that knows storage exists. If runtime fetching is
+ever added, giving it one adapter module of its own means a desktop shell later is a swap of two
+small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under the non-goals.
+
 #### The gap this leaves, and it is a real one
 
 With file upload ruled out, a vocabulary that is neither bundled nor CORS-permitted — an internal
@@ -360,161 +222,13 @@ line ("we help you reuse the vocabularies we know about, and you can import anyt
 worth naming rather than discovering later. Widening the bundled set is the lever, and adding to it
 is a one-line change to the refresh script.
 
-#### Correction
-
-An earlier note here claimed that asking for `text/turtle` triggers a CORS preflight. It does not:
-`Accept` is a safelisted request header, so a `GET` carrying it is a simple request. The claim was
-wrong and is not a reason to avoid content negotiation.
-
-**Keeping the desktop option cheap.** The codebase already has the right pattern:
-`projectstore/persistence.ts` is the only file that knows storage exists. If runtime fetching is
-ever added, giving it one adapter module of its own means a desktop shell later is a swap of two
-small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under the non-goals.
-
 ## Canvas and readability
 
-<!-- prettier-ignore -->
-> **Relations are drawn rigid**, the same right angles as the subclass links in the taxonomy
-> view, and routed around the classes in between (todo 46, below). What is left of **edge label
-> collision avoidance** is a label sitting over another line where two run close together.
-
-> **Shipped: tidy-up / auto-layout for the schema view.** It turned out to be a bug before it was
-> a feature. Positions ride in a saved file as this app's own layout annotation, and a `.ttl`
-> written anywhere else has none — so `ontologyFromTriples` fell back to `{ x: 0, y: 0 }` for
-> every class and an imported schema opened as one illegible pile. `arrangeSchema` ranks the
-> classes with dagre and the app runs it when a document arrives unplaced, which is a state no
-> amount of dragging can produce: two classes on the exact same coordinate.
->
-> Ranked by the **relations**, left to right, not by the hierarchy. Subclass links are
-> deliberately not drawn on this canvas, so ranking by them would have produced rows with no
-> visible reason for them; they go in as lower-weight edges instead, which keeps a child near its
-> parent without letting the hierarchy overrule the drawn edges. Disconnected groups are laid out
-> separately and packed with wrapping, the way the taxonomy view packs its modules — handing
-> dagre a disconnected graph gets one enormously wide row.
->
-> The same function is on a button (Shift+A), deliberately **deterministic** rather than the
-> randomised re-roll that was asked about. There is no reason to expect a second roll to beat the
-> first, and a schema layout is something you invest in by dragging — a button that discards that
-> for a random alternative is one people learn not to touch. Pressing it twice lands in the same
-> place, and it is one undo away. The arrangement an import arrives with is **not** in the undo
-> stack: an undo that puts every class back in a pile is not a state anyone asked to return to.
-
-| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Size |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **Edge label collision avoidance** — a relation's label can park on top of an unrelated class. Straight edges between aligned classes pass over whatever is between them; the label makes it obvious.                                                                                                                                                                                                                                                                                                                                                                             | M    |
-| **Subschema filter** — the first thing that bites past about thirty classes, and cheaper than any amount of auto-layout, because hiding is the only thing that scales. Do it before the layout and grouping items below; it may make them unnecessary. Narrow the canvas to a chosen set of classes and relations, or to one class and what it touches, and hide the rest. The answer to a spaghetti diagram that no amount of layout fixes, and the only thing that actually scales. _Was listed twice: also appeared under Editing workflow as "filter schema for subschemas"._ | M    |
-| **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | M    |
-
-### Shuffle the layout (todo 40, shipped)
-
-**What shipped.** A **Shuffle** button beside _Tidy up_, on Shift+S. Each press lays the schema out
-again, different every time, and the classes glide to their new places; one undo puts them back.
-It runs top to bottom, and a second button turns it to left to right and back, remembered in the
-browser. That button is left off phones, where the toolbar has no room and top to bottom suits the
-screen. _Tidy up_ is unchanged.
-
-**How it chooses.** Each press lays every joined group of classes out a dozen times or so, from
-random starting orders, with two engines: dagre (already shipped for _Tidy up_) and d3-dag. Every
-layout is scored on straight lines between class centres: one point per crossing, three per line
-passing through a class it does not belong to, and total line length to break ties. It shows the
-best layout that is not already on screen. _Tidy up_'s own layout, in the same direction, is
-always a candidate and sets the bar, so a shuffle never scores worse than it.
-
-The bar is the combined score, not crossings alone. On the University example, _Tidy up_ top to
-bottom has no crossings but three lines through classes; the shuffle shows one crossing and none
-through. This item was first written as "never more crossings than _Tidy up_"; the score is the
-better test of what reads well, so that was changed deliberately.
-
-**Choosing the engines.** Benchmarked on the examples, the 200-class timing schema, and a dense
-60-class graph (132 links). Best of eight runs, crossings / lines through classes, counting the
-hierarchy's links as well as the relations:
-
-| Schema     | dagre, as _Tidy up_ | dagre, shuffled order | ELK    | d3-dag  |
-| ---------- | ------------------- | --------------------- | ------ | ------- |
-| Music      | 7/2                 | 5/1                   | 0/0    | 0/0     |
-| Automotive | 13/5                | 13/8                  | 7/6    | 7/6     |
-| Insurance  | 13/11               | 8/5                   | 12/5   | 7/5     |
-| 200-class  | 0/80                | —                     | 0/60   | 55/594  |
-| Dense 60   | 563/64              | —                     | 513/84 | 449/130 |
-
-ELK matched d3-dag on quality but is 471 kB gzipped and was ruled out on size. d3-dag is 31 kB
-and dagre 17 kB. d3-dag is the one that untangles the examples, but its cost follows the number of
-links: about 160 ms at 96 links, nearly two seconds at 132. So it runs only on groups of up to 100
-links, and dagre does the rest.
-
-**How fast, as shipped.** The work runs in a Web Worker, fetched on the first press as its own
-43.7 kB chunk, so the startup bundle grew only by the buttons, the glide and the worker client
-(212.8 to 213.8 kB). The classes glide with a CSS transition, in one render: moving them frame by
-frame re-rendered every class and line each frame, about 150 ms a frame at 200 classes.
-
-| Schema     | Layout time (Node) | Before / after (crossings / through) |
-| ---------- | ------------------ | ------------------------------------ |
-| Music      | 100 ms             | 4/1 → 0/0                            |
-| Recipes    | 98 ms              | 1/1 → 0/0                            |
-| Automotive | 203 ms             | 3/6 → 1/3                            |
-| University | 148 ms             | 0/3 → 1/0                            |
-| Insurance  | 218 ms             | 2/4 → 1/2                            |
-| 200-class  | 730 ms             | 0/0 → 0/0                            |
-| Dense 60   | 600 ms             | 612/82 → 612/82                      |
-
-"Before" is _Tidy up_ top to bottom, judged on drawn relations only. In the browser, a shuffle of
-the 200-class schema lands in about 1,050 ms, with no stall on the page longer than about 65 ms;
-the timing suite holds it under 2,500 and 400 ms. The examples land in 0.51 to 0.65 s from the
-press, most of it the 450 ms glide; the first press of a session is the slowest, since it starts
-the worker. That misses the third of a second first hoped for, which assumed a 300 ms glide and
-no search.
-
-**Not done here: lines that route around classes.** That became todo 46, below, and has shipped.
-
-### Route lines around classes (todo 46, shipped)
-
-**What shipped.** A relation's line on the schema canvas goes around the classes it does not
-belong to. It used to step straight from one class to the other, and where a third class stood in
-the way the line ran behind it and came out the other side, which reads as a line that ends there.
-The owner reported exactly that, and asked for it to be fixed properly rather than hidden.
-
-**Why not a setting.** None of the libraries already in use could do it. React Flow draws every
-line underneath the classes and has no routing around nodes: its own example for this is a paid
-Pro example built on libavoid. Drawing the lines on top instead would have shown the crossing
-rather than removed it. dagre and d3-dag return bend points that avoid classes, but only for the
-layout they have just made; the first drag of a class undoes them.
-
-**How.** libavoid, the standard router for right-angled lines around boxes (JointJS and draw.io
-use it), as `libavoid-js`, compiled to WebAssembly and run in a worker. Each line keeps the sides
-it had, pinned or chosen, and its place in the fan along that side; libavoid routes only the
-middle. The edge fits the ends of the route to where it is drawn, so a line stays attached to a
-class being dragged while the router catches up. Lines are drawn as plain steps until the first
-routes arrive.
-
-**The dense worst case**, 60 classes joined by 132 relations at random, was the owner's main
-concern. With libavoid's defaults it took 3.6 s to route and 5.9 s for each move. Two settings
-fixed it:
-
-- **The unifying nudging pre-pass is off.** Its cost climbs steeply as lines crowd together. Routing
-  that graph between plain end points took over a second with it and 32 ms without, and the lines
-  are still spaced apart.
-- **Connection points are shared per place on a box.** libavoid's default makes each point usable
-  by one line only, and one point per line end made it give up on routes once there were a few
-  dozen lines, falling back to straight lines through everything.
-
-| Schema                             | Routing    | Each move   | Lines through a class  |
-| ---------------------------------- | ---------- | ----------- | ---------------------- |
-| The examples                       | 1–14 ms    | 1–2 ms      | 1–9 straight, 0 routed |
-| 200 classes                        | 54 ms      | about 21 ms | 0                      |
-| 60 classes, 132 lines, dagre       | 94 ms      | about 88 ms | 66 straight, 0 routed  |
-| 60 classes, 132 lines, random grid | 130–170 ms | 100–170 ms  | 0                      |
-
-The routing runs in the worker, so none of this holds up the page. Dragging a class on the
-200-class schema has a median frame of 16.7 ms and a 95th percentile of 33–50 ms, and the timing
-suite holds it there. On the random grid, the worst there is, lines catch up about a tenth of a
-second behind a dragged class.
-
-**Cost.** 178 kB of WebAssembly and an 18 kB worker, gzipped, fetched after the app has drawn and
-not part of the startup bundle. libavoid is LGPL-2.1-or-later; it is served unmodified as its own
-file, and its licence ships with the app in `licenses/libavoid-js.txt`.
-
-**Still open:** a relation's label can still sit over another line where two run close together.
-That is what is left of **edge label collision avoidance** above.
+| Item                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Size |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Edge label collision avoidance** — relation lines are routed around the classes, but a label can still sit over another line where two run close together, and two labels can overlap where lines converge.                                                                                                                                                                                                                                              | M    |
+| **Subschema filter** — the first thing that bites past about thirty classes, and cheaper than any amount of auto-layout, because hiding is the only thing that scales. Do it before grouping; it may make that unnecessary. Narrow the canvas to a chosen set of classes and relations, or to one class and what it touches, and hide the rest. The answer to a spaghetti diagram that no amount of layout fixes, and the only thing that actually scales. | M    |
+| **Grouping in the schema view** — bounding boxes per taxonomy module, as the taxonomy view already does.                                                                                                                                                                                                                                                                                                                                                   | M    |
 
 ## Editing workflow
 
@@ -523,24 +237,6 @@ That is what is left of **edge label collision avoidance** above.
 | **Multi-select** — box-select several classes, then move or delete them together.                                                                                                                                                                                                                                                        | M    |
 | **Duplicate a class** — with its attributes, as a starting point for a sibling.                                                                                                                                                                                                                                                          | S    |
 | **Schema diffing (given two loaded schemas) to compute and generate changelog entries using the Keep a Changelog standard** — governance for a vocabulary that other teams depend on. Sized up from S: it needs two ontologies loaded at once, a structural diff that survives renames, and a mapping from diff to changelog categories. | L    |
-
-### Small screens
-
-Three changes were ordered by the owner and built: a full-screen button to be rid of the address
-bar, the header actions folded into one menu, and the entities drawer halved to `min(160px, 60vw)`
-so the canvas stays visible beside it. The inspector was then made usable at 320px, and the
-drawers were moved below the canvas toolbar, which they had been covering — undo, redo and find
-were unreachable for anyone with something selected.
-
-Two numbers worth keeping, because both were counter-intuitive and both were measured rather than
-reasoned about. The inspector's problem at 320px was **not** the type scale, which already steps
-down below 1024px: a row could not shrink, so one long attribute name laid the whole panel out
-203px wide inside a 159px pane. And a drawer at 320px covering 82% of a portrait phone is why it
-is `min(160px, 60vw)` rather than half the screen — creating an attribute put the new attribute
-behind the panel that created it.
-
-The rest of the phone design — a bottom sheet in portrait, the taxonomy as the default tab,
-reclaiming the landscape chrome — is unbuilt on purpose; see [Decided against](#decided-against-and-why).
 
 ## Housekeeping
 
@@ -606,9 +302,8 @@ keystroke, which is fixed.
 **Hunting the WebKit flake** — _stopped looking, on evidence rather than on a fix._ It used to fail
 roughly one full parallel run in three or four; it then went twenty-five consecutive runs without
 appearing, which at the kindest reading of that rate would happen by chance about once in a
-thousand attempts. **Nobody found a cause**, so this is not a fix. See
-[What was known about the WebKit flake](#what-was-known-about-the-webkit-flake), which stays as
-written in case it returns.
+thousand attempts. **Nobody found a cause**, so this is not a fix. What was measured and ruled
+out is in this file's git history, in case it returns.
 
 **Palette and taxonomy as subtabs** — _dropped by the owner, not parked._ It had been filed since
 the beginning and measured twice: the palette takes 36% of an 852px panel to hold three buttons,
@@ -628,31 +323,32 @@ root class, superclasses above" described a picture that explains itself, in a t
 every other character is a control. Its removal also settled a smaller complaint: prose that comes
 and goes was moving the relation switch beside it, so the switch now sits ahead of the hint.
 
-That last part was only half a fix, and adding a longer hint found the other half. The toolbar is
-a flex row, so a hint too long for the space left makes everything **before** it shrink, and the
-switch moved anyway — ordering had bought a guarantee that held only for wording short enough. The
-hint now takes the room that is left and never asks for more (`flex: 1 1 0`, `min-width: 0`, and an
-ellipsis), so the guarantee holds for any wording rather than by coincidence.
-
-**Comparing two classes in the taxonomy view** — _shipped._ Ctrl or Cmd click adds a class to the
-relation layer instead of replacing it, because "what does a Track touch" is half a question and
-the other half is what it touches that an Album does not. A plain click narrows back to one, the
-canvas clears it, and selecting from the search box or the tree starts again.
-
-The set lives in the canvas, not in the store. Making the app's selection multi-valued was the
-obvious route and was turned down: selection drives the inspector, which shows one entity, so it
-would have forced "what does the inspector show when three are selected?" — a much larger question
-for no benefit to either. The canvas tracks which selections it made itself, because membership was
-the first test tried and it is wrong: searching for a class already in the comparison looks exactly
-like a Ctrl-click from the canvas, and the set survived a search that should have cleared it.
-
 **A tooltip for the drag-a-relation hint** — _done by deletion._ Put behind a question mark first,
 then removed outright: the palette entries already say what each thing is.
 
 **The rest of the small-screen design** — _stopped deliberately._ The three changes the owner
-ordered are in; what the design note suggests beyond them — a bottom sheet in portrait, the
-taxonomy as the default tab, reclaiming the landscape chrome — is unbuilt on purpose. See
-[Small screens](#small-screens).
+ordered are in: a full-screen button, the header actions folded into one menu, and a narrower
+entities drawer. What the design note suggests beyond them — a bottom sheet in portrait, the
+taxonomy as the default tab, reclaiming the landscape chrome — is unbuilt on purpose.
+
+**ELK for the shuffle** — _measured, and ruled out on size._ It is the standard layered layout and
+came close to d3-dag at untangling the examples (Music: no crossings and no lines through classes for
+either; Insurance 12/5 against d3-dag's 7/5), but it is 471 kB gzipped against d3-dag's 31 kB. The
+shuffle uses dagre and d3-dag.
+
+**Drawing relation lines above the classes** — _turned down in favour of routing them._ It is the
+only setting React Flow offers against a line that disappears behind a class, and it would have
+shown the crossing rather than removed it, running the line over the class's name and attributes.
+Lines are routed around classes with libavoid instead. MSAGL's router (MIT, 137 kB, no
+incremental re-routing), `obstacle-router` (an LGPL port of libavoid at version 0.1) and
+`react-flow-smart-edge` (each line routed alone on a grid, so lines pile onto each other) were
+looked at and not taken.
+
+**Hardening the old layout reader, and opening a repository as a folder** — _dropped by the owner
+on 2026-11-15, not parked._ The first (todo 20) would have tested the reader kept for files saved
+with every position in one `ontoschema:layout` literal against hostile input. The second, todo
+44, would have opened a cloned repository as a folder and `.ttl` files from the desktop. Neither
+is to be picked up again.
 
 ## How work is ranked
 
@@ -683,14 +379,13 @@ constraint authoring belongs in this tool at all. See the note under
 Filed into the sections above, each entry tagged with its number so the two can be matched. The
 list as originally written is in the git history; ask and it comes back.
 
-| #   | Now lives in       | As                                                                       | Size |
-| --- | ------------------ | ------------------------------------------------------------------------ | ---- |
-| 9   | Modelling power    | Nine, three times over — 729 classes, enforced; parked as a project      | L    |
-| 10  | Export and interop | Folded into the `owl:imports` item; its ranking comes from 29            | L    |
-| 20  | Export and interop | Harden the old layout reader — parked to the back of the queue           | S    |
-| 44  | Export and interop | Open a cloned repository as a folder; open `.ttl` files from the desktop | M    |
-| 45  | Modelling power    | Any datatype as an attribute's range                                     | M    |
+| #   | Now lives in       | As                                                                  | Size |
+| --- | ------------------ | ------------------------------------------------------------------- | ---- |
+| 9   | Modelling power    | Nine, three times over — 729 classes, enforced; parked as a project | L    |
+| 10  | Export and interop | Folded into the `owl:imports` item; its ranking comes from 29       | L    |
+| 45  | Modelling power    | Any datatype as an attribute's range                                | M    |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43, 39, 41, 38, 40, 46 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43, 39, 41, 38, 40, 46 — kept as numbers so a commit message naming one can still be resolved. **Dropped:** 20, 44; see
+[Decided against](#decided-against-and-why).
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
