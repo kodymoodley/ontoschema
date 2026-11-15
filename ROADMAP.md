@@ -50,8 +50,9 @@ pinned and is saved (todo 39; see the README's _Gestures on the canvas_). A name
 term already has is reused or refused, never numbered (todo 41). A relation's lines can be hidden
 from its row in the entities panel and shown again from the status bar (todo 38). Shuffle lays
 the schema out afresh on every press, never worse than _Tidy up_ (todo 40; the benchmark is under
-[Canvas and readability](#canvas-and-readability)). That finishes the wishlist. Its one leftover,
-routing lines around classes, is filed as todo 46 and waits to be ranked.
+[Canvas and readability](#canvas-and-readability)). Its one leftover has shipped too: relation lines
+go around the classes they do not belong to rather than behind them (todo 46). That finishes the
+wishlist.
 
 **Parked by the owner** on 2026-11-02, in favour of the list above. None is a commitment until it
 appears there again:
@@ -374,8 +375,8 @@ small modules, not a rewrite. See [Staying a web app](#staying-a-web-app) under 
 
 <!-- prettier-ignore -->
 > **Relations are drawn rigid**, the same right angles as the subclass links in the taxonomy
-> view. What that does not buy is a line that avoids the classes in between, which is what **edge
-> label collision avoidance** below is really about.
+> view, and routed around the classes in between (todo 46, below). What is left of **edge label
+> collision avoidance** is a label sitting over another line where two run close together.
 
 > **Shipped: tidy-up / auto-layout for the schema view.** It turned out to be a bug before it was
 > a feature. Positions ride in a saved file as this app's own layout annotation, and a `.ttl`
@@ -463,22 +464,57 @@ press, most of it the 450 ms glide; the first press of a session is the slowest,
 the worker. That misses the third of a second first hoped for, which assumed a 300 ms glide and
 no search.
 
-**Not done here: lines that route around classes.** Moved to its own item, todo 46 below.
+**Not done here: lines that route around classes.** That became todo 46, below, and has shipped.
 
-### Route lines around classes (todo 46)
+### Route lines around classes (todo 46, shipped)
 
-**Size M.** Split out of todo 40. A shuffle places classes so that straight lines between them
-cross as little as possible, but the canvas draws right-angled lines, and those can still run
-through a class or under another line's label. Routing them around boxes would also settle most of
-**edge label collision avoidance** above.
+**What shipped.** A relation's line on the schema canvas goes around the classes it does not
+belong to. It used to step straight from one class to the other, and where a third class stood in
+the way the line ran behind it and came out the other side, which reads as a line that ends there.
+The owner reported exactly that, and asked for it to be fixed properly rather than hidden.
 
-**What current tools use**, researched on 2026-11-02: libavoid, compiled to WebAssembly as
-`libavoid-js` and run in a Web Worker, routes right-angle lines around boxes. React Flow's own
-example and JointJS's router both use it.
+**Why not a setting.** None of the libraries already in use could do it. React Flow draws every
+line underneath the classes and has no routing around nodes: its own example for this is a paid
+Pro example built on libavoid. Drawing the lines on top instead would have shown the crossing
+rather than removed it. dagre and d3-dag return bend points that avoid classes, but only for the
+layout they have just made; the first drag of a class undoes them.
 
-**To decide first:** whether it is worth a WebAssembly dependency, measured the same way as the
-shuffle: time and bundle size on the 200-class schema, and how many lines through classes it
-removes on the examples.
+**How.** libavoid, the standard router for right-angled lines around boxes (JointJS and draw.io
+use it), as `libavoid-js`, compiled to WebAssembly and run in a worker. Each line keeps the sides
+it had, pinned or chosen, and its place in the fan along that side; libavoid routes only the
+middle. The edge fits the ends of the route to where it is drawn, so a line stays attached to a
+class being dragged while the router catches up. Lines are drawn as plain steps until the first
+routes arrive.
+
+**The dense worst case**, 60 classes joined by 132 relations at random, was the owner's main
+concern. With libavoid's defaults it took 3.6 s to route and 5.9 s for each move. Two settings
+fixed it:
+
+- **The unifying nudging pre-pass is off.** Its cost climbs steeply as lines crowd together. Routing
+  that graph between plain end points took over a second with it and 32 ms without, and the lines
+  are still spaced apart.
+- **Connection points are shared per place on a box.** libavoid's default makes each point usable
+  by one line only, and one point per line end made it give up on routes once there were a few
+  dozen lines, falling back to straight lines through everything.
+
+| Schema                             | Routing    | Each move   | Lines through a class  |
+| ---------------------------------- | ---------- | ----------- | ---------------------- |
+| The examples                       | 1–14 ms    | 1–2 ms      | 1–9 straight, 0 routed |
+| 200 classes                        | 54 ms      | about 21 ms | 0                      |
+| 60 classes, 132 lines, dagre       | 94 ms      | about 88 ms | 66 straight, 0 routed  |
+| 60 classes, 132 lines, random grid | 130–170 ms | 100–170 ms  | 0                      |
+
+The routing runs in the worker, so none of this holds up the page. Dragging a class on the
+200-class schema has a median frame of 16.7 ms and a 95th percentile of 33–50 ms, and the timing
+suite holds it there. On the random grid, the worst there is, lines catch up about a tenth of a
+second behind a dragged class.
+
+**Cost.** 178 kB of WebAssembly and an 18 kB worker, gzipped, fetched after the app has drawn and
+not part of the startup bundle. libavoid is LGPL-2.1-or-later; it is served unmodified as its own
+file, and its licence ships with the app in `licenses/libavoid-js.txt`.
+
+**Still open:** a relation's label can still sit over another line where two run close together.
+That is what is left of **edge label collision avoidance** above.
 
 ## Editing workflow
 
@@ -647,15 +683,14 @@ constraint authoring belongs in this tool at all. See the note under
 Filed into the sections above, each entry tagged with its number so the two can be matched. The
 list as originally written is in the git history; ask and it comes back.
 
-| #   | Now lives in           | As                                                                       | Size |
-| --- | ---------------------- | ------------------------------------------------------------------------ | ---- |
-| 9   | Modelling power        | Nine, three times over — 729 classes, enforced; parked as a project      | L    |
-| 10  | Export and interop     | Folded into the `owl:imports` item; its ranking comes from 29            | L    |
-| 20  | Export and interop     | Harden the old layout reader — parked to the back of the queue           | S    |
-| 44  | Export and interop     | Open a cloned repository as a folder; open `.ttl` files from the desktop | M    |
-| 45  | Modelling power        | Any datatype as an attribute's range                                     | M    |
-| 46  | Canvas and readability | Route lines around classes — split out of todo 40                        | M    |
+| #   | Now lives in       | As                                                                       | Size |
+| --- | ------------------ | ------------------------------------------------------------------------ | ---- |
+| 9   | Modelling power    | Nine, three times over — 729 classes, enforced; parked as a project      | L    |
+| 10  | Export and interop | Folded into the `owl:imports` item; its ranking comes from 29            | L    |
+| 20  | Export and interop | Harden the old layout reader — parked to the back of the queue           | S    |
+| 44  | Export and interop | Open a cloned repository as a folder; open `.ttl` files from the desktop | M    |
+| 45  | Modelling power    | Any datatype as an attribute's range                                     | M    |
 
-**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43, 39, 41, 38, 40 — kept as numbers so a commit message naming one can still be resolved.
+**Done:** 1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 24, 25, 26, 11, 27, 29, 30, 31, 32, 33, 34, 28, 35, 18, 36, 37, 42, 43, 39, 41, 38, 40, 46 — kept as numbers so a commit message naming one can still be resolved.
 
 Anything new still goes here first. Sizing and sequencing it is a separate step, done on request.
