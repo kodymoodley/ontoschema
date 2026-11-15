@@ -1,4 +1,3 @@
-import { XSD_DATATYPES, xsdDatatypeLabel } from '../annotationvocabulary';
 import type { XsdDatatype } from '../annotationvocabulary';
 import {
   entityIri,
@@ -9,6 +8,7 @@ import {
 } from '../ontologymodel';
 import { useOntology, useProjectStore, useShowTerms } from '../projectstore';
 import { Button, DeleteIcon, Field, NameInput, Select } from '../designsystem';
+import { DatatypeOptions } from './DatatypeOptions';
 import styles from './details.module.css';
 
 /**
@@ -70,11 +70,7 @@ export function AttributeDetails({ propertyId }: { propertyId: string }) {
           aria-label="Attribute range"
           onChange={(event) => setRange(propertyId, event.target.value as XsdDatatype)}
         >
-          {XSD_DATATYPES.map((datatype) => (
-            <option key={datatype} value={datatype}>
-              {xsdDatatypeLabel(datatype)}
-            </option>
-          ))}
+          <DatatypeOptions />
         </Select>
       </Field>
 

@@ -65,8 +65,9 @@ import { ONTOLOGY_REF, entityRef, nodeShapeRef, propertyShapeRef, setAside } fro
  *  - **Classes** and their `rdfs:subClassOf` hierarchy, where both ends are named classes.
  *  - **Annotations** from the vocabulary this app knows, where the writer would write the
  *    value back exactly as it reads.
- *  - **Attributes** whatever their range: an `xsd` type is kept, anything else becomes
- *    `xsd:string`. This is the one rule that *rewrites* rather than keeps, so it is reported.
+ *  - **Attributes** whatever their range: any of the `xsd` types RDF recommends is kept, and
+ *    anything else becomes `xsd:string`. This is the one rule that *rewrites* rather than keeps,
+ *    so it is reported.
  *  - **Relations**, drawn where both a domain and a range are known — stated on the property,
  *    inherited from an ancestor, or drawn by a shape — and in the pool, unused, otherwise.
  *  - **Positions**, from this app's own `ontoschema:position` on each class, or from the single
@@ -79,7 +80,7 @@ import { ONTOLOGY_REF, entityRef, nodeShapeRef, propertyShapeRef, setAside } fro
 
 /** What arrived, but not as written. */
 export interface ImportReport {
-  /** Attributes whose range was not an `xsd` type and now says `xsd:string`. */
+  /** Attributes whose range was not a datatype on offer, and now says `xsd:string`. */
   datatypesRewritten: number;
   /**
    * Shapes written inline, without a name, by the local name each is saved under. They mean
@@ -748,7 +749,7 @@ function choosePrefix(
   return Object.entries(prefixes).find(([, iri]) => iri === namespace)?.[0];
 }
 
-/** An `xsd` range is kept; anything else becomes a string, which is a rewrite, not a drop. */
+/** A datatype on offer is kept; anything else becomes a string, which is a rewrite, not a drop. */
 function datatypeOf(range: TripleObject | undefined, report: ImportReport): XsdDatatype {
   if (range?.type === 'iri') {
     const local = localNameOf(range.value);

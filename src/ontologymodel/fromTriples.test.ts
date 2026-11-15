@@ -8,6 +8,9 @@ import {
   RDF_FIRST,
   RDF_NIL,
   RDF_REST,
+  SH_DATATYPE,
+  XSD_DATATYPES,
+  xsdDatatypeIri,
 } from '../annotationvocabulary';
 import { buildAutoOntology, buildReusedOntology } from '../../tests/fixtures/autoOntology';
 import { allScenarios } from '../../tests/fixtures/scenarios';
@@ -857,6 +860,31 @@ describe('a schema built here, exported and reopened', () => {
     const restored = roundTrip(ontology).ontology;
     expect(summarise(restored)).toEqual(summarise(ontology));
   });
+
+  /*
+   * Every datatype an attribute can have, written as the range and as the shape's datatype, and
+   * read back as itself. A type on offer that came back as `string` would be a rewrite the user
+   * never asked for, and nothing in the editor would say so.
+   */
+  it.each(XSD_DATATYPES)('keeps an attribute of type %s exactly', (datatype) => {
+    let ontology = createEmptyOntology(AUTO, 'auto');
+    const car = addClass(ontology, { localName: 'Car' });
+    const value = addAttribute(car.ontology, { localName: 'value', range: datatype });
+    ontology = attachProperty(value.ontology, {
+      propertyId: value.id,
+      subjectClassId: car.id,
+    }).ontology;
+
+    const triples = ontologyToTriples(ontology);
+    const objectOf = (predicate: string) =>
+      triples.find((triple) => triple.predicate === predicate)?.object;
+    expect(objectOf(RDFS_RANGE)).toEqual(iri(xsdDatatypeIri(datatype)));
+    expect(objectOf(SH_DATATYPE)).toEqual(iri(xsdDatatypeIri(datatype)));
+
+    const { ontology: restored, report } = saveAndOpen(ontology);
+    expect(restored.attributes[0]?.range).toBe(datatype);
+    expect(report.datatypesRewritten).toBe(0);
+  });
 });
 
 /* ------------------------------------------------------------- the model, and what it leaves */
@@ -1019,6 +1047,16 @@ describe('what the model takes, and what is kept as written', () => {
     expect(ontology.unmodelled).toEqual([
       say(ONTOLOGY_REF, `${OWL}imports`, iri('http://xmlns.com/foaf/0.1/')),
     ]);
+  });
+
+  it('rewrites an xsd type RDF says not to use, as it does any range not on offer', () => {
+    const { ontology, report } = ontologyFromTriples([
+      typed(`${AUTO}code`, `${OWL}DatatypeProperty`),
+      say(`${AUTO}code`, `${RDFS}range`, iri(`${XSD}QName`)),
+    ]);
+
+    expect(ontology.attributes[0]?.range).toBe('string');
+    expect(report.datatypesRewritten).toBe(1);
   });
 
   it('counts a range named like an xsd type, but not in xsd, as rewritten', () => {
