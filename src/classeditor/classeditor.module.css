@@ -331,6 +331,30 @@
   transition: background 100ms ease;
 }
 
+/*
+ * The name half of a row: everything but the datatype, a button of its own. It takes the row's
+ * padding as its own, so the whole left of the row, margin included, answers a click.
+ */
+.attribute:has(.attributeMain) {
+  padding: 0 var(--space-3) 0 0;
+}
+
+.attributeMain {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 3px 0 3px var(--space-3);
+  border: none;
+  background: none;
+  font: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .attribute:last-child {
   border-bottom: none;
 }
@@ -361,11 +385,63 @@
   color: var(--text-primary);
 }
 
+/*
+ * The datatype, in the row and changeable there; see `AttributeRange`. Capped, so a long type
+ * cannot squeeze the attribute's name to nothing; the list shows it in full.
+ */
 .attributeRange {
+  position: relative;
+  display: flex;
   flex: none;
+  align-items: center;
+  max-width: 50%;
+  margin-right: -4px;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--accent-attribute);
+  cursor: pointer;
+}
+
+.attributeRangeText {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Room is kept for it at all times, so the name does not shift when it appears. */
+.attributeRangeCaret {
+  flex: none;
+  margin-left: 2px;
+  opacity: 0;
+}
+
+.attributeRange:hover,
+.attributeRange:focus-within {
+  background: var(--accent-attribute-soft);
+}
+
+.attributeRange:hover .attributeRangeCaret,
+.attributeRange:focus-within .attributeRangeCaret {
+  opacity: 1;
+}
+
+/* The list itself is invisible, so the text it covers shows where the keyboard is. */
+.attributeRange:has(:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.attributeRangePicker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font: inherit;
 }
 
 .emptyAttributes {
