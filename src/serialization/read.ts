@@ -1,7 +1,10 @@
 import { Parser as TurtleParser } from 'n3';
 import type { Quad } from 'n3';
-import { blank, iri, literal, ontologyFromTriples } from '../ontologymodel';
+import { blank, iri, literal } from '../ontologymodel';
+// From its own file rather than the model's index, which leaves it out: see that index.
+import { ontologyFromTriples } from '../ontologymodel/fromTriples';
 import type { ImportResult, Triple, TripleObject } from '../ontologymodel';
+import type { ImportFormat } from './formats';
 
 /**
  * Reading a document from text.
@@ -16,28 +19,10 @@ import type { ImportResult, Triple, TripleObject } from '../ontologymodel';
  * opening the app costs nothing and only opening an RDF/XML file pays for it.
  */
 
-export type ImportFormat = 'turtle' | 'rdfxml';
-
 export interface ParsedDocument {
   triples: Triple[];
   /** Prefix declarations, which carry the one thing the triples cannot: what to call things. */
   prefixes: Record<string, string>;
-}
-
-/** The formats `open` accepts, by the extension a file arrives with. */
-const BY_EXTENSION: Record<string, ImportFormat> = {
-  ttl: 'turtle',
-  turtle: 'turtle',
-  n3: 'turtle',
-  nt: 'turtle',
-  rdf: 'rdfxml',
-  owl: 'rdfxml',
-  xml: 'rdfxml',
-};
-
-export function formatForFilename(filename: string): ImportFormat | undefined {
-  const extension = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
-  return BY_EXTENSION[extension];
 }
 
 export async function parseDocument(

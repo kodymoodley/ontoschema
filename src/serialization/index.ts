@@ -135,5 +135,10 @@ export { serializeJsonLd } from './jsonld';
 export { prefixesFor } from './prefixes';
 export type { SerializationOptions } from '../ontologymodel';
 
-export { formatForFilename, fromQuad, parseDocument, readOntology } from './read';
-export type { ImportFormat, ParsedDocument } from './read';
+export { formatForFilename } from './formats';
+export type { ImportFormat } from './formats';
+/*
+ * The reader is not exported here. It is the larger half of this module and only opening a file
+ * needs it, so it is loaded from `./read` when one is opened. Exported here, it would be in the
+ * bundle every visit loads, because this file is.
+ */
